@@ -1,6 +1,5 @@
 package mod.chiselsandbits.chiseledblock.data;
 
-import javax.annotation.Nonnull;
 import mod.chiselsandbits.api.IBitLocation;
 import mod.chiselsandbits.helpers.BitOperation;
 import net.minecraft.core.BlockPos;
@@ -8,11 +7,12 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.NotNull;
 
 public class BitLocation implements IBitLocation {
     private static final double One32nd = 0.5 / VoxelBlob.dim;
 
-    @Nonnull
+    @NotNull
     public BlockPos blockPos;
 
     public int bitX, bitY, bitZ;

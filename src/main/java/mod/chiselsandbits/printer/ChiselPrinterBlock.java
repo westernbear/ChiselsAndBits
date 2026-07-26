@@ -168,8 +168,7 @@ public class ChiselPrinterBlock extends Block implements EntityBlock {
                 if (blockEntity.canWork()) {
                     blockEntity.progress++;
                     if (blockEntity.progress >= 100) {
-                        blockEntity.result_handler.ifPresent(
-                                h -> h.insertItem(0, blockEntity.realisePattern(true), false));
+                        blockEntity.addOutput(blockEntity.realisePattern(true));
                         blockEntity.currentRealisedWorkingStack.setValue(ItemStack.EMPTY);
                         blockEntity.progress = 0;
                         blockEntity.damageChisel();

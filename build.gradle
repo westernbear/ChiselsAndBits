@@ -1,6 +1,5 @@
 plugins {
 	id 'fabric-loom' version "${loom_version}"
-	id 'maven-publish'
 	id 'com.diffplug.spotless' version "${spotless_version}"
 }
 
@@ -13,20 +12,9 @@ base {
 
 repositories {
 	mavenCentral()
-	maven { url = "https://pkgs.dev.azure.com/djtheredstoner/DevAuth/_packaging/public/maven/v1" }
 	maven {
 		name = 'Fabric'
 		url = 'https://maven.fabricmc.net/'
-	}
-	maven {
-		url = 'https://jitpack.io'
-		content {
-			includeGroup "com.github.Chocohead" // Fixes extremely slowing down Gradle configuration
-		}
-	}
-	maven {
-		name = "singlerr's repo"
-		url = "https://github.com/singlerr/mvn-repo/raw/maven2/"
 	}
 	maven {
 		name = "Fuzs Mod Resources"
@@ -42,22 +30,6 @@ repositories {
 		name = 'LDTTeam - Modding'
 		url = 'https://ldtteam.jfrog.io/ldtteam/modding/'
 	}
-	maven { url = "https://mvn.devos.one/releases/" }
-	exclusiveContent {
-		forRepository {
-			maven {
-				name = "Modrinth"
-				url = "https://api.modrinth.com/maven"
-			}
-		}
-		filter {
-			includeGroup "maven.modrinth"
-		}
-	}
-}
-
-fabricApi {
-	configureDataGeneration()
 }
 
 loom {
@@ -95,13 +67,6 @@ dependencies {
 	modApi("fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${config_api_version}")
 	include(modImplementation("com.jamieswhiteshirt:reach-entity-attributes:${reach_distance_api_version}"))
 	include(modImplementation("com.communi-suggestu.saecularia-caudices:saecularia-caudices-fabric:${saeculariaCaudicesVersion}"))
-	include(modImplementation("io.github.feltmc:fabricated-forge-caps:${forge_caps_version}"))
-	modImplementation("maven.modrinth:modernkeybinding:${modern_key_binding_version}") {
-		transitive = false
-	}
-	implementation "javax.annotation:javax.annotation-api:${annotation_api_version}"
-	implementation "com.google.code.findbugs:jsr305:${jsr305_version}"
-	//	modRuntimeOnly "me.djtheredstoner:DevAuth-fabric:${devauth_version}"
 }
 
 processResources {
@@ -113,6 +78,16 @@ processResources {
 
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = 17
+}
+
+def faceRegionMergeCheck = tasks.register("faceRegionMergeCheck", JavaExec) {
+	dependsOn testClasses
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = "mod.chiselsandbits.render.chiseledblock.FaceRegionMergeCheck"
+}
+
+tasks.named("check") {
+	dependsOn faceRegionMergeCheck
 }
 
 javadoc{
@@ -132,21 +107,6 @@ jar {
 	}
 }
 
-publishing {
-	publications {
-		create("mavenJava", MavenPublication) {
-			artifactId = project.archives_base_name
-			from components.java
-		}
-	}
-	repositories {
-		maven {
-			name = "singlerrs_repo"
-			url = uri(project.findProperty("localMvnRepo") == null ? "" : project.findProperty("localMvnRepo"))
-		}
-	}
-}
-
 spotless {
 	java {
 		palantirJavaFormat()
@@ -154,18 +114,5 @@ spotless {
 
 	groovyGradle {
 		greclipse()
-	}
-}
-
-subprojects {
-	tasks.withType(JavaCompile).configureEach {
-		it.options.release = 17
-	}
-
-	java {
-		withSourcesJar()
-
-		sourceCompatibility = JavaVersion.VERSION_17
-		targetCompatibility = JavaVersion.VERSION_17
 	}
 }

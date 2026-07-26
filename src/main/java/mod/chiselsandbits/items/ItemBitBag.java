@@ -2,8 +2,6 @@ package mod.chiselsandbits.items;
 
 import java.util.ArrayList;
 import java.util.List;
-import javax.annotation.Nonnull;
-import mod.chiselsandbits.bitbag.BagCapabilityProvider;
 import mod.chiselsandbits.bitbag.BagInventory;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.core.ClientSide;
@@ -27,7 +25,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.common.capabilities.ICapabilityProvider;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class ItemBitBag extends Item {
@@ -51,7 +49,7 @@ public class ItemBitBag extends Item {
             int firstSeen = -1;
             for (int slot = 0; slot < inv.getContainerSize(); slot++) {
                 int actingSlot = slot;
-                @Nonnull ItemStack which = ModUtil.nonNull(inv.getItem(actingSlot));
+                @NotNull ItemStack which = ModUtil.nonNull(inv.getItem(actingSlot));
 
                 if (which != null
                         && which.getItem() == is.getItem()
@@ -137,11 +135,6 @@ public class ItemBitBag extends Item {
     }
 
     @Override
-    public ICapabilityProvider initCapabilities(final ItemStack stack, final CompoundTag nbt) {
-        return new BagCapabilityProvider(stack, nbt);
-    }
-
-    @Override
     public Component getName(final ItemStack stack) {
         DyeColor color = getDyedColor(stack);
         final Component parent = super.getName(stack);
@@ -176,39 +169,6 @@ public class ItemBitBag extends Item {
             tooltip.add(Component.literal(LocalStrings.ShiftDetails.getLocal()));
         }
     }
-
-    //    @Override
-    //    public boolean showDurabilityBar(
-    //      final ItemStack stack)
-    //    {
-    //        final Object o = stack.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null);
-    //
-    //        if (o instanceof BagStorage)
-    //        {
-    //            final int qty = ((BagStorage) o).getSlotsUsed();
-    //            return qty != 0;
-    //        }
-    //
-    //        return false;
-    //    }
-    //
-    //    @Override
-    //    public double getDurabilityForDisplay(
-    //      final ItemStack stack)
-    //    {
-    //        final Object o = stack.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null);
-    //
-    //        if (o instanceof BagStorage)
-    //        {
-    //            final int qty = ((BagStorage) o).getSlotsUsed();
-    //
-    //            final double value = qty / (float) BagStorage.BAG_STORAGE_SLOTS;
-    //            return Math.min(1.0d, Math.max(0.0d, ChiselsAndBits.getConfig().getClient().invertBitBagFullness.get()
-    // ? value : 1.0 - value));
-    //        }
-    //
-    //        return 0;
-    //    }
 
     @Override
     public InteractionResultHolder<ItemStack> use(

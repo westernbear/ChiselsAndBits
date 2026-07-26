@@ -1,11 +1,11 @@
 package mod.chiselsandbits.core.api;
 
-import javax.annotation.Nullable;
 import mod.chiselsandbits.api.IBitBrush;
 import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.items.ItemChiseledBit;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jetbrains.annotations.Nullable;
 
 public class BitBrush implements IBitBrush {
 

@@ -18,9 +18,6 @@ import net.fabricmc.fabric.api.renderer.v1.model.ForwardingBakedModel;
 import net.fabricmc.fabric.api.renderer.v1.render.RenderContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.renderer.block.model.ItemOverrides;
-import net.minecraft.client.renderer.block.model.ItemTransforms;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -28,64 +25,12 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.block.state.BlockState;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-public class FabricBakedModelDelegate implements BakedModel, ICacheClearable {
-    private static final Logger log = LoggerFactory.getLogger(FabricBakedModelDelegate.class);
-    private final BakedModel delegate;
-
+public class FabricBakedModelDelegate extends ForwardingBakedModel implements ICacheClearable {
     private boolean cached = false;
 
     public FabricBakedModelDelegate(final BakedModel delegate) {
-        this.delegate = delegate;
-    }
-
-    @Override
-    public List<BakedQuad> getQuads(
-            @Nullable final BlockState state, @Nullable final Direction direction, final @NotNull RandomSource random) {
-        return delegate.getQuads(state, direction, random);
-    }
-
-    @Override
-    public boolean useAmbientOcclusion() {
-        return delegate.useAmbientOcclusion();
-    }
-
-    @Override
-    public boolean isGui3d() {
-        return delegate.isGui3d();
-    }
-
-    @Override
-    public boolean usesBlockLight() {
-        return delegate.usesBlockLight();
-    }
-
-    @Override
-    public boolean isCustomRenderer() {
-        return delegate.isCustomRenderer();
-    }
-
-    @Override
-    public TextureAtlasSprite getParticleIcon() {
-        return delegate.getParticleIcon();
-    }
-
-    @Override
-    public ItemTransforms getTransforms() {
-        return delegate.getTransforms();
-    }
-
-    @Override
-    public ItemOverrides getOverrides() {
-        return delegate.getOverrides();
-    }
-
-    public BakedModel getDelegate() {
-        return delegate;
+        this.wrapped = delegate;
     }
 
     @Override
@@ -100,8 +45,8 @@ public class FabricBakedModelDelegate implements BakedModel, ICacheClearable {
             final BlockPos blockPos,
             final Supplier<RandomSource> supplier,
             final RenderContext renderContext) {
-        if (!(getDelegate() instanceof final DataAwareBakedModel dataAwareBakedModel)) {
-            getDelegate().emitBlockQuads(blockAndTintGetter, blockState, blockPos, supplier, renderContext);
+        if (!(wrapped instanceof final DataAwareBakedModel dataAwareBakedModel)) {
+            wrapped.emitBlockQuads(blockAndTintGetter, blockState, blockPos, supplier, renderContext);
             return;
         }
 
@@ -119,22 +64,6 @@ public class FabricBakedModelDelegate implements BakedModel, ICacheClearable {
                         supplier,
                         renderContext);
             }
-        }
-    }
-
-    private void joinFluid(Set<ChiselRenderType> renderTypes) {
-        ChiselRenderType nonFluid = null;
-        ChiselRenderType fluid = null;
-        for (ChiselRenderType renderType : renderTypes) {
-            if (renderType == ChiselRenderType.TRANSLUCENT) {
-                nonFluid = ChiselRenderType.TRANSLUCENT;
-            } else if (renderType == ChiselRenderType.TRANSLUCENT_FLUID) {
-                fluid = ChiselRenderType.TRANSLUCENT_FLUID;
-            }
-        }
-        // if fluid and non-fluid coexist, keep the former and remove the latter
-        if (fluid != null && nonFluid != null) {
-            renderTypes.remove(nonFluid);
         }
     }
 
@@ -221,10 +150,9 @@ public class FabricBakedModelDelegate implements BakedModel, ICacheClearable {
             VoxelBlob.clearCache();
             cached = true;
         }
-        final BakedModel itemModel = getDelegate()
-                .getOverrides()
+        final BakedModel itemModel = wrapped.getOverrides()
                 .resolve(
-                        getDelegate(),
+                        wrapped,
                         itemStack,
                         Minecraft.getInstance().level,
                         Minecraft.getInstance().player,
@@ -240,29 +168,8 @@ public class FabricBakedModelDelegate implements BakedModel, ICacheClearable {
 
     @Override
     public void clearCache() {
-        if (delegate instanceof ICacheClearable cache) {
+        if (wrapped instanceof ICacheClearable cache) {
             cache.clearCache();
-        }
-    }
-
-    @FunctionalInterface
-    private interface QuadGetter {
-
-        List<BakedQuad> getQuads(BlockState blockState, Direction side, RandomSource rand);
-    }
-
-    private static final class QuadDelegatingBakedModel extends ForwardingBakedModel {
-        private final QuadGetter quadGetter;
-
-        private QuadDelegatingBakedModel(final BakedModel delegate, final QuadGetter quadGetter) {
-            this.quadGetter = quadGetter;
-            this.wrapped = delegate;
-        }
-
-        @Override
-        public List<BakedQuad> getQuads(
-                @Nullable final BlockState blockState, @Nullable final Direction direction, final RandomSource random) {
-            return quadGetter.getQuads(blockState, direction, random);
         }
     }
 }

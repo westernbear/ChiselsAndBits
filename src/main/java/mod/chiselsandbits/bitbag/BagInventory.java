@@ -6,7 +6,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.TreeMap;
-import javax.annotation.Nonnull;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.helpers.LocalStrings;
 import mod.chiselsandbits.helpers.ModUtil;
@@ -19,7 +18,7 @@ import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.items.CapabilityItemHandler;
+import org.jetbrains.annotations.NotNull;
 
 public class BagInventory implements Container {
 
@@ -30,19 +29,8 @@ public class BagInventory implements Container {
     ItemStack[] stackSlots;
 
     public BagInventory(final ItemStack is) {
-        inv = CapabilityItemHandler.ITEM_HANDLER_CAPABILITY != null
-                ? (BagStorage) is.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null)
-                        .orElseThrow(() -> new IllegalStateException("Failed to get IItemHandler from Bag!"))
-                : null;
+        inv = new BagStorage(is);
         stackSlots = new ItemStack[BagStorage.BAG_STORAGE_SLOTS];
-
-        // the cap is missing? then just make and load it ourselves.
-        if (inv == null) {
-            inv = new BagStorage();
-            inv.stack = is;
-            inv.setStorage(BagCapabilityProvider.getStorageArray(
-                    is, BagStorage.BAG_STORAGE_SLOTS * ItemBitBag.INTS_PER_BIT_TYPE));
-        }
 
         for (int x = 0; x < stackSlots.length; ++x) {
             stackSlots[x] = ModUtil.getEmptyStack();
@@ -70,7 +58,7 @@ public class BagInventory implements Container {
     }
 
     @Override
-    public @Nonnull ItemStack getItem(final int index) {
+    public @NotNull ItemStack getItem(final int index) {
         final int qty = inv.contents[ItemBitBag.INTS_PER_BIT_TYPE * index + ItemBitBag.OFFSET_QUANTITY];
         final int id = inv.contents[ItemBitBag.INTS_PER_BIT_TYPE * index + ItemBitBag.OFFSET_STATE_ID];
 
@@ -292,7 +280,7 @@ public class BagInventory implements Container {
         return out;
     }
 
-    public @Nonnull ItemStack insertItem(final @Nonnull ItemStack which) {
+    public @NotNull ItemStack insertItem(final @NotNull ItemStack which) {
         for (int x = 0; x < getContainerSize(); x++) {
             final ItemStack is = getItem(x);
             if (!ModUtil.isEmpty(is) && ItemChiseledBit.getStackState(which) == ItemChiseledBit.getStackState(is)) {

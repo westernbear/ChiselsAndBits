@@ -6,8 +6,6 @@ import net.minecraft.server.level.ServerPlayer;
 
 public abstract class ModPacket implements FabricPacket {
 
-    ServerPlayer serverEntity = null;
-
     public ModPacket() {}
 
     public ModPacket(FriendlyByteBuf buf) {
@@ -25,15 +23,6 @@ public abstract class ModPacket implements FabricPacket {
     public abstract void getPayload(FriendlyByteBuf buffer);
 
     public abstract void readPayload(FriendlyByteBuf buffer);
-
-    public void processPacket(final NetworkChannel.Context context, final Boolean onServer) {
-        if (!onServer) {
-            client();
-        } else {
-            serverEntity = context.serverPlayer();
-            server(serverEntity);
-        }
-    }
 
     @Override
     public void write(FriendlyByteBuf buf) {

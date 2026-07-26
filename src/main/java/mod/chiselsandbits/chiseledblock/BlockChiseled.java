@@ -1,7 +1,6 @@
 package mod.chiselsandbits.chiseledblock;
 
 import com.communi.suggestu.saecularia.caudices.core.block.IBlockWithWorldlyProperties;
-import javax.annotation.Nonnull;
 import mod.chiselsandbits.api.BoxType;
 import mod.chiselsandbits.api.IMultiStateBlock;
 import mod.chiselsandbits.chiseledblock.data.BitLocation;
@@ -58,6 +57,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class BlockChiseled extends Block
@@ -75,7 +75,7 @@ public class BlockChiseled extends Block
         this.registerDefaultState(this.stateDefinition.any().setValue(FULL_BLOCK, false));
     }
 
-    public static @Nonnull TileEntityBlockChiseled getTileEntity(final BlockEntity te) throws ExceptionNoTileEntity {
+    public static @NotNull TileEntityBlockChiseled getTileEntity(final BlockEntity te) throws ExceptionNoTileEntity {
         if (te == null) {
             throw noTileEntity;
         }
@@ -87,8 +87,8 @@ public class BlockChiseled extends Block
         }
     }
 
-    public static @Nonnull TileEntityBlockChiseled getTileEntity(
-            final @Nonnull BlockGetter world, final @Nonnull BlockPos pos) throws ExceptionNoTileEntity {
+    public static @NotNull TileEntityBlockChiseled getTileEntity(
+            final @NotNull BlockGetter world, final @NotNull BlockPos pos) throws ExceptionNoTileEntity {
         final BlockEntity te = ModUtil.getTileEntitySafely(world, pos);
         return getTileEntity(te);
     }
@@ -103,8 +103,8 @@ public class BlockChiseled extends Block
     }
 
     public static ReplaceWithChiseledValue replaceWithChiseled(
-            final @Nonnull Level world,
-            final @Nonnull BlockPos pos,
+            final @NotNull Level world,
+            final @NotNull BlockPos pos,
             final BlockState originalState,
             final int fragmentBlockStateID,
             final boolean triggerUpdate) {

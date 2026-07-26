@@ -1,6 +1,5 @@
 package mod.chiselsandbits.crafting;
 
-import javax.annotation.Nonnull;
 import mod.chiselsandbits.chiseledblock.ItemBlockChiseled;
 import mod.chiselsandbits.chiseledblock.NBTBlobConverter;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
@@ -15,6 +14,7 @@ import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.NotNull;
 
 public class StackableCrafting extends CustomRecipe {
 
@@ -66,7 +66,7 @@ public class StackableCrafting extends CustomRecipe {
         return getSortedVersion(target);
     }
 
-    private ItemStack getSortedVersion(final @Nonnull ItemStack stack) {
+    private ItemStack getSortedVersion(final @NotNull ItemStack stack) {
         final NBTBlobConverter tmp = new NBTBlobConverter();
         tmp.readChisleData(ModUtil.getSubCompound(stack, ModUtil.NBT_BLOCKENTITYTAG, false), VoxelBlob.VERSION_ANY);
 

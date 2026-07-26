@@ -33,6 +33,5 @@ public final class Constants {
         public static final String LOOT_TABLES_DIR = DATAPACK_DIR + "loot_tables/blocks";
         private static final String RESOURCEPACK_DIR = "assets/" + MOD_ID + "/";
         public static final String BLOCKSTATE_DIR = RESOURCEPACK_DIR + "blockstates/";
-        public static final String CONFIG_LANG_DIR = RESOURCEPACK_DIR + "lang/config/";
     }
 }

@@ -56,13 +56,6 @@ public class PrintSmartModel extends BaseSmartModel {
     }
 
     @Override
-    public void updateModelData(
-            @NotNull BlockAndTintGetter world,
-            @NotNull BlockPos pos,
-            @NotNull BlockState state,
-            @NotNull IModelData modelData) {}
-
-    @Override
     public Set<ChiselRenderType> getRenderTypes(
             @NotNull BlockAndTintGetter world,
             @NotNull BlockPos pos,

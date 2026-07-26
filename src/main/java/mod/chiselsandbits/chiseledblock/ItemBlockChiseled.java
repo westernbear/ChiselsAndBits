@@ -2,7 +2,6 @@ package mod.chiselsandbits.chiseledblock;
 
 import java.util.ArrayList;
 import java.util.List;
-import javax.annotation.Nonnull;
 import mod.chiselsandbits.api.ChiselsAndBitsEvents;
 import mod.chiselsandbits.api.EventBlockBitModification;
 import mod.chiselsandbits.api.IBitAccess;
@@ -53,6 +52,7 @@ import net.minecraft.world.level.block.SnowLayerBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,13 +68,13 @@ public class ItemBlockChiseled extends BlockItem implements IVoxelBlobItem, IIte
     }
 
     public static boolean tryPlaceBlockAt(
-            final @Nonnull Block block,
-            final @Nonnull ItemStack stack,
-            final @Nonnull Player player,
-            final @Nonnull Level world,
-            @Nonnull BlockPos pos,
-            final @Nonnull Direction side,
-            final @Nonnull InteractionHand hand,
+            final @NotNull Block block,
+            final @NotNull ItemStack stack,
+            final @NotNull Player player,
+            final @NotNull Level world,
+            @NotNull BlockPos pos,
+            final @NotNull Direction side,
+            final @NotNull InteractionHand hand,
             final double hitX,
             final double hitY,
             final double hitZ,
@@ -258,9 +258,9 @@ public class ItemBlockChiseled extends BlockItem implements IVoxelBlobItem, IIte
     }
 
     public boolean vanillaStylePlacementTest(
-            final @Nonnull Level worldIn,
-            @Nonnull BlockPos pos,
-            @Nonnull Direction side,
+            final @NotNull Level worldIn,
+            @NotNull BlockPos pos,
+            @NotNull Direction side,
             final Player player,
             final InteractionHand hand,
             final ItemStack stack) {
@@ -279,9 +279,9 @@ public class ItemBlockChiseled extends BlockItem implements IVoxelBlobItem, IIte
     }
 
     public boolean canPlaceBlockHere(
-            final @Nonnull Level worldIn,
-            final @Nonnull BlockPos pos,
-            final @Nonnull Direction side,
+            final @NotNull Level worldIn,
+            final @NotNull BlockPos pos,
+            final @NotNull Direction side,
             final Player player,
             final InteractionHand hand,
             final ItemStack stack,

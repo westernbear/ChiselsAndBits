@@ -2,6 +2,7 @@ package mod.chiselsandbits.core;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import javax.imageio.ImageIO;
 import mod.chiselsandbits.bitbag.BagGui;
 import mod.chiselsandbits.client.gui.SpriteIconPositioning;
 import mod.chiselsandbits.core.textures.IconSpriteUploader;
@@ -11,7 +12,6 @@ import mod.chiselsandbits.modes.PositivePatternMode;
 import mod.chiselsandbits.modes.TapeMeasureModes;
 import mod.chiselsandbits.printer.ChiselPrinterScreen;
 import mod.chiselsandbits.registry.ModContainerTypes;
-import mod.chiselsandbits.utils.TextureUtils;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
@@ -19,7 +19,6 @@ import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ReloadableResourceManager;
-import net.minecraft.server.packs.resources.Resource;
 
 public class ChiselsAndBitsClient {
 
@@ -34,12 +33,6 @@ public class ChiselsAndBitsClient {
         MenuScreens.register(ModContainerTypes.BAG_CONTAINER.get(), BagGui::new);
         MenuScreens.register(ModContainerTypes.CHISEL_STATION_CONTAINER.get(), ChiselPrinterScreen::new);
     }
-
-    //    @Environment(EnvType.CLIENT)
-    //    public static void onModelRegistry(Map<ResourceLocation, IGeometryLoader<?>> loaders) {
-    //        loaders.put(new ResourceLocation(Constants.MOD_ID, "chiseled_block"),
-    // ChiseledBlockModelLoader.getInstance());
-    //    }
 
     @Environment(EnvType.CLIENT)
     public static void registerIconTextures() {
@@ -88,12 +81,12 @@ public class ChiselsAndBitsClient {
 
         sip.sprite = spriteUploader.getSprite(sprite);
 
-        try {
-            final Resource iresource = Minecraft.getInstance()
-                    .getResourceManager()
-                    .getResource(png)
-                    .get();
-            final BufferedImage bi = TextureUtils.readBufferedImage(iresource.open());
+        try (final var imageStream = Minecraft.getInstance()
+                .getResourceManager()
+                .getResource(png)
+                .get()
+                .open()) {
+            final BufferedImage bi = ImageIO.read(imageStream);
 
             int bottom = 0;
             int right = 0;

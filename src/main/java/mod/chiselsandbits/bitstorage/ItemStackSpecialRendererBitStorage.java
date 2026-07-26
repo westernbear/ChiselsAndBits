@@ -13,9 +13,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
-import net.minecraftforge.fluids.capability.IFluidHandler;
 
 public class ItemStackSpecialRendererBitStorage extends BlockEntityWithoutLevelRenderer {
     public ItemStackSpecialRendererBitStorage() {
@@ -52,13 +49,7 @@ public class ItemStackSpecialRendererBitStorage extends BlockEntityWithoutLevelR
                         combinedOverlay);
 
         final TileEntityBitStorage tileEntity = new TileEntityBitStorage(BlockPos.ZERO, Blocks.AIR.defaultBlockState());
-        tileEntity
-                .getCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY)
-                .ifPresent(t -> t.fill(
-                        stack.getCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY)
-                                .map(s -> s.drain(Integer.MAX_VALUE, IFluidHandler.FluidAction.SIMULATE))
-                                .orElse(FluidStack.EMPTY),
-                        IFluidHandler.FluidAction.EXECUTE));
+        tileEntity.setFluid(ItemBlockBitStorage.getFluidVariant(stack), ItemBlockBitStorage.getFluidAmount(stack));
         Minecraft.getInstance()
                 .getBlockEntityRenderDispatcher()
                 .renderItem(tileEntity, matrixStack, buffer, combinedLight, combinedOverlay);

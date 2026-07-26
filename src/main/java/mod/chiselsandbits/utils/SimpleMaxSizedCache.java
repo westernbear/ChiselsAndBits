@@ -1,12 +1,9 @@
 package mod.chiselsandbits.utils;
 
-import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.Set;
+import java.util.Map;
 
-public class SimpleMaxSizedCache<K, V> {
-
-    private final LinkedHashMap<K, V> cache = new LinkedHashMap<>();
+public class SimpleMaxSizedCache<K, V> extends LinkedHashMap<K, V> {
 
     private long maxSize;
 
@@ -14,40 +11,15 @@ public class SimpleMaxSizedCache<K, V> {
         this.maxSize = maxSize;
     }
 
-    private void evictFromCacheIfNeeded() {
-        if (cache.size() == maxSize) {
-            cache.remove(cache.keySet().iterator().next());
-        }
-    }
-
-    public V get(final K key) {
-        return cache.get(key);
-    }
-
-    public void put(final K key, final V value) {
-        if (!cache.containsKey(key)) {
-            evictFromCacheIfNeeded();
-        }
-
-        cache.put(key, value);
-    }
-
-    public Set<K> keySet() {
-        return cache.keySet();
-    }
-
-    public Collection<V> values() {
-        return cache.values();
+    @Override
+    protected boolean removeEldestEntry(final Map.Entry<K, V> eldest) {
+        return size() > maxSize;
     }
 
     public void changeMaxSize(final long newSize) {
-        if (this.maxSize != newSize) {
-            this.clear();
-            this.maxSize = newSize;
+        if (maxSize != newSize) {
+            clear();
+            maxSize = newSize;
         }
-    }
-
-    public void clear() {
-        this.cache.clear();
     }
 }

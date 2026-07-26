@@ -103,50 +103,6 @@ public class GuiBagFontRenderer extends Font {
         }
     }
 
-    //    @Override
-    //    public int draw(PoseStack matrixStack, String text, float x, float y, int color)
-    //    {
-    //        try
-    //        {
-    //            text = convertText( text );
-    //            matrixStack.pushPose();
-    //            matrixStack.scale( scale, scale, scale );
-    //
-    //            x /= scale;
-    //            y /= scale;
-    //            x += offsetX;
-    //            y += offsetY;
-    //
-    //            return talkto.draw(matrixStack, text, x, y, color );
-    //        }
-    //        finally
-    //        {
-    //            matrixStack.popPose();
-    //        }
-    //    }
-    //
-    //    @Override
-    //    public int drawShadow(PoseStack matrixStack, String text, float x, float y, int color)
-    //    {
-    //        try
-    //        {
-    //            text = convertText( text );
-    //            matrixStack.pushPose();
-    //            matrixStack.scale( scale, scale, scale );
-    //
-    //            x /= scale;
-    //            y /= scale;
-    //            x += offsetX;
-    //            y += offsetY;
-    //
-    //            return talkto.drawShadow(matrixStack, text, x, y, color );
-    //        }
-    //        finally
-    //        {
-    //            matrixStack.popPose();
-    //        }
-    //    }
-
     private String convertText(final String text) {
         try {
             final int value = Integer.parseInt(text);

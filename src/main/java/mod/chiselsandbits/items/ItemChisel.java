@@ -3,15 +3,12 @@ package mod.chiselsandbits.items;
 import static net.minecraft.world.item.Tiers.DIAMOND;
 import static net.minecraft.world.item.Tiers.GOLD;
 import static net.minecraft.world.item.Tiers.IRON;
-import static net.minecraft.world.item.Tiers.NETHERITE;
-import static net.minecraft.world.item.Tiers.STONE;
 import static net.minecraft.world.item.Tiers.WOOD;
 
 import com.communi.suggestu.saecularia.caudices.core.block.IBlockWithWorldlyProperties;
 import com.google.common.base.Stopwatch;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import javax.annotation.Nonnull;
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
 import mod.chiselsandbits.chiseledblock.BlockChiseled;
 import mod.chiselsandbits.chiseledblock.data.BitLocation;
@@ -60,6 +57,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class ItemChisel extends DiggerItem implements IItemScrollWheel, IChiselModeItem {
@@ -71,24 +69,6 @@ public class ItemChisel extends DiggerItem implements IItemScrollWheel, IChiselM
         super(0.1F, -2.8F, material, ModTags.Blocks.CHISELED_BLOCK, properties);
     }
 
-    private static Item.Properties setupDamageStack(Tier material, Item.Properties properties) {
-        long uses = 1;
-        if (DIAMOND.equals(material)) {
-            uses = ChiselsAndBits.getConfig().getServer().diamondChiselUses.get();
-        } else if (GOLD.equals(material)) {
-            uses = ChiselsAndBits.getConfig().getServer().goldChiselUses.get();
-        } else if (IRON.equals(material)) {
-            uses = ChiselsAndBits.getConfig().getServer().ironChiselUses.get();
-        } else if (STONE.equals(material)) {
-            uses = ChiselsAndBits.getConfig().getServer().stoneChiselUses.get();
-        } else if (NETHERITE.equals(material)) {
-            uses = ChiselsAndBits.getConfig().getServer().netheriteChiselUses.get();
-        }
-
-        return properties.durability(
-                ChiselsAndBits.getConfig().getServer().damageTools.get() ? (int) Math.max(0, uses) : 0);
-    }
-
     public static void resetDelay() {
         timer = null;
     }
@@ -96,7 +76,7 @@ public class ItemChisel extends DiggerItem implements IItemScrollWheel, IChiselM
     public static boolean fromBreakToChisel(
             final ChiselMode mode,
             final ItemStack itemstack,
-            final @Nonnull BlockPos pos,
+            final @NotNull BlockPos pos,
             final Player player,
             final InteractionHand hand) {
         final BlockState state = player.getCommandSenderWorld().getBlockState(pos);
@@ -255,7 +235,7 @@ public class ItemChisel extends DiggerItem implements IItemScrollWheel, IChiselM
             final BlockState state,
             final Player player,
             final Level world,
-            final @Nonnull BlockPos pos) {
+            final @NotNull BlockPos pos) {
         final int targetState = ModUtil.getStateId(state);
         IItemInInventory chiselSlot = chiselInv.getItem(targetState);
         ItemStack chisel = chiselSlot.getStack();

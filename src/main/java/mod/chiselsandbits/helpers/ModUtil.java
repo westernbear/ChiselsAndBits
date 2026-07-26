@@ -9,8 +9,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import mod.chiselsandbits.bitbag.BagInventory;
 import mod.chiselsandbits.chiseledblock.ItemBlockChiseled;
 import mod.chiselsandbits.chiseledblock.NBTBlobConverter;
@@ -24,7 +22,6 @@ import mod.chiselsandbits.items.ItemChiseledBit;
 import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.render.chiseledblock.ChiselRenderType;
 import mod.chiselsandbits.render.helpers.SimpleInstanceCache;
-import mod.chiselsandbits.utils.RenderTypeUtils;
 import mod.chiselsandbits.utils.SingleBlockBlockReader;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.RenderType;
@@ -54,19 +51,19 @@ import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidUtil;
-import net.minecraftforge.fluids.IFluidBlock;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class ModUtil {
 
-    @Nonnull
+    @NotNull
     public static final String NBT_SIDE = "side";
 
-    @Nonnull
+    @NotNull
     public static final String NBT_BLOCKENTITYTAG = "BlockEntityTag";
 
     private static final Random RAND = new Random();
@@ -178,7 +175,7 @@ public class ModUtil {
                 .collect(Collectors.toSet());
     }
 
-    public static @Nonnull ItemStack copy(final ItemStack st) {
+    public static @NotNull ItemStack copy(final ItemStack st) {
         if (st == null) {
             return ModUtil.getEmptyStack();
         }
@@ -186,7 +183,7 @@ public class ModUtil {
         return nonNull(st.copy());
     }
 
-    public static @Nonnull ItemStack nonNull(final ItemStack st) {
+    public static @NotNull ItemStack nonNull(final ItemStack st) {
         if (st == null) {
             return ModUtil.getEmptyStack();
         }
@@ -296,7 +293,7 @@ public class ModUtil {
         throw new NullPointerException("Unable to find a non null item.");
     }
 
-    public static BlockEntity getTileEntitySafely(final @Nonnull BlockGetter world, final @Nonnull BlockPos pos) {
+    public static BlockEntity getTileEntitySafely(final @NotNull BlockGetter world, final @NotNull BlockPos pos) {
 
         // stupid...
         if (world instanceof Level) {
@@ -314,7 +311,7 @@ public class ModUtil {
     }
 
     public static TileEntityBlockChiseled getChiseledTileEntity(
-            @Nonnull final BlockGetter world, @Nonnull final BlockPos pos) {
+            @NotNull final BlockGetter world, @NotNull final BlockPos pos) {
         final BlockEntity te = getTileEntitySafely(world, pos);
         if (te instanceof TileEntityBlockChiseled) {
             return (TileEntityBlockChiseled) te;
@@ -324,7 +321,7 @@ public class ModUtil {
     }
 
     public static TileEntityBlockChiseled getChiseledTileEntity(
-            @Nonnull final Level world, @Nonnull final BlockPos pos, final boolean create) {
+            @NotNull final Level world, @NotNull final BlockPos pos, final boolean create) {
         if (world.hasChunkAt(pos)) {
             final BlockEntity te = world.getChunkAt(pos).getBlockEntity(pos, LevelChunk.EntityCreationType.CHECK);
             if (te instanceof TileEntityBlockChiseled) {
@@ -336,7 +333,7 @@ public class ModUtil {
         return null;
     }
 
-    public static void removeChiseledBlock(@Nonnull final Level world, @Nonnull final BlockPos pos) {
+    public static void removeChiseledBlock(@NotNull final Level world, @NotNull final BlockPos pos) {
         final BlockEntity te = world.getBlockEntity(pos);
         final BlockState oldState = world.getBlockState(pos);
 
@@ -426,7 +423,7 @@ public class ModUtil {
         return new VoxelBlob();
     }
 
-    public static void sendUpdate(@Nullable final Level worldObj, @Nonnull final BlockPos pos) {
+    public static void sendUpdate(@Nullable final Level worldObj, @NotNull final BlockPos pos) {
         if (worldObj == null) {
             return;
         }
@@ -472,8 +469,9 @@ public class ModUtil {
      * @return ItemStack fromt the BlockState.
      */
     public static ItemStack getItemStackFromBlockState(@NotNull final BlockState blockState) {
-        if (blockState.getBlock() instanceof IFluidBlock) {
-            return FluidUtil.getFilledBucket(new FluidStack(((IFluidBlock) blockState.getBlock()).getFluid(), 1000));
+        final Fluid fluid = blockState.getFluidState().getType();
+        if (fluid != Fluids.EMPTY && fluid.getBucket() != Items.AIR) {
+            return new ItemStack(fluid.getBucket());
         }
         final Item item = getItem(blockState);
         if (item != Items.AIR && item != null) {
@@ -492,7 +490,7 @@ public class ModUtil {
 
     public static boolean support(int primaryStateId, RenderType renderType) {
         BlockState blockState = ModUtil.getStateById(primaryStateId);
-        return RenderTypeUtils.canRenderInLayer(blockState, renderType);
+        return ItemBlockRenderTypes.getChunkRenderType(blockState) == renderType;
     }
 
     @Nullable
@@ -592,11 +590,11 @@ public class ModUtil {
         return stack == null ? 0 : stack.getCount();
     }
 
-    public static void setStackSize(final @Nonnull ItemStack stack, final int stackSize) {
+    public static void setStackSize(final @NotNull ItemStack stack, final int stackSize) {
         stack.setCount(stackSize);
     }
 
-    public static void adjustStackSize(final @Nonnull ItemStack is, final int sizeDelta) {
+    public static void adjustStackSize(final @NotNull ItemStack is, final int sizeDelta) {
         setStackSize(is, getStackSize(is) + sizeDelta);
     }
 
@@ -610,7 +608,7 @@ public class ModUtil {
         return stack.getOrCreateTag().getCompound(tag);
     }
 
-    public static @Nonnull ItemStack getEmptyStack() {
+    public static @NotNull ItemStack getEmptyStack() {
         return ItemStack.EMPTY;
     }
 
@@ -622,7 +620,7 @@ public class ModUtil {
         return itemStack == null || itemStack.isEmpty();
     }
 
-    public static @Nonnull CompoundTag getTagCompound(final ItemStack ei) {
+    public static @NotNull CompoundTag getTagCompound(final ItemStack ei) {
         return ei.getOrCreateTag();
     }
 
@@ -641,7 +639,7 @@ public class ModUtil {
         return Blocks.AIR.defaultBlockState();
     }
 
-    public static void damageItem(@Nonnull final ItemStack is, @Nonnull final RandomSource r) {
+    public static void damageItem(@NotNull final ItemStack is, @NotNull final RandomSource r) {
         if (is.isDamageableItem()) {
             if (is.hurt(1, r, null)) {
                 is.shrink(1);
@@ -650,12 +648,12 @@ public class ModUtil {
         }
     }
 
-    @Nonnull
+    @NotNull
     public static ItemStack makeStack(final Item item) {
         return makeStack(item, 1);
     }
 
-    @Nonnull
+    @NotNull
     public static ItemStack makeStack(final Item item, final int stackSize) {
         return new ItemStack(item, stackSize);
     }

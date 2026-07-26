@@ -1,6 +1,5 @@
 package mod.chiselsandbits.bitstorage;
 
-import com.google.common.collect.Lists;
 import java.util.List;
 import mod.chiselsandbits.core.Log;
 import mod.chiselsandbits.helpers.ExceptionNoTileEntity;
@@ -17,6 +16,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
@@ -28,9 +28,6 @@ import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
-import net.minecraftforge.fluids.capability.IFluidHandler;
 import org.jetbrains.annotations.Nullable;
 
 public class BlockBitStorage extends Block implements EntityBlock {
@@ -83,8 +80,7 @@ public class BlockBitStorage extends Block implements EntityBlock {
             final ItemStack current = ModUtil.nonNull(player.inventory.getSelected());
 
             if (!ModUtil.isEmpty(current)) {
-                final IFluidHandler wrappedTank = tank.getPseudoFluidHandler();
-                if (FluidUtil.interactWithFluidHandler(player, handIn, wrappedTank)) {
+                if (FluidUtil.interactWithFluidHandler(player, handIn, tank.getFluidStorage(null))) {
                     return InteractionResult.SUCCESS;
                 }
 
@@ -119,22 +115,24 @@ public class BlockBitStorage extends Block implements EntityBlock {
     @Override
     public List<ItemStack> getDrops(BlockState blockState, LootParams.Builder builder) {
         if (builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY) == null) {
-            return Lists.newArrayList();
+            return List.of();
         }
 
-        return Lists.newArrayList(
+        return List.of(
                 getTankDrop((TileEntityBitStorage) builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY)));
     }
 
     public ItemStack getTankDrop(final TileEntityBitStorage bitTank) {
         final ItemStack tankStack = new ItemStack(this);
-        tankStack
-                .getCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY)
-                .ifPresent(s -> s.fill(
-                        bitTank.getCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY)
-                                .map(t -> t.drain(Integer.MAX_VALUE, IFluidHandler.FluidAction.EXECUTE))
-                                .orElse(FluidStack.EMPTY),
-                        IFluidHandler.FluidAction.EXECUTE));
+        ItemBlockBitStorage.setFluid(tankStack, bitTank.getFluidVariant(), bitTank.getFluidAmount());
         return tankStack;
+    }
+
+    @Override
+    public ItemStack getCloneItemStack(final LevelReader level, final BlockPos pos, final BlockState state) {
+        final BlockEntity blockEntity = level.getBlockEntity(pos);
+        return blockEntity instanceof TileEntityBitStorage bitTank
+                ? getTankDrop(bitTank)
+                : super.getCloneItemStack(level, pos, state);
     }
 }

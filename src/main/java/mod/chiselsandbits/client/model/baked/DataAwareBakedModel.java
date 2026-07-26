@@ -24,15 +24,17 @@ public interface DataAwareBakedModel extends BakedModel {
             @NotNull final ChiselRenderType renderType);
 
     @Deprecated
-    void updateModelData(
+    default void updateModelData(
             @NotNull final BlockAndTintGetter world,
             @NotNull final BlockPos pos,
             @NotNull final BlockState state,
-            @NotNull final IModelData modelData);
+            @NotNull final IModelData modelData) {}
 
-    Set<ChiselRenderType> getRenderTypes(
+    default Set<ChiselRenderType> getRenderTypes(
             @NotNull final BlockAndTintGetter world,
             @NotNull final BlockPos pos,
             @NotNull final BlockState state,
-            @NotNull IModelData modelData);
+            @NotNull IModelData modelData) {
+        return Set.of();
+    }
 }

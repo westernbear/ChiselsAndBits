@@ -16,6 +16,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
 
 public class TileEntitySpecialRenderBitStorage implements BlockEntityRenderer<TileEntityBitStorage> {
@@ -36,40 +37,6 @@ public class TileEntitySpecialRenderBitStorage implements BlockEntityRenderer<Ti
             final MultiBufferSource buffer,
             final int combinedLightIn,
             final int combinedOverlayIn) {
-        if (te.getMyFluid() != null) {
-            //            final FluidStack fluidStack = te.getBitsAsFluidStack();
-            //            if (fluidStack != null) {
-            //                RenderType.chunkBufferLayers().forEach(renderType -> {
-            //                    if (!RenderTypeUtils.canRenderInLayer(fluidStack.getFluid().defaultFluidState(),
-            // renderType))
-            //                        return;
-            //
-            //                    if (renderType == RenderType.translucent() && Minecraft.useShaderTransparency())
-            //                        renderType = Sheets.translucentCullBlockSheet();
-            //
-            //                    final VertexConsumer builder = buffer.getBuffer(renderType);
-            //
-            //                    final float fullness = (float) fluidStack.getAmount() / (float)
-            // TileEntityBitStorage.MAX_CONTENTS;
-            //
-            //                    FluidCuboidHelper.renderScaledFluidCuboid(
-            //                            fluidStack,
-            //                            matrixStackIn,
-            //                            builder,
-            //                            combinedLightIn,
-            //                            combinedOverlayIn,
-            //                            1,
-            //                            1,
-            //                            1,
-            //                            15,
-            //                            15 * fullness,
-            //                            15);
-            //                });
-            //            }
-
-            return;
-        }
-
         final int bits = te.getBits();
         final BlockState state = te.getMyFluid() == null
                 ? te.getState()
@@ -89,13 +56,15 @@ public class TileEntitySpecialRenderBitStorage implements BlockEntityRenderer<Ti
         matrixStackIn.translate(2 / 16f, 2 / 16f, 2 / 16f);
         matrixStackIn.scale(12 / 16f, 12 / 16f, 12 / 16f);
         final VoxelBlob finalInnerModelBlob = innerModelBlob;
+        final RandomSource random =
+                te.getLevel() == null ? RandomSource.create(0L) : te.getLevel().getRandom();
         RenderType.chunkBufferLayers().forEach(renderType -> {
             final ChiseledBlockBakedModel innerModel = ChiseledBlockSmartModel.getCachedModel(
                     ModUtil.getStateId(state),
                     finalInnerModelBlob,
                     ChiselRenderType.fromLayer(renderType, te.getMyFluid() != null),
                     DefaultVertexFormat.BLOCK,
-                    Objects.requireNonNull(te.getLevel()).getRandom());
+                    random);
 
             if (!innerModel.isEmpty()) {
                 final float r =

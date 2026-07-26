@@ -7,12 +7,11 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 import mod.chiselsandbits.api.BoxType;
-import mod.chiselsandbits.helpers.IStateRef;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.world.phys.AABB;
 
-public final class VoxelBlobStateReference implements Comparable<VoxelBlobStateReference>, IStateRef {
+public final class VoxelBlobStateReference implements Comparable<VoxelBlobStateReference> {
 
     private static final Map<VoxelBlobStateInstance, WeakReference<VoxelBlobStateInstance>> serverRefs =
             Collections.synchronizedMap(
@@ -100,7 +99,6 @@ public final class VoxelBlobStateReference implements Comparable<VoxelBlobStateR
         return data.voxelBytes;
     }
 
-    @Override
     public VoxelBlob getVoxelBlob() {
         return data.getBlob();
     }

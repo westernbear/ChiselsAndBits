@@ -6,7 +6,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import javax.annotation.Nonnull;
 import mod.chiselsandbits.api.ReplacementStateHandler;
 import mod.chiselsandbits.bitstorage.BlockBitStorage;
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
@@ -66,6 +65,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
 
 public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselModeItem, ICacheClearable {
 
@@ -73,31 +73,6 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
     public static boolean bitBagStackLimitHack;
     private static Stopwatch timer;
     private ArrayList<ItemStack> bits;
-
-    //	public Component getHighlightTip(final ItemStack item, final Component displayName)
-    //    {
-    //        return EnvExecutor.unsafeRunForDist(() -> () -> {
-    //            if ( ChiselsAndBits.getConfig().getClient().itemNameModeDisplay.get() && displayName instanceof
-    // MutableComponent)
-    //            {
-    //                String extra = "";
-    //                if ( getBitOperation( ClientSide.instance.getPlayer(), InteractionHand.MAIN_HAND, item ) ==
-    // BitOperation.REPLACE )
-    //                {
-    //                    extra = " - " + LocalStrings.BitOptionReplace.getLocal();
-    //                }
-    //
-    //                final MutableComponent comp = (MutableComponent) displayName;
-    //
-    //                return comp.append(" - ").append(Component.literal(ChiselModeManager.getChiselMode(
-    // ClientSide.instance.getPlayer(), ChiselToolType.BIT, InteractionHand.MAIN_HAND
-    // ).getName().getLocal())).append(new TextComponent(extra));
-    //            }
-    //
-    //            return displayName;
-    //        },
-    //          () -> () -> displayName);
-    //    }
 
     public ItemChiseledBit(Item.Properties properties) {
         super(properties);
@@ -196,7 +171,7 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
         return output.hasTag() && getStackState(output) == blk;
     }
 
-    public static @Nonnull ItemStack createStack(final int id, final int count, final boolean RequireStack) {
+    public static @NotNull ItemStack createStack(final int id, final int count, final boolean RequireStack) {
         final ItemStack out = new ItemStack(ModItems.ITEM_BLOCK_BIT.get(), count);
         out.addTagElement("id", IntTag.valueOf(id));
         return out;
@@ -275,80 +250,6 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
         return false;
     }
 
-    //    @Override
-    //    public void fillItemCategory(final CreativeModeTab tab, final NonNullList<ItemStack> items)
-    //    {
-    //        if ( !this.allowdedIn( tab ) ) // is this my creative tab?
-    //        {
-    //            return;
-    //        }
-    //
-    //        if ( bits == null )
-    //        {
-    //            bits = new ArrayList<ItemStack>();
-    //
-    //            final NonNullList<ItemStack> List = NonNullList.create();
-    //            final BitSet used = new BitSet( 4096 );
-    //
-    //            for ( final Object obj : ForgeRegistries.ITEMS)
-    //            {
-    //                if ( !( obj instanceof BlockItem ) )
-    //                {
-    //                    continue;
-    //                }
-    //
-    //                try
-    //                {
-    //                    Item it = (Item) obj;
-    //                    final CreativeModeTab ctab = it.getItemCategory();
-    //
-    //                    if ( ctab != null )
-    //                    {
-    //                        it.fillItemCategory( ctab, List );
-    //                    }
-    //
-    //                    for ( final ItemStack out : List )
-    //                    {
-    //                        it = out.getItem();
-    //
-    //                        if ( !( it instanceof BlockItem ) )
-    //                        {
-    //                            continue;
-    //                        }
-    //
-    //                        final BlockState state = DeprecationHelper.getStateFromItem( out );
-    //                        if ( state != null && BlockBitInfo.canChisel( state ) )
-    //                        {
-    //                            used.set( ModUtil.getStateId( state ) );
-    //                            bits.add( ItemChiseledBit.createStack( ModUtil.getStateId( state ), 1, false ) );
-    //                        }
-    //                    }
-    //
-    //                }
-    //                catch ( final Throwable t )
-    //                {
-    //                    // a mod did something that isn't acceptable, let them crash
-    //                    // in their own code...
-    //                }
-    //
-    //                List.clear();
-    //            }
-    //
-    //            for ( final Fluid o : ForgeRegistries.FLUIDS )
-    //            {
-    //                if ( !o.defaultFluidState().isSource() )
-    //                {
-    //                    continue;
-    //                }
-    //
-    //                bits.add( ItemChiseledBit.createStack( Block.getId( o.defaultFluidState().createLegacyBlock() ),
-    // 1, false ) );
-    //            }
-    //        }
-    //
-    //        items.addAll( bits );
-    //    }
-
     @Override
     @Environment(EnvType.CLIENT)
     public void appendHoverText(
@@ -411,11 +312,11 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
     }
 
     public InteractionResult onItemUseInternal(
-            final @Nonnull Player player,
-            final @Nonnull Level world,
-            final @Nonnull BlockPos usedBlock,
-            final @Nonnull InteractionHand hand,
-            final @Nonnull BlockHitResult rayTraceResult) {
+            final @NotNull Player player,
+            final @NotNull Level world,
+            final @NotNull BlockPos usedBlock,
+            final @NotNull InteractionHand hand,
+            final @NotNull BlockHitResult rayTraceResult) {
         final ItemStack stack = player.getItemInHand(hand);
 
         if (!player.mayUseItemAt(usedBlock, rayTraceResult.getDirection(), stack)) {

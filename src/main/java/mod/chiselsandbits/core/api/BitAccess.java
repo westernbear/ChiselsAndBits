@@ -3,7 +3,6 @@ package mod.chiselsandbits.core.api;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.Nullable;
 import mod.chiselsandbits.api.APIExceptions.SpaceOccupied;
 import mod.chiselsandbits.api.BitQueryResults;
 import mod.chiselsandbits.api.IBitAccess;
@@ -30,6 +29,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Rotation;
+import org.jetbrains.annotations.Nullable;
 
 public class BitAccess implements IBitAccess {
 

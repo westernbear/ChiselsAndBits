@@ -1,6 +1,5 @@
 package mod.chiselsandbits.helpers;
 
-import javax.annotation.Nonnull;
 import mod.chiselsandbits.api.ChiselsAndBitsEvents;
 import mod.chiselsandbits.api.EventBlockBitModification;
 import net.minecraft.core.BlockPos;
@@ -10,6 +9,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.NotNull;
 
 public class ActingPlayer {
     private final Container storage;
@@ -31,12 +31,12 @@ public class ActingPlayer {
         storage = realPlayer ? player.getInventory() : new PlayerCopiedInventory(player.inventory);
     }
 
-    @Nonnull
+    @NotNull
     public static ActingPlayer actingAs(final Player player, final InteractionHand hand) {
         return new ActingPlayer(player, true, hand);
     }
 
-    @Nonnull
+    @NotNull
     public static ActingPlayer testingAs(final Player player, final InteractionHand hand) {
         return new ActingPlayer(player, false, hand);
     }
@@ -58,9 +58,9 @@ public class ActingPlayer {
     }
 
     public boolean canPlayerManipulate(
-            final @Nonnull BlockPos pos,
-            final @Nonnull Direction side,
-            final @Nonnull ItemStack is,
+            final @NotNull BlockPos pos,
+            final @NotNull Direction side,
+            final @NotNull ItemStack is,
             final boolean placement) {
         // only re-test if something changes.
         if (permissionResult == null || lastPermissionBit != is || lastPos != pos || placement != lastPlacement) {
@@ -90,7 +90,7 @@ public class ActingPlayer {
         }
     }
 
-    public void playerDestroyItem(final @Nonnull ItemStack stack, final InteractionHand hand) {
+    public void playerDestroyItem(final @NotNull ItemStack stack, final InteractionHand hand) {
         if (realPlayer) {
             //			net.minecraftforge.event.ForgeEventFactory.onPlayerDestroyItem( innerPlayer, stack, hand );
         }

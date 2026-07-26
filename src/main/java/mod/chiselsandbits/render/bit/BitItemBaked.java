@@ -3,7 +3,6 @@ package mod.chiselsandbits.render.bit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import mod.chiselsandbits.client.model.baked.BaseBakedBlockModel;
 import mod.chiselsandbits.client.model.data.IModelData;
 import mod.chiselsandbits.core.ChiselsAndBits;
@@ -19,11 +18,9 @@ import net.minecraft.client.renderer.block.model.BlockFaceUV;
 import net.minecraft.client.renderer.block.model.FaceBakery;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.BlockModelRotation;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -165,21 +162,5 @@ public class BitItemBaked extends BaseBakedBlockModel {
             @NotNull IModelData extraData,
             @NotNull ChiselRenderType renderType) {
         return getQuads(state, side, rand);
-    }
-
-    @Override
-    public void updateModelData(
-            @NotNull BlockAndTintGetter world,
-            @NotNull BlockPos pos,
-            @NotNull BlockState state,
-            @NotNull IModelData modelData) {}
-
-    @Override
-    public Set<ChiselRenderType> getRenderTypes(
-            @NotNull BlockAndTintGetter world,
-            @NotNull BlockPos pos,
-            @NotNull BlockState state,
-            @NotNull IModelData modelData) {
-        return Set.of();
     }
 }

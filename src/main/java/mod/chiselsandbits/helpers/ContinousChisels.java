@@ -5,7 +5,6 @@ import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import javax.annotation.Nonnull;
 import mod.chiselsandbits.items.ItemChisel;
 import mod.chiselsandbits.registry.ModItems;
 import net.minecraft.core.BlockPos;
@@ -13,6 +12,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Tier;
+import org.jetbrains.annotations.NotNull;
 
 public class ContinousChisels implements IContinuousInventory {
 
@@ -22,7 +22,7 @@ public class ContinousChisels implements IContinuousInventory {
     private final boolean canEdit;
 
     public ContinousChisels(
-            final @Nonnull ActingPlayer who, final @Nonnull BlockPos pos, final @Nonnull Direction side) {
+            final @NotNull ActingPlayer who, final @NotNull BlockPos pos, final @NotNull Direction side) {
         this.who = who;
         final ItemStack inHand = who.getCurrentEquippedItem();
         final Container inv = who.getInventory();

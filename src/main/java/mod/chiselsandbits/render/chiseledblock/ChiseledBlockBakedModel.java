@@ -142,33 +142,7 @@ public class ChiseledBlockBakedModel extends BaseBakedBlockModel {
             final VoxelBlob data,
             final VertexFormat format,
             boolean isItem) {
-        myLayer = layer;
-        final BlockState state = ModUtil.getStateById(blockReference);
-
-        BakedModel originalModel = null;
-
-        if (state != null) {
-            originalModel = Minecraft.getInstance()
-                    .getBlockRenderer()
-                    .getBlockModelShaper()
-                    .getBlockModel(state);
-        }
-
-        if (originalModel != null && data != null) {
-            if (layer.simulateFilter(data)) {
-                final ChiseledModelBuilder builder = new ChiseledModelBuilder();
-                generateFaces(builder, data, RANDOM);
-
-                // convert from builder to final storage.
-                up = builder.getSide(Direction.UP);
-                down = builder.getSide(Direction.DOWN);
-                east = builder.getSide(Direction.EAST);
-                west = builder.getSide(Direction.WEST);
-                north = builder.getSide(Direction.NORTH);
-                south = builder.getSide(Direction.SOUTH);
-                generic = builder.getSide(null);
-            }
-        }
+        this(blockReference, layer, data, format);
     }
 
     public ChiseledBlockBakedModel(
@@ -186,9 +160,10 @@ public class ChiseledBlockBakedModel extends BaseBakedBlockModel {
         }
 
         if (originalModel != null && data != null) {
-            if (layer.filter(data)) {
+            final VoxelBlob filteredData = new VoxelBlob(data);
+            if (layer.filter(filteredData)) {
                 final ChiseledModelBuilder builder = new ChiseledModelBuilder();
-                generateFaces(builder, data, RANDOM);
+                generateFaces(builder, filteredData, RANDOM);
 
                 // convert from builder to final storage.
                 up = builder.getSide(Direction.UP);
@@ -322,7 +297,7 @@ public class ChiseledBlockBakedModel extends BaseBakedBlockModel {
         final IFaceBuilder litBuilder = darkBuilder;
 
         for (final ArrayList<FaceRegion> src : rset) {
-            mergeFaces(src);
+            FaceRegion.merge(src);
 
             for (final FaceRegion region : src) {
                 final Direction myFace = region.face;
@@ -417,34 +392,6 @@ public class ChiseledBlockBakedModel extends BaseBakedBlockModel {
 
     private float byteToFloat(final int i) {
         return (i & 0xff) / 255.0f;
-    }
-
-    private void mergeFaces(final ArrayList<FaceRegion> src) {
-        boolean restart;
-
-        do {
-            restart = false;
-
-            final int size = src.size();
-            final int sizeMinusOne = size - 1;
-
-            restart:
-            for (int x = 0; x < sizeMinusOne; ++x) {
-                final FaceRegion faceA = src.get(x);
-
-                for (int y = x + 1; y < size; ++y) {
-                    final FaceRegion faceB = src.get(y);
-
-                    if (faceA.extend(faceB)) {
-                        src.set(y, src.get(sizeMinusOne));
-                        src.remove(sizeMinusOne);
-
-                        restart = true;
-                        break restart;
-                    }
-                }
-            }
-        } while (restart);
     }
 
     private void processXFaces(
@@ -716,13 +663,6 @@ public class ChiseledBlockBakedModel extends BaseBakedBlockModel {
             @NotNull ChiselRenderType renderType) {
         return getQuads(state, side, rand);
     }
-
-    @Override
-    public void updateModelData(
-            @NotNull BlockAndTintGetter world,
-            @NotNull BlockPos pos,
-            @NotNull BlockState state,
-            @NotNull IModelData modelData) {}
 
     @Override
     public Set<ChiselRenderType> getRenderTypes(

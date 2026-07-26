@@ -1,5 +1,8 @@
 package mod.chiselsandbits.render.chiseledblock;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import net.minecraft.core.Direction;
 
 public class FaceRegion {
@@ -57,6 +60,42 @@ public class FaceRegion {
 
     public int getStateId() {
         return blockStateID;
+    }
+
+    static void merge(final ArrayList<FaceRegion> faces) {
+        // Each list contains row-major runs from one face plane.
+        final Map<Long, FaceRegion> active = new HashMap<>(faces.size());
+        int writeIndex = 0;
+
+        for (final FaceRegion face : faces) {
+            final long key = face.mergeKey();
+            final FaceRegion previous = active.get(key);
+
+            if (previous == null || !previous.extend(face)) {
+                active.put(key, face);
+                faces.set(writeIndex++, face);
+            }
+        }
+
+        faces.subList(writeIndex, faces.size()).clear();
+    }
+
+    private long mergeKey() {
+        final int min;
+        final int max;
+
+        switch (face) {
+            case EAST:
+            case WEST:
+                min = minY;
+                max = maxY;
+                break;
+            default:
+                min = minX;
+                max = maxX;
+        }
+
+        return ((long) blockStateID << 32) | ((long) min << 16) | max;
     }
 
     public boolean extend(final FaceRegion currentFace) {

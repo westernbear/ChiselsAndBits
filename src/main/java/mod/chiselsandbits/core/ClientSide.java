@@ -5,15 +5,11 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
-import committee.nova.mkb.api.IKeyBinding;
-import committee.nova.mkb.api.IKeyConflictContext;
-import committee.nova.mkb.keybinding.KeyConflictContext;
 import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import javax.annotation.Nonnull;
 import mod.chiselsandbits.api.APIExceptions.CannotBeChiseled;
 import mod.chiselsandbits.api.IBitAccess;
 import mod.chiselsandbits.api.IBitBrush;
@@ -39,7 +35,6 @@ import mod.chiselsandbits.client.ItemColorBitBag;
 import mod.chiselsandbits.client.ItemColorBits;
 import mod.chiselsandbits.client.ItemColorChiseled;
 import mod.chiselsandbits.client.ItemColorPatterns;
-import mod.chiselsandbits.client.ModConflictContext;
 import mod.chiselsandbits.client.RenderHelper;
 import mod.chiselsandbits.client.TapeMeasures;
 import mod.chiselsandbits.client.UndoTracker;
@@ -58,6 +53,7 @@ import mod.chiselsandbits.helpers.ReadyState;
 import mod.chiselsandbits.helpers.VoxelRegionSrc;
 import mod.chiselsandbits.interfaces.IItemScrollWheel;
 import mod.chiselsandbits.interfaces.IPatternItem;
+import mod.chiselsandbits.interfaces.IVoxelBlobItem;
 import mod.chiselsandbits.items.ItemChisel;
 import mod.chiselsandbits.items.ItemChiseledBit;
 import mod.chiselsandbits.modes.ChiselMode;
@@ -124,6 +120,7 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.NotNull;
 import org.lwjgl.opengl.GL11;
 
 public class ClientSide {
@@ -145,10 +142,10 @@ public class ClientSide {
     boolean wasDrawing = false;
     int displayStatus = 0;
 
-    @Nonnull
+    @NotNull
     ChiselToolType lastTool = ChiselToolType.CHISEL;
 
-    @Nonnull
+    @NotNull
     InteractionHand lastHand = InteractionHand.MAIN_HAND;
 
     private KeyMapping rotateCCW;
@@ -255,80 +252,35 @@ public class ClientSide {
                 context -> new TileEntitySpecialRenderBitStorage(context.getBlockEntityRenderDispatcher()));
 
         for (final ChiselMode mode : ChiselMode.values()) {
-            mode.binding = registerKeybind(
-                    mode.string.toString(),
-                    InputConstants.UNKNOWN,
-                    "itemGroup.chiselsandbits",
-                    ModConflictContext.HOLDING_CHISEL);
+            mode.binding = registerKeybind(mode.string.toString(), InputConstants.UNKNOWN, "itemGroup.chiselsandbits");
         }
 
         for (final PositivePatternMode mode : PositivePatternMode.values()) {
-            mode.binding = registerKeybind(
-                    mode.string.toString(),
-                    InputConstants.UNKNOWN,
-                    "itemGroup.chiselsandbits",
-                    ModConflictContext.HOLDING_POSTIVEPATTERN);
+            mode.binding = registerKeybind(mode.string.toString(), InputConstants.UNKNOWN, "itemGroup.chiselsandbits");
         }
 
         for (final TapeMeasureModes mode : TapeMeasureModes.values()) {
-            mode.binding = registerKeybind(
-                    mode.string.toString(),
-                    InputConstants.UNKNOWN,
-                    "itemGroup.chiselsandbits",
-                    ModConflictContext.HOLDING_TAPEMEASURE);
+            mode.binding = registerKeybind(mode.string.toString(), InputConstants.UNKNOWN, "itemGroup.chiselsandbits");
         }
 
-        modeMenu = registerKeybind(
-                "mod.chiselsandbits.other.mode",
-                InputConstants.UNKNOWN,
-                "itemGroup.chiselsandbits",
-                ModConflictContext.HOLDING_MENUITEM);
+        modeMenu = registerKeybind("mod.chiselsandbits.other.mode", InputConstants.UNKNOWN, "itemGroup.chiselsandbits");
         rotateCCW = registerKeybind(
-                "mod.chiselsandbits.other.rotate.ccw",
-                InputConstants.UNKNOWN,
-                "itemGroup.chiselsandbits",
-                ModConflictContext.HOLDING_ROTATEABLE);
+                "mod.chiselsandbits.other.rotate.ccw", InputConstants.UNKNOWN, "itemGroup.chiselsandbits");
         rotateCW = registerKeybind(
-                "mod.chiselsandbits.other.rotate.cw",
-                InputConstants.UNKNOWN,
-                "itemGroup.chiselsandbits",
-                ModConflictContext.HOLDING_ROTATEABLE);
-        pickBit = registerKeybind(
-                "mod.chiselsandbits.other.pickbit",
-                InputConstants.UNKNOWN,
-                "itemGroup.chiselsandbits",
-                ModConflictContext.HOLDING_ROTATEABLE);
-        offgridPlacement = registerKeybind(
-                "mod.chiselsandbits.other.offgrid",
-                InputConstants.UNKNOWN,
-                "itemGroup.chiselsandbits",
-                ModConflictContext.HOLDING_OFFGRID);
-        undo = registerKeybind(
-                "mod.chiselsandbits.other.undo",
-                InputConstants.UNKNOWN,
-                "itemGroup.chiselsandbits",
-                KeyConflictContext.IN_GAME);
-        redo = registerKeybind(
-                "mod.chiselsandbits.other.redo",
-                InputConstants.UNKNOWN,
-                "itemGroup.chiselsandbits",
-                KeyConflictContext.IN_GAME);
+                "mod.chiselsandbits.other.rotate.cw", InputConstants.UNKNOWN, "itemGroup.chiselsandbits");
+        pickBit =
+                registerKeybind("mod.chiselsandbits.other.pickbit", InputConstants.UNKNOWN, "itemGroup.chiselsandbits");
+        offgridPlacement =
+                registerKeybind("mod.chiselsandbits.other.offgrid", InputConstants.UNKNOWN, "itemGroup.chiselsandbits");
+        undo = registerKeybind("mod.chiselsandbits.other.undo", InputConstants.UNKNOWN, "itemGroup.chiselsandbits");
+        redo = registerKeybind("mod.chiselsandbits.other.redo", InputConstants.UNKNOWN, "itemGroup.chiselsandbits");
         addToClipboard = registerKeybind(
-                "mod.chiselsandbits.other.add_to_clipboard",
-                InputConstants.UNKNOWN,
-                "itemGroup.chiselsandbits",
-                KeyConflictContext.IN_GAME);
+                "mod.chiselsandbits.other.add_to_clipboard", InputConstants.UNKNOWN, "itemGroup.chiselsandbits");
     }
 
     private KeyMapping registerKeybind(
-            final String bindingName,
-            final InputConstants.Key defaultKey,
-            final String groupName,
-            final IKeyConflictContext context) {
+            final String bindingName, final InputConstants.Key defaultKey, final String groupName) {
         final KeyMapping kb = new KeyMapping(bindingName, defaultKey.getValue(), groupName);
-        if (kb instanceof IKeyBinding ext) {
-            ext.setKeyConflictContext(context);
-        }
         KeyBindingHelper.registerKeyBinding(kb);
         return kb;
     }
@@ -496,7 +448,7 @@ public class ClientSide {
             }
         }
 
-        if (!pickBit.isUnbound() && pickBit.consumeClick()) {
+        if (isHoldingVoxelBlob() && !pickBit.isUnbound() && pickBit.consumeClick()) {
             final Minecraft mc = Minecraft.getInstance();
             if (mc.hitResult != null
                     && mc.hitResult.getType() == HitResult.Type.BLOCK
@@ -570,7 +522,7 @@ public class ClientSide {
         }
     }
 
-    private boolean doPick(final @Nonnull ItemStack result) {
+    private boolean doPick(final @NotNull ItemStack result) {
         final Player player = getPlayer();
 
         for (int x = 0; x < 9; x++) {
@@ -705,7 +657,7 @@ public class ClientSide {
             ticksSinceRelease = 0;
         }
 
-        if (!rotateCCW.isUnbound() && rotateCCW.isDown()) {
+        if (isHoldingVoxelBlob() && !rotateCCW.isUnbound() && rotateCCW.isDown()) {
             if (rotateTimer == null || rotateTimer.elapsed(TimeUnit.MILLISECONDS) > 200) {
                 rotateTimer = Stopwatch.createStarted();
                 final PacketRotateVoxelBlob p = new PacketRotateVoxelBlob(Axis.Y, Rotation.COUNTERCLOCKWISE_90);
@@ -713,7 +665,7 @@ public class ClientSide {
             }
         }
 
-        if (!rotateCW.isUnbound() && rotateCW.isDown()) {
+        if (isHoldingVoxelBlob() && !rotateCW.isUnbound() && rotateCW.isDown()) {
             if (rotateTimer == null || rotateTimer.elapsed(TimeUnit.MILLISECONDS) > 200) {
                 rotateTimer = Stopwatch.createStarted();
                 final PacketRotateVoxelBlob p = new PacketRotateVoxelBlob(Axis.Y, Rotation.CLOCKWISE_90);
@@ -725,7 +677,7 @@ public class ClientSide {
             final KeyMapping kb = (KeyMapping) mode.binding;
             if (!kb.isUnbound() && kb.isDown()) {
                 final ChiselToolType tool = getHeldToolType(lastHand);
-                if (tool.isBitOrChisel()) {
+                if (tool != null && tool.isBitOrChisel()) {
                     ChiselModeManager.changeChiselMode(
                             tool, ChiselModeManager.getChiselMode(getPlayer(), tool, lastHand), mode);
                 }
@@ -753,6 +705,11 @@ public class ClientSide {
                 }
             }
         }
+    }
+
+    private boolean isHoldingVoxelBlob() {
+        final Player player = getPlayer();
+        return player != null && player.getMainHandItem().getItem() instanceof IVoxelBlobItem;
     }
 
     @Environment(EnvType.CLIENT)
@@ -1489,7 +1446,7 @@ public class ClientSide {
     }
 
     public void pointAt(
-            @Nonnull final ChiselToolType type, @Nonnull final BitLocation pos, @Nonnull final InteractionHand hand) {
+            @NotNull final ChiselToolType type, @NotNull final BitLocation pos, @NotNull final InteractionHand hand) {
         if (drawStart == null) {
             drawStart = pos;
             lastTool = type;
@@ -1497,7 +1454,7 @@ public class ClientSide {
         }
     }
 
-    public void setLastTool(@Nonnull final ChiselToolType lastTool) {
+    public void setLastTool(@NotNull final ChiselToolType lastTool) {
         this.lastTool = lastTool;
     }
 
@@ -1509,7 +1466,7 @@ public class ClientSide {
         }
     }
 
-    public boolean addBlockDestroyEffects(@Nonnull final Level world, @Nonnull final BlockPos pos, BlockState state) {
+    public boolean addBlockDestroyEffects(@NotNull final Level world, @NotNull final BlockPos pos, BlockState state) {
         if (!state.isAir()) {
             VoxelShape voxelshape = state.getShape(world, pos);
             double d0 = 0.25D;

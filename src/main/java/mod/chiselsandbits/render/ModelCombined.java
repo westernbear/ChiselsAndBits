@@ -117,13 +117,6 @@ public class ModelCombined extends BaseBakedBlockModel {
     }
 
     @Override
-    public void updateModelData(
-            @NotNull BlockAndTintGetter world,
-            @NotNull BlockPos pos,
-            @NotNull BlockState state,
-            @NotNull IModelData modelData) {}
-
-    @Override
     public Set<ChiselRenderType> getRenderTypes(
             @NotNull BlockAndTintGetter world,
             @NotNull BlockPos pos,

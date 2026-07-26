@@ -4,7 +4,6 @@ import fuzs.forgeconfigapiport.fabric.api.forge.v4.ForgeModConfigEvents;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import javax.annotation.Nonnull;
 import mod.chiselsandbits.api.IChiselAndBitsAPI;
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
@@ -21,7 +20,6 @@ import mod.chiselsandbits.registry.ModContainerTypes;
 import mod.chiselsandbits.registry.ModItemGroups;
 import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.registry.ModRecipeSerializers;
-import mod.chiselsandbits.registry.ModTags;
 import mod.chiselsandbits.registry.ModTileEntityTypes;
 import mod.chiselsandbits.render.chiseledblock.ChiseledBlockSmartModel;
 import mod.chiselsandbits.utils.Constants;
@@ -30,12 +28,13 @@ import mod.chiselsandbits.utils.LanguageHandler;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.minecraft.client.Minecraft;
+import org.jetbrains.annotations.NotNull;
 
 public class ChiselsAndBits {
-    public static final @Nonnull String MODID = Constants.MOD_ID;
+    public static final @NotNull String MODID = Constants.MOD_ID;
     private static final IChiselAndBitsAPI api = new ChiselAndBitsAPI();
     private static ChiselsAndBits instance;
-    private final NetworkChannel networkChannel = new NetworkChannel(MODID);
+    private final NetworkChannel networkChannel = new NetworkChannel();
     List<ICacheClearable> cacheClearables = new ArrayList<>();
     private Configuration config;
 
@@ -54,7 +53,6 @@ public class ChiselsAndBits {
                 EnvType.CLIENT, () -> () -> ClientLifecycleEvents.CLIENT_STARTED.register(this::clientSetup));
         VaporizeWater.register();
         EventPlayerInteract.register();
-        ModTags.init();
         ModBlocks.onModConstruction();
         ModContainerTypes.onModConstruction();
         ModItems.onModConstruction();

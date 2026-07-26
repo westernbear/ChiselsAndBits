@@ -2,10 +2,8 @@ package mod.chiselsandbits.render.bit;
 
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import java.util.HashMap;
-import java.util.Set;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
 import mod.chiselsandbits.client.model.baked.BaseSmartModel;
-import mod.chiselsandbits.client.model.data.IModelData;
 import mod.chiselsandbits.core.ClientSide;
 import mod.chiselsandbits.events.TickHandler;
 import mod.chiselsandbits.interfaces.ICacheClearable;
@@ -15,14 +13,10 @@ import mod.chiselsandbits.render.ModelCombined;
 import mod.chiselsandbits.render.chiseledblock.ChiselRenderType;
 import mod.chiselsandbits.render.chiseledblock.ChiseledBlockBakedModel;
 import net.minecraft.client.resources.model.BakedModel;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
-import org.jetbrains.annotations.NotNull;
 
 public class BitItemSmartModel extends BaseSmartModel implements ICacheClearable {
     private static final HashMap<Integer, BakedModel> modelCache = new HashMap<Integer, BakedModel>();
@@ -87,21 +81,5 @@ public class BitItemSmartModel extends BaseSmartModel implements ICacheClearable
     @Override
     public boolean usesBlockLight() {
         return true;
-    }
-
-    @Override
-    public void updateModelData(
-            @NotNull BlockAndTintGetter world,
-            @NotNull BlockPos pos,
-            @NotNull BlockState state,
-            @NotNull IModelData modelData) {}
-
-    @Override
-    public Set<ChiselRenderType> getRenderTypes(
-            @NotNull BlockAndTintGetter world,
-            @NotNull BlockPos pos,
-            @NotNull BlockState state,
-            @NotNull IModelData modelData) {
-        return Set.of();
     }
 }

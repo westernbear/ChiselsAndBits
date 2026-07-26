@@ -10,6 +10,7 @@ import mod.chiselsandbits.core.Log;
 import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.items.ItemBitBag;
 import mod.chiselsandbits.items.ItemChiseledBit;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
@@ -19,6 +20,25 @@ public class BagStorage implements IBitBag {
 
     protected ItemStack stack;
     protected int[] contents;
+
+    public BagStorage(final ItemStack stack) {
+        this.stack = stack;
+        setStorage(getStorageArray(stack, BAG_STORAGE_SLOTS * ItemBitBag.INTS_PER_BIT_TYPE));
+    }
+
+    private static int[] getStorageArray(final ItemStack stack, final int size) {
+        final CompoundTag compound = stack.getOrCreateTag();
+        int[] contents = compound.contains("contents") ? compound.getIntArray("contents") : new int[size];
+
+        if (contents.length != size) {
+            final int[] resized = new int[size];
+            System.arraycopy(contents, 0, resized, 0, Math.min(size, contents.length));
+            contents = resized;
+        }
+
+        compound.putIntArray("contents", contents);
+        return contents;
+    }
 
     protected void setStorage(final int[] source) {
         contents = source;

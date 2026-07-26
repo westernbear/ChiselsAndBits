@@ -8,7 +8,6 @@
     "StructureTemplateMixin"
   ],
   "client": [
-    "compat.client.KeyBindsScreenMixin",
     "ItemRendererMixin",
     "PaintingTextureManagerMixin",
     "SectionRenderDispatcherMixin",

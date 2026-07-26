@@ -4,12 +4,14 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import java.io.IOException;
 import java.util.BitSet;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import mod.chiselsandbits.chiseledblock.NBTBlobConverter;
@@ -23,8 +25,6 @@ import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.interfaces.ICacheClearable;
 import mod.chiselsandbits.render.ModelCombined;
-import mod.chiselsandbits.render.cache.CacheMap;
-import mod.chiselsandbits.utils.RenderTypeUtils;
 import mod.chiselsandbits.utils.SimpleMaxSizedCache;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.RenderType;
@@ -50,8 +50,10 @@ public class ChiseledBlockSmartModel extends BaseSmartModel implements ICacheCle
     private static final SimpleMaxSizedCache<ModelCacheKey, ChiseledBlockBakedModel> MODEL_CACHE =
             new SimpleMaxSizedCache<>(
                     ChiselsAndBits.getConfig().getClient().modelCacheSize.get());
-    private static final CacheMap<ItemStack, BakedModel> ITEM_TO_MODEL_CACHE = new CacheMap<>();
-    private static final CacheMap<VoxelBlobStateInstance, Integer> SIDE_CACHE = new CacheMap<>();
+    private static final Map<ItemStack, BakedModel> ITEM_TO_MODEL_CACHE =
+            Collections.synchronizedMap(new WeakHashMap<>());
+    private static final Map<VoxelBlobStateInstance, Integer> SIDE_CACHE =
+            Collections.synchronizedMap(new WeakHashMap<>());
     private static final RandomSource RANDOM_SOURCE = RandomSource.create();
 
     public static int getSides(final TileEntityBlockChiseled te) {
@@ -289,7 +291,7 @@ public class ChiseledBlockSmartModel extends BaseSmartModel implements ICacheCle
         for (int i = 0; i < blockRenderTypes.size(); i++) {
             final RenderType renderType = blockRenderTypes.get(i);
             for (final Fluid fluid : BuiltInRegistries.FLUID) {
-                if (RenderTypeUtils.canRenderInLayer(fluid.defaultFluidState(), renderType)) {
+                if (ItemBlockRenderTypes.getRenderLayer(fluid.defaultFluidState()) == renderType) {
                     FLUID_RENDER_TYPES.set(i);
                     break;
                 }

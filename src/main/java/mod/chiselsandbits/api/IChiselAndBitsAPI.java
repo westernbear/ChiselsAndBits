@@ -1,7 +1,6 @@
 package mod.chiselsandbits.api;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import javax.annotation.Nullable;
 import mod.chiselsandbits.api.APIExceptions.CannotBeChiseled;
 import mod.chiselsandbits.api.APIExceptions.InvalidBitItem;
 import net.fabricmc.api.EnvType;
@@ -17,10 +16,9 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-/**
- * Do not implement, is passed to your {@link IChiselsAndBitsAddon}
- */
+/** Public Chisels & Bits API. */
 public interface IChiselAndBitsAPI {
 
     void registerBlockProvider(BlockProvider provider);
@@ -138,7 +136,7 @@ public interface IChiselAndBitsAPI {
 
     /**
      * Access the contents of a bitbag as if it was a normal
-     * {@link IItemHandler} with a few extra features.
+     * {@link IBitBag}.
      *
      * @return internal object to manipulate bag.
      */

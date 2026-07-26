@@ -9,11 +9,7 @@ import mod.chiselsandbits.registry.ModItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.Container;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.items.CapabilityItemHandler;
-import net.minecraftforge.items.IItemHandler;
 
 public class ContinousBits implements IContinuousInventory {
     final int stateID;
@@ -33,9 +29,7 @@ public class ContinousBits implements IContinuousInventory {
         for (int zz = 0; zz < inv.getContainerSize(); zz++) {
             final ItemStack which = inv.getItem(zz);
             if (which != null && which.getItem() != null) {
-                Item i = which.getItem();
-                LazyOptional<IItemHandler> handler;
-                if (i instanceof ItemChiseledBit) {
+                if (which.getItem() instanceof ItemChiseledBit) {
                     if (ItemChiseledBit.getStackState(which) == stateID) {
                         if (zz == src.getCurrentItem()) {
                             handSlot = new ItemStackSlot(inv, zz, which, src, canEdit);
@@ -43,20 +37,8 @@ public class ContinousBits implements IContinuousInventory {
                             options.add(new ItemStackSlot(inv, zz, which, src, canEdit));
                         }
                     }
-                } else if (i instanceof ItemBitBag) {
+                } else if (which.getItem() instanceof ItemBitBag) {
                     bags.add(new BagInventory(which));
-                } else if ((handler = which.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY)).isPresent()) {
-                    IItemHandler internal =
-                            handler.orElseThrow(() -> new IllegalStateException("Handler is supposed to be present!"));
-                    for (int x = 0; x < internal.getSlots(); x++) {
-                        ItemStack is = internal.getStackInSlot(x);
-
-                        if (is.getItem() instanceof ItemChiseledBit) {
-                            if (ItemChiseledBit.getStackState(is) == stateID) {
-                                options.add(new IItemHandlerSlot(internal, x, is, src, canEdit));
-                            }
-                        }
-                    }
                 }
             }
         }

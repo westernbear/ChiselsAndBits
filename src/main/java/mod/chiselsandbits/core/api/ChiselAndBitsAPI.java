@@ -20,6 +20,7 @@ import mod.chiselsandbits.api.ParameterType;
 import mod.chiselsandbits.api.ParameterType.DoubleParam;
 import mod.chiselsandbits.api.ParameterType.FloatParam;
 import mod.chiselsandbits.api.ParameterType.IntegerParam;
+import mod.chiselsandbits.bitbag.BagStorage;
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
 import mod.chiselsandbits.chiseledblock.BlockChiseled;
 import mod.chiselsandbits.chiseledblock.ItemBlockChiseled;
@@ -61,7 +62,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.items.CapabilityItemHandler;
 import org.apache.commons.lang3.Validate;
 import org.jetbrains.annotations.NotNull;
 
@@ -278,14 +278,7 @@ public class ChiselAndBitsAPI implements IChiselAndBitsAPI {
 
     @Override
     public IBitBag getBitbag(final ItemStack stack) {
-        if (!ModUtil.isEmpty(stack)) {
-            final Object o = stack.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, Direction.UP);
-            if (o instanceof IBitBag) {
-                return (IBitBag) o;
-            }
-        }
-
-        return null;
+        return !ModUtil.isEmpty(stack) && stack.getItem() instanceof ItemBitBag ? new BagStorage(stack) : null;
     }
 
     @Override

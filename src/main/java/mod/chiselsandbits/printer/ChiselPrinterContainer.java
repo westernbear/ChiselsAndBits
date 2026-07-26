@@ -3,6 +3,8 @@ package mod.chiselsandbits.printer;
 import mod.chiselsandbits.interfaces.IPatternItem;
 import mod.chiselsandbits.items.ItemChisel;
 import mod.chiselsandbits.registry.ModContainerTypes;
+import net.minecraft.world.Container;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -10,9 +12,6 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.IItemHandlerModifiable;
-import net.minecraftforge.items.ItemStackHandler;
-import net.minecraftforge.items.SlotItemHandler;
 import org.jetbrains.annotations.NotNull;
 
 public class ChiselPrinterContainer extends AbstractContainerMenu {
@@ -26,44 +25,43 @@ public class ChiselPrinterContainer extends AbstractContainerMenu {
 
     private final ContainerData stationData;
 
-    private final IItemHandlerModifiable toolHandler;
+    private final Container inventory;
 
     public ChiselPrinterContainer(final int id, final Inventory playerInventory) {
-        this(
-                id,
-                playerInventory,
-                new ItemStackHandler(1),
-                new ItemStackHandler(1),
-                new ItemStackHandler(1),
-                new SimpleContainerData(1));
+        this(id, playerInventory, new SimpleContainer(3), new SimpleContainerData(1));
     }
 
     public ChiselPrinterContainer(
-            final int id,
-            final Inventory playerInventory,
-            final IItemHandlerModifiable patternHandler,
-            final IItemHandlerModifiable toolHandler,
-            final IItemHandlerModifiable resultHandler,
-            final ContainerData stationData) {
+            final int id, final Inventory playerInventory, final Container inventory, final ContainerData stationData) {
         super(ModContainerTypes.CHISEL_STATION_CONTAINER.get(), id);
         this.stationData = stationData;
-        this.toolHandler = toolHandler;
+        this.inventory = inventory;
 
-        this.addSlot(new SlotItemHandler(patternHandler, 0, 50, 47) {
+        this.addSlot(new Slot(inventory, 0, 50, 47) {
             @Override
             public boolean mayPlace(@NotNull final ItemStack stack) {
                 return stack.isEmpty() || stack.getItem() instanceof IPatternItem;
             }
+
+            @Override
+            public int getMaxStackSize() {
+                return 1;
+            }
         });
 
-        this.addSlot(new SlotItemHandler(toolHandler, 0, 81, 21) {
+        this.addSlot(new Slot(inventory, 1, 81, 21) {
             @Override
             public boolean mayPlace(@NotNull final ItemStack stack) {
                 return stack.getItem() instanceof ItemChisel;
             }
+
+            @Override
+            public int getMaxStackSize() {
+                return 1;
+            }
         });
 
-        this.addSlot(new SlotItemHandler(resultHandler, 0, 116, 47) {
+        this.addSlot(new Slot(inventory, 2, 116, 47) {
             @Override
             public boolean mayPlace(@NotNull final ItemStack stack) {
                 return false;
@@ -102,7 +100,7 @@ public class ChiselPrinterContainer extends AbstractContainerMenu {
     }
 
     public ItemStack getToolStack() {
-        return toolHandler.getStackInSlot(0);
+        return inventory.getItem(1);
     }
 
     @NotNull

@@ -2,7 +2,6 @@ package mod.chiselsandbits.items;
 
 import java.util.ArrayList;
 import java.util.List;
-import javax.annotation.Nonnull;
 import mod.chiselsandbits.api.IBitAccess;
 import mod.chiselsandbits.api.VoxelStats;
 import mod.chiselsandbits.chiseledblock.BlockChiseled;
@@ -44,6 +43,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jetbrains.annotations.NotNull;
 
 public class ItemNegativePrint extends Item implements IVoxelBlobItem, IItemScrollWheel, IPatternItem {
 
@@ -249,14 +249,14 @@ public class ItemNegativePrint extends Item implements IVoxelBlobItem, IItemScro
     }
 
     protected void applyPrint(
-            @Nonnull final ItemStack stack,
-            @Nonnull final Level world,
-            @Nonnull final BlockPos pos,
-            @Nonnull final Direction side,
-            @Nonnull final VoxelBlob vb,
-            @Nonnull final VoxelBlob pattern,
-            @Nonnull final Player who,
-            @Nonnull final InteractionHand hand) {
+            @NotNull final ItemStack stack,
+            @NotNull final Level world,
+            @NotNull final BlockPos pos,
+            @NotNull final Direction side,
+            @NotNull final VoxelBlob vb,
+            @NotNull final VoxelBlob pattern,
+            @NotNull final Player who,
+            @NotNull final InteractionHand hand) {
         // snag a tool...
         final ActingPlayer player = ActingPlayer.actingAs(who, hand);
         final IContinuousInventory selected = new ContinousChisels(player, pos, side);

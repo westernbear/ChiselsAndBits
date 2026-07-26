@@ -11,11 +11,20 @@ import mod.chiselsandbits.interfaces.IPatternItem;
 import mod.chiselsandbits.items.ItemChisel;
 import mod.chiselsandbits.registry.ModBlocks;
 import mod.chiselsandbits.registry.ModTileEntityTypes;
+import net.fabricmc.fabric.api.transfer.v1.item.InventoryStorage;
+import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant;
+import net.fabricmc.fabric.api.transfer.v1.storage.Storage;
+import net.fabricmc.fabric.api.transfer.v1.storage.base.SidedStorageBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.Container;
 import net.minecraft.world.MenuProvider;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -24,57 +33,21 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.common.util.NonNullLazy;
-import net.minecraftforge.items.CapabilityItemHandler;
-import net.minecraftforge.items.IItemHandlerModifiable;
-import net.minecraftforge.items.ItemHandlerHelper;
-import net.minecraftforge.items.ItemStackHandler;
-import net.minecraftforge.items.wrapper.EmptyHandler;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class ChiselPrinterTileEntity extends BlockEntity implements MenuProvider {
-    public final LazyOptional<ItemStackHandler> result_handler =
-            LazyOptional.of(NonNullLazy.of(() -> new ItemStackHandler(1) {
-                @Override
-                public boolean isItemValid(final int slot, @NotNull final ItemStack stack) {
-                    return true;
-                }
-            }));
+public class ChiselPrinterTileEntity extends BlockEntity
+        implements MenuProvider, WorldlyContainer, SidedStorageBlockEntity {
+
+    private static final int PATTERN_SLOT = 0;
+    private static final int TOOL_SLOT = 1;
+    private static final int RESULT_SLOT = 2;
+    private static final int[] RESULT_SLOTS = {RESULT_SLOT};
+    private static final int[] TOOL_SLOTS = {TOOL_SLOT};
+
     final MutableObject<ItemStack> currentRealisedWorkingStack = new MutableObject<>(ItemStack.EMPTY);
-    private final LazyOptional<EmptyHandler> empty_handler = LazyOptional.of(NonNullLazy.of(EmptyHandler::new));
-    private final LazyOptional<ItemStackHandler> tool_handler =
-            LazyOptional.of(NonNullLazy.of(() -> new ItemStackHandler(1) {
-                @Override
-                public boolean isItemValid(final int slot, @NotNull final ItemStack stack) {
-                    return stack.getItem() instanceof ItemChisel;
-                }
-
-                @Override
-                public int getSlotLimit(final int slot) {
-                    return 1;
-                }
-            }));
-    private final LazyOptional<ItemStackHandler> pattern_handler =
-            LazyOptional.of(NonNullLazy.of(() -> new ItemStackHandler(1) {
-                @Override
-                public boolean isItemValid(final int slot, @NotNull final ItemStack stack) {
-                    return stack.getItem() instanceof IPatternItem;
-                }
-
-                @Override
-                public int getSlotLimit(final int slot) {
-                    return 1;
-                }
-
-                @Override
-                protected void onContentsChanged(final int slot) {
-                    currentRealisedWorkingStack.setValue(ItemStack.EMPTY);
-                }
-            }));
+    private final SimpleContainer inventory = new SimpleContainer(3);
     int progress = 0;
     protected final ContainerData stationData = new ContainerData() {
         public int get(int index) {
@@ -100,64 +73,50 @@ public class ChiselPrinterTileEntity extends BlockEntity implements MenuProvider
         super(ModTileEntityTypes.CHISEL_PRINTER.get(), pos, state);
     }
 
-    @NotNull
     @Override
-    public <T> LazyOptional<T> getCapability(@NotNull final Capability<T> cap, @Nullable final Direction side) {
-        if (cap != CapabilityItemHandler.ITEM_HANDLER_CAPABILITY) {
-            return super.getCapability(cap, side);
-        }
-
-        if (side != null) {
-            switch (side) {
-                case DOWN:
-                    return result_handler.cast();
-                case UP:
-                case NORTH:
-                case SOUTH:
-                case WEST:
-                case EAST:
-                    return tool_handler.cast();
-            }
-        }
-
-        return empty_handler.cast();
+    public Storage<ItemVariant> getItemStorage(@Nullable final Direction side) {
+        return InventoryStorage.of(this, side);
     }
 
     @Override
     public void load(CompoundTag compoundTag) {
         super.load(compoundTag);
-        tool_handler.ifPresent(h -> h.deserializeNBT(compoundTag.getCompound("tool")));
-        pattern_handler.ifPresent(h -> h.deserializeNBT(compoundTag.getCompound("pattern")));
-        result_handler.ifPresent(h -> h.deserializeNBT(compoundTag.getCompound("result")));
-
+        loadSlot(compoundTag, "pattern", PATTERN_SLOT);
+        loadSlot(compoundTag, "tool", TOOL_SLOT);
+        loadSlot(compoundTag, "result", RESULT_SLOT);
         progress = compoundTag.getInt("progress");
+        currentRealisedWorkingStack.setValue(ItemStack.EMPTY);
     }
 
     @Override
     protected void saveAdditional(CompoundTag compoundTag) {
         super.saveAdditional(compoundTag);
-        tool_handler.ifPresent(h -> compoundTag.put("tool", h.serializeNBT()));
-        pattern_handler.ifPresent(h -> compoundTag.put("pattern", h.serializeNBT()));
-        result_handler.ifPresent(h -> compoundTag.put("result", h.serializeNBT()));
-
+        saveSlot(compoundTag, "pattern", PATTERN_SLOT);
+        saveSlot(compoundTag, "tool", TOOL_SLOT);
+        saveSlot(compoundTag, "result", RESULT_SLOT);
         compoundTag.putInt("progress", progress);
+    }
+
+    private void loadSlot(final CompoundTag compoundTag, final String key, final int slot) {
+        final ListTag items = compoundTag.getCompound(key).getList("Items", Tag.TAG_COMPOUND);
+        inventory.setItem(slot, items.isEmpty() ? ItemStack.EMPTY : ItemStack.of(items.getCompound(0)));
+    }
+
+    private void saveSlot(final CompoundTag compoundTag, final String key, final int slot) {
+        final CompoundTag handler = new CompoundTag();
+        handler.putInt("Size", 1);
+        final ListTag items = new ListTag();
+        final ItemStack stack = inventory.getItem(slot);
+        if (!stack.isEmpty()) {
+            items.add(stack.save(new CompoundTag()));
+        }
+        handler.put("Items", items);
+        compoundTag.put(key, handler);
     }
 
     @Override
     public CompoundTag getUpdateTag() {
         return saveWithFullMetadata();
-    }
-
-    public IItemHandlerModifiable getPatternHandler() {
-        return pattern_handler.orElseThrow(() -> new IllegalStateException("Missing empty handler."));
-    }
-
-    public IItemHandlerModifiable getToolHandler() {
-        return tool_handler.orElseThrow(() -> new IllegalStateException("Missing tool handler."));
-    }
-
-    public IItemHandlerModifiable getResultHandler() {
-        return result_handler.orElseThrow(() -> new IllegalStateException("Missing result handler."));
     }
 
     public boolean hasPatternStack() {
@@ -185,7 +144,10 @@ public class ChiselPrinterTileEntity extends BlockEntity implements MenuProvider
             return false;
         }
 
-        return ItemHandlerHelper.canItemStacksStack(getOutputStack(), getRealisedStack());
+        final ItemStack output = getOutputStack();
+        final ItemStack realised = getRealisedStack();
+        return ItemStack.isSameItemSameTags(output, realised)
+                && output.getCount() + realised.getCount() <= output.getMaxStackSize();
     }
 
     public boolean canWork() {
@@ -196,20 +158,12 @@ public class ChiselPrinterTileEntity extends BlockEntity implements MenuProvider
         return hasPatternStack() && hasToolStack();
     }
 
-    public boolean hasMergeableInput() {
-        if (!hasOutputStack()) {
-            return true;
-        }
-
-        return ItemHandlerHelper.canItemStacksStack(getOutputStack(), realisePattern(false));
-    }
-
     public ItemStack getPatternStack() {
-        return pattern_handler.map(h -> h.getStackInSlot(0)).orElse(ItemStack.EMPTY);
+        return inventory.getItem(PATTERN_SLOT);
     }
 
     public ItemStack getToolStack() {
-        return tool_handler.map(h -> h.getStackInSlot(0)).orElse(ItemStack.EMPTY);
+        return inventory.getItem(TOOL_SLOT);
     }
 
     public ItemStack getRealisedStack() {
@@ -223,7 +177,16 @@ public class ChiselPrinterTileEntity extends BlockEntity implements MenuProvider
     }
 
     public ItemStack getOutputStack() {
-        return result_handler.map(h -> h.getStackInSlot(0)).orElse(ItemStack.EMPTY);
+        return inventory.getItem(RESULT_SLOT);
+    }
+
+    public void addOutput(final ItemStack stack) {
+        if (getOutputStack().isEmpty()) {
+            inventory.setItem(RESULT_SLOT, stack);
+        } else {
+            getOutputStack().grow(stack.getCount());
+        }
+        setChanged();
     }
 
     public ItemStack realisePattern(final boolean consumeResources) {
@@ -292,7 +255,6 @@ public class ChiselPrinterTileEntity extends BlockEntity implements MenuProvider
 
         c.setBlob(blob);
 
-        final BlockState state = c.getPrimaryBlockState();
         final ItemStack itemstack = new ItemStack(ModBlocks.getChiseledBlock(), 1);
         c.writeChisleData(tag, false);
 
@@ -310,8 +272,7 @@ public class ChiselPrinterTileEntity extends BlockEntity implements MenuProvider
     @Override
     public AbstractContainerMenu createMenu(
             final int containerId, @NotNull final Inventory playerInventory, @NotNull final Player playerEntity) {
-        return new ChiselPrinterContainer(
-                containerId, playerInventory, getPatternHandler(), getToolHandler(), getResultHandler(), stationData);
+        return new ChiselPrinterContainer(containerId, playerInventory, this, stationData);
     }
 
     @Override
@@ -426,5 +387,82 @@ public class ChiselPrinterTileEntity extends BlockEntity implements MenuProvider
         if (targetedTileEntity instanceof TileEntityBitStorage storage) {
             storage.extractBits(0, amount, false);
         }
+    }
+
+    @Override
+    public int[] getSlotsForFace(final Direction side) {
+        return side == Direction.DOWN ? RESULT_SLOTS : TOOL_SLOTS;
+    }
+
+    @Override
+    public boolean canPlaceItemThroughFace(final int slot, final ItemStack stack, final Direction side) {
+        return slot == RESULT_SLOT && side == Direction.DOWN
+                || slot == TOOL_SLOT && side != Direction.DOWN && stack.getItem() instanceof ItemChisel;
+    }
+
+    @Override
+    public boolean canTakeItemThroughFace(final int slot, final ItemStack stack, final Direction side) {
+        return slot == RESULT_SLOT && side == Direction.DOWN || slot == TOOL_SLOT && side != Direction.DOWN;
+    }
+
+    @Override
+    public int getContainerSize() {
+        return inventory.getContainerSize();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return inventory.isEmpty();
+    }
+
+    @Override
+    public ItemStack getItem(final int slot) {
+        return inventory.getItem(slot);
+    }
+
+    @Override
+    public ItemStack removeItem(final int slot, final int amount) {
+        final ItemStack removed = inventory.removeItem(slot, amount);
+        if (!removed.isEmpty()) {
+            inventoryChanged();
+        }
+        return removed;
+    }
+
+    @Override
+    public ItemStack removeItemNoUpdate(final int slot) {
+        return inventory.removeItemNoUpdate(slot);
+    }
+
+    @Override
+    public void setItem(final int slot, final ItemStack stack) {
+        inventory.setItem(slot, stack);
+        inventoryChanged();
+    }
+
+    @Override
+    public boolean canPlaceItem(final int slot, final ItemStack stack) {
+        return switch (slot) {
+            case PATTERN_SLOT -> stack.getItem() instanceof IPatternItem;
+            case TOOL_SLOT -> stack.getItem() instanceof ItemChisel;
+            case RESULT_SLOT -> true;
+            default -> false;
+        };
+    }
+
+    private void inventoryChanged() {
+        currentRealisedWorkingStack.setValue(ItemStack.EMPTY);
+        super.setChanged();
+    }
+
+    @Override
+    public boolean stillValid(final Player player) {
+        return Container.stillValidBlockEntity(this, player);
+    }
+
+    @Override
+    public void clearContent() {
+        inventory.clearContent();
+        inventoryChanged();
     }
 }

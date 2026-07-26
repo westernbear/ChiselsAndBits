@@ -11,7 +11,7 @@ import net.minecraft.world.item.ItemDisplayContext;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-public abstract class BaseBakedPerspectiveModel implements BakedModel, TransformTypeDependentItemBakedModel {
+public abstract class BaseBakedPerspectiveModel implements BakedModel {
 
     protected static final RandomSource RANDOM = RandomSource.create();
 
@@ -47,10 +47,9 @@ public abstract class BaseBakedPerspectiveModel implements BakedModel, Transform
 
     @Override
     public ItemTransforms getTransforms() {
-        return new PerspectiveItemModelDelegate(this);
+        return new PerspectiveItemModelDelegate();
     }
 
-    @Override
     public BakedModel applyTransform(ItemDisplayContext context, PoseStack poseStack, boolean leftHand) {
         switch (context) {
             case FIRST_PERSON_LEFT_HAND:
@@ -80,11 +79,8 @@ public abstract class BaseBakedPerspectiveModel implements BakedModel, Transform
         return this;
     }
 
-    private static final class PerspectiveItemModelDelegate extends ItemTransforms {
-
-        private final TransformTypeDependentItemBakedModel delegate;
-
-        public PerspectiveItemModelDelegate(TransformTypeDependentItemBakedModel delegate) {
+    private final class PerspectiveItemModelDelegate extends ItemTransforms {
+        private PerspectiveItemModelDelegate() {
             super(
                     ItemTransform.NO_TRANSFORM,
                     ItemTransform.NO_TRANSFORM,
@@ -94,7 +90,6 @@ public abstract class BaseBakedPerspectiveModel implements BakedModel, Transform
                     ItemTransform.NO_TRANSFORM,
                     ItemTransform.NO_TRANSFORM,
                     ItemTransform.NO_TRANSFORM);
-            this.delegate = delegate;
         }
 
         @Override
@@ -102,7 +97,7 @@ public abstract class BaseBakedPerspectiveModel implements BakedModel, Transform
             return new ItemTransform(new Vector3f(), new Vector3f(), new Vector3f()) {
                 @Override
                 public void apply(boolean bl, PoseStack poseStack) {
-                    delegate.applyTransform(itemDisplayContext, poseStack, bl);
+                    BaseBakedPerspectiveModel.this.applyTransform(itemDisplayContext, poseStack, bl);
                 }
             };
         }

@@ -1,14 +1,11 @@
 package mod.chiselsandbits.core;
 
 import java.lang.reflect.Field;
-import java.util.Map;
 import mod.chiselsandbits.helpers.ModUtil;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.TextureAtlas;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.world.item.ItemStack;
 
 public class ReflectionWrapper {
@@ -16,7 +13,6 @@ public class ReflectionWrapper {
     public static final ReflectionWrapper instance = new ReflectionWrapper();
 
     private Field highlightingItemStack = null;
-    private Field mapRegSprites = null;
 
     private Field findField(Class<?> clz, final String... methods) throws Exception {
         do {
@@ -72,31 +68,6 @@ public class ReflectionWrapper {
     @Environment(EnvType.CLIENT)
     public void endHighlightedStack() {
         setHighlightStack(Minecraft.getInstance().player.getMainHandItem());
-    }
-
-    /**
-     * CLASS: net.minecraft.client.renderer.texture.TextureMap
-     * <p>
-     * SRG: field_110574_e
-     * <p>
-     * NAME: mapRegisteredSprites
-     */
-    @SuppressWarnings("unchecked")
-    @Environment(EnvType.CLIENT)
-    public Map<String, TextureAtlasSprite> getRegSprite(final TextureAtlas map) {
-        try {
-            if (mapRegSprites == null) {
-                mapRegSprites = findField(map.getClass(), "mapUploadedSprites", "field_94252_e");
-            }
-
-            mapRegSprites.setAccessible(true);
-            return (Map<String, TextureAtlasSprite>) mapRegSprites.get(map);
-        } catch (final Throwable t) {
-            // unable to clear the selected stack.
-            notifyDeveloper(t);
-        }
-
-        return null;
     }
 
     private void notifyDeveloper(final Throwable t) {

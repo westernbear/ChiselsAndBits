@@ -1,11 +1,5 @@
 package mod.chiselsandbits.items;
 
-import static net.minecraft.world.item.Tiers.DIAMOND;
-import static net.minecraft.world.item.Tiers.GOLD;
-import static net.minecraft.world.item.Tiers.IRON;
-import static net.minecraft.world.item.Tiers.NETHERITE;
-import static net.minecraft.world.item.Tiers.STONE;
-
 import java.util.List;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.helpers.LocalStrings;
@@ -22,24 +16,6 @@ public class ItemBitSaw extends Item {
 
     public ItemBitSaw(Tier tier, Item.Properties properties) {
         super(properties);
-    }
-
-    private static Item.Properties setupDamageStack(Tier material, Item.Properties properties) {
-        long uses = 1;
-        if (DIAMOND.equals(material)) {
-            uses = ChiselsAndBits.getConfig().getServer().diamondSawUses.get();
-        } else if (GOLD.equals(material)) {
-            uses = ChiselsAndBits.getConfig().getServer().goldSawUses.get();
-        } else if (IRON.equals(material)) {
-            uses = ChiselsAndBits.getConfig().getServer().ironSawUses.get();
-        } else if (STONE.equals(material)) {
-            uses = ChiselsAndBits.getConfig().getServer().stoneSawUses.get();
-        } else if (NETHERITE.equals(material)) {
-            uses = ChiselsAndBits.getConfig().getServer().netheriteSawUses.get();
-        }
-
-        return properties.durability(
-                ChiselsAndBits.getConfig().getServer().damageTools.get() ? (int) Math.max(0, uses) : 0);
     }
 
     @Override
