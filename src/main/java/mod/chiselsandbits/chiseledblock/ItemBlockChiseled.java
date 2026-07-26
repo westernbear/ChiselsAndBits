@@ -2,6 +2,7 @@ package mod.chiselsandbits.chiseledblock;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import mod.chiselsandbits.api.ChiselsAndBitsEvents;
 import mod.chiselsandbits.api.EventBlockBitModification;
 import mod.chiselsandbits.api.IBitAccess;
@@ -10,6 +11,7 @@ import mod.chiselsandbits.chiseledblock.data.BitLocation;
 import mod.chiselsandbits.chiseledblock.data.IntegerBox;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
 import mod.chiselsandbits.client.UndoTracker;
+import mod.chiselsandbits.components.ChiseledData;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.core.ClientSide;
 import mod.chiselsandbits.helpers.BitOperation;
@@ -22,6 +24,7 @@ import mod.chiselsandbits.items.ItemChiseledBit;
 import mod.chiselsandbits.network.packets.PacketAccurateSneakPlace;
 import mod.chiselsandbits.network.packets.PacketAccurateSneakPlace.IItemBlockAccurate;
 import mod.chiselsandbits.network.packets.PacketRotateVoxelBlob;
+import mod.chiselsandbits.registry.ModDataComponents;
 import mod.chiselsandbits.render.helpers.SimpleInstanceCache;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -30,7 +33,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.sounds.SoundSource;
@@ -41,6 +43,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.DirectionalPlaceContext;
 import net.minecraft.world.item.context.UseOnContext;
@@ -53,7 +56,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,7 +85,7 @@ public class ItemBlockChiseled extends BlockItem implements IVoxelBlobItem, IIte
         final VoxelBlob[][][] blobs = new VoxelBlob[2][2][2];
 
         // you can't place empty blocks...
-        if (!stack.hasTag()) {
+        if (!ModUtil.hasChiseledData(stack)) {
             return false;
         }
 
@@ -215,30 +217,33 @@ public class ItemBlockChiseled extends BlockItem implements IVoxelBlobItem, IIte
     @Override
     public void appendHoverText(
             final ItemStack stack,
-            @Nullable final Level worldIn,
-            final List<Component> tooltip,
+            final TooltipContext context,
+            final TooltipDisplay display,
+            final Consumer<Component> tooltip,
             final TooltipFlag flagIn) {
-        super.appendHoverText(stack, worldIn, tooltip, flagIn);
+        super.appendHoverText(stack, context, display, tooltip, flagIn);
+        final List<Component> tooltipLines = new ArrayList<>();
         ChiselsAndBits.getConfig()
                 .getCommon()
                 .helpText(
                         LocalStrings.HelpChiseledBlock,
-                        tooltip,
+                        tooltipLines,
                         ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse),
                         ClientSide.instance.getKeyName(ClientSide.getOffGridPlacementKey()));
 
-        if (stack.hasTag()) {
+        if (ModUtil.hasChiseledData(stack)) {
             if (ClientSide.instance.holdingShift()) {
                 if (tooltipCache.needsUpdate(stack)) {
                     final VoxelBlob blob = ModUtil.getBlobFromStack(stack, null);
                     tooltipCache.updateCachedValue(blob.listContents(new ArrayList<>()));
                 }
 
-                tooltip.addAll(tooltipCache.getCached());
+                tooltipLines.addAll(tooltipCache.getCached());
             } else {
-                tooltip.add(Component.literal(LocalStrings.ShiftDetails.getLocal()));
+                tooltipLines.add(Component.literal(LocalStrings.ShiftDetails.getLocal()));
             }
         }
+        tooltipLines.forEach(tooltip);
     }
 
     @Override
@@ -268,9 +273,8 @@ public class ItemBlockChiseled extends BlockItem implements IVoxelBlobItem, IIte
 
         if (block == Blocks.SNOW) {
             side = Direction.UP;
-        } else if (!block.canBeReplaced(
-                worldIn.getBlockState(pos),
-                new BlockPlaceContext(
+        } else if (!worldIn.getBlockState(pos)
+                .canBeReplaced(new BlockPlaceContext(
                         player, hand, stack, new BlockHitResult(new Vec3(0.5, 0.5, 0.5), side, pos, false)))) {
             pos = pos.relative(side);
         }
@@ -332,7 +336,7 @@ public class ItemBlockChiseled extends BlockItem implements IVoxelBlobItem, IIte
     public InteractionResult useOn(final UseOnContext context) {
         final ItemStack stack = context.getPlayer().getItemInHand(context.getHand());
 
-        if (!context.getLevel().isClientSide && !(context.getPlayer() instanceof FakePlayer)) {
+        if (!context.getLevel().isClientSide() && !(context.getPlayer() instanceof FakePlayer)) {
             // Say it "worked", Don't do anything we'll get a better packet.
             return InteractionResult.SUCCESS;
         }
@@ -392,7 +396,7 @@ public class ItemBlockChiseled extends BlockItem implements IVoxelBlobItem, IIte
                     new BlockHitResult(new Vec3(hitX, hitY, hitZ), side, pos.relative(side.getOpposite()), false),
                     BitOperation.PLACE);
             return tryPlaceBlockAt(
-                    block,
+                    getBlock(),
                     stack,
                     player,
                     world,
@@ -406,31 +410,38 @@ public class ItemBlockChiseled extends BlockItem implements IVoxelBlobItem, IIte
                     true);
         } else {
             return tryPlaceBlockAt(
-                    block, stack, player, world, pos, side, InteractionHand.MAIN_HAND, hitX, hitY, hitZ, null, true);
+                    getBlock(),
+                    stack,
+                    player,
+                    world,
+                    pos,
+                    side,
+                    InteractionHand.MAIN_HAND,
+                    hitX,
+                    hitY,
+                    hitZ,
+                    null,
+                    true);
         }
     }
 
     @Override
     public Component getName(final ItemStack stack) {
-        final CompoundTag comp = stack.getTag();
+        final ChiseledData data = NBTBlobConverter.getComponent(stack);
+        if (data != null) {
+            final NBTBlobConverter converter = new NBTBlobConverter();
+            converter.readChisleData(data, VoxelBlob.VERSION_ANY);
 
-        if (comp != null) {
-            final CompoundTag BlockEntityTag = comp.getCompound(ModUtil.NBT_BLOCKENTITYTAG);
-            if (BlockEntityTag != null) {
-                final NBTBlobConverter c = new NBTBlobConverter();
-                c.readChisleData(BlockEntityTag, VoxelBlob.VERSION_ANY);
+            final BlockState state = converter.getPrimaryBlockState();
+            final Component name = ItemChiseledBit.getBitStateName(state);
 
-                final BlockState state = c.getPrimaryBlockState();
-                Component name = ItemChiseledBit.getBitStateName(state);
-
-                if (name != null) {
-                    final Component parent = super.getName(stack);
-                    if (!(parent instanceof MutableComponent formattedParent)) {
-                        return parent;
-                    }
-
-                    return formattedParent.append(" - ").append(name);
+            if (name != null) {
+                final Component parent = super.getName(stack);
+                if (!(parent instanceof MutableComponent formattedParent)) {
+                    return parent;
                 }
+
+                return formattedParent.append(" - ").append(name);
             }
         }
 
@@ -465,8 +476,14 @@ public class ItemBlockChiseled extends BlockItem implements IVoxelBlobItem, IIte
         } else {
             IBitAccess ba = ChiselsAndBits.getApi().createBitItem(stack);
             ba.rotate(axis, rotation);
-            stack.setTag(ba.getBitsAsItem(side, ChiselsAndBits.getApi().getItemType(stack), false)
-                    .getTag());
+            final ItemStack rotated =
+                    ba.getBitsAsItem(side, ChiselsAndBits.getApi().getItemType(stack), false);
+            final ChiseledData rotatedData = NBTBlobConverter.getComponent(rotated);
+            if (rotatedData == null) {
+                stack.remove(ModDataComponents.CHISELED_DATA);
+            } else {
+                stack.set(ModDataComponents.CHISELED_DATA, rotatedData);
+            }
         }
 
         ModUtil.setSide(stack, side);
@@ -484,7 +501,7 @@ public class ItemBlockChiseled extends BlockItem implements IVoxelBlobItem, IIte
             side = Direction.UP;
         } else {
             boolean canMerge = false;
-            if (context.getItemInHand().hasTag()) {
+            if (ModUtil.hasChiseledData(context.getItemInHand())) {
                 final TileEntityBlockChiseled tebc =
                         ModUtil.getChiseledTileEntity(context.getLevel(), context.getClickedPos(), true);
 
@@ -497,7 +514,7 @@ public class ItemBlockChiseled extends BlockItem implements IVoxelBlobItem, IIte
             BlockPlaceContext replacementCheckContext =
                     context instanceof BlockPlaceContext ? (BlockPlaceContext) context : new BlockPlaceContext(context);
             if (context.getPlayer()
-                            .getCommandSenderWorld()
+                            .level()
                             .getBlockState(context.getClickedPos())
                             .getBlock()
                     instanceof BlockChiseled) {
@@ -549,8 +566,8 @@ public class ItemBlockChiseled extends BlockItem implements IVoxelBlobItem, IIte
                                 pos.getZ() + 0.5,
                                 DeprecationHelper.getSoundType(this.getBlock()).getPlaceSound(),
                                 SoundSource.BLOCKS,
-                                (DeprecationHelper.getSoundType(this.block).getVolume() + 1.0F) / 2.0F,
-                                DeprecationHelper.getSoundType(this.block).getPitch() * 0.8F,
+                                (DeprecationHelper.getSoundType(this.getBlock()).getVolume() + 1.0F) / 2.0F,
+                                DeprecationHelper.getSoundType(this.getBlock()).getPitch() * 0.8F,
                                 false);
 
                 if (!context.getPlayer().isCreative()

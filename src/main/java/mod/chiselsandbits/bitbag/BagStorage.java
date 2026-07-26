@@ -5,11 +5,13 @@ import mod.chiselsandbits.api.APIExceptions.InvalidBitItem;
 import mod.chiselsandbits.api.IBitBag;
 import mod.chiselsandbits.api.IBitBrush;
 import mod.chiselsandbits.api.ItemType;
+import mod.chiselsandbits.components.BagContents;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.core.Log;
 import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.items.ItemBitBag;
 import mod.chiselsandbits.items.ItemChiseledBit;
+import mod.chiselsandbits.registry.ModDataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
@@ -27,8 +29,16 @@ public class BagStorage implements IBitBag {
     }
 
     private static int[] getStorageArray(final ItemStack stack, final int size) {
-        final CompoundTag compound = stack.getOrCreateTag();
-        int[] contents = compound.contains("contents") ? compound.getIntArray("contents") : new int[size];
+        final BagContents component = stack.get(ModDataComponents.BAG_CONTENTS);
+        int[] contents;
+        if (component != null) {
+            contents = component.values();
+        } else {
+            final CompoundTag compound = ModUtil.getTagCompound(stack);
+            contents = compound.getIntArray("contents").orElseGet(() -> new int[size]);
+            compound.remove("contents");
+            ModUtil.setTagCompound(stack, compound);
+        }
 
         if (contents.length != size) {
             final int[] resized = new int[size];
@@ -36,7 +46,7 @@ public class BagStorage implements IBitBag {
             contents = resized;
         }
 
-        compound.putIntArray("contents", contents);
+        stack.set(ModDataComponents.BAG_CONTENTS, new BagContents(contents));
         return contents;
     }
 
@@ -45,7 +55,7 @@ public class BagStorage implements IBitBag {
     }
 
     public void onChange() {
-        // noop at the moment.
+        stack.set(ModDataComponents.BAG_CONTENTS, new BagContents(contents));
     }
 
     @Override

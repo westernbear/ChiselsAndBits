@@ -2,12 +2,14 @@ package mod.chiselsandbits.items;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import mod.chiselsandbits.api.IBitAccess;
 import mod.chiselsandbits.api.VoxelStats;
 import mod.chiselsandbits.chiseledblock.BlockChiseled;
 import mod.chiselsandbits.chiseledblock.NBTBlobConverter;
 import mod.chiselsandbits.chiseledblock.TileEntityBlockChiseled;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
+import mod.chiselsandbits.components.ChiseledData;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.core.ClientSide;
 import mod.chiselsandbits.helpers.ActingPlayer;
@@ -21,6 +23,7 @@ import mod.chiselsandbits.interfaces.IPatternItem;
 import mod.chiselsandbits.interfaces.IVoxelBlobItem;
 import mod.chiselsandbits.network.packets.PacketRotateVoxelBlob;
 import mod.chiselsandbits.registry.ModBlocks;
+import mod.chiselsandbits.registry.ModDataComponents;
 import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.render.helpers.SimpleInstanceCache;
 import net.fabricmc.api.EnvType;
@@ -29,7 +32,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -38,6 +40,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -56,20 +59,29 @@ public class ItemNegativePrint extends Item implements IVoxelBlobItem, IItemScro
 
     @Environment(EnvType.CLIENT)
     protected void defaultAddInfo(
-            final ItemStack stack, final Level worldIn, final List<Component> tooltip, final TooltipFlag advanced) {
-        super.appendHoverText(stack, worldIn, tooltip, advanced);
+            final ItemStack stack,
+            final TooltipContext context,
+            final TooltipDisplay display,
+            final Consumer<Component> tooltip,
+            final TooltipFlag advanced) {
+        super.appendHoverText(stack, context, display, tooltip, advanced);
     }
 
     @Override
     @Environment(EnvType.CLIENT)
     public void appendHoverText(
-            final ItemStack stack, final Level worldIn, final List<Component> tooltip, final TooltipFlag advanced) {
-        defaultAddInfo(stack, worldIn, tooltip, advanced);
+            final ItemStack stack,
+            final TooltipContext context,
+            final TooltipDisplay display,
+            final Consumer<Component> tooltip,
+            final TooltipFlag advanced) {
+        defaultAddInfo(stack, context, display, tooltip, advanced);
+        final List<Component> tooltipLines = new ArrayList<>();
         ChiselsAndBits.getConfig()
                 .getCommon()
                 .helpText(
                         LocalStrings.HelpNegativePrint,
-                        tooltip,
+                        tooltipLines,
                         ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse),
                         ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse));
 
@@ -98,11 +110,12 @@ public class ItemNegativePrint extends Item implements IVoxelBlobItem, IItemScro
                     }
                 }
 
-                tooltip.addAll(details);
+                tooltipLines.addAll(details);
             } else {
-                tooltip.add(Component.literal(LocalStrings.ShiftDetails.getLocal()));
+                tooltipLines.add(Component.literal(LocalStrings.ShiftDetails.getLocal()));
             }
         }
+        tooltipLines.forEach(tooltip);
     }
 
     @Override
@@ -111,15 +124,7 @@ public class ItemNegativePrint extends Item implements IVoxelBlobItem, IItemScro
             return false;
         }
 
-        if (stack.hasTag()) {
-            final boolean a = ModUtil.getSubCompound(stack, ModUtil.NBT_BLOCKENTITYTAG, false)
-                            .size()
-                    != 0;
-            final boolean b = ModUtil.getTagCompound(stack).contains(NBTBlobConverter.NBT_LEGACY_VOXEL);
-            final boolean c = ModUtil.getTagCompound(stack).contains(NBTBlobConverter.NBT_VERSIONED_VOXEL);
-            return a || b || c;
-        }
-        return false;
+        return ModUtil.hasChiseledData(stack);
     }
 
     protected Item getWrittenItem() {
@@ -146,13 +151,14 @@ public class ItemNegativePrint extends Item implements IVoxelBlobItem, IItemScro
         }
 
         if (!isWritten(stack)) {
-            final CompoundTag comp = getCompoundFromBlock(world, pos, player);
-            if (comp != null) {
+            final ChiseledData data = getChiseledDataFromBlock(world, pos, player);
+            if (data != null) {
                 final int count = stack.getCount();
                 stack.shrink(count);
 
                 final ItemStack newStack = new ItemStack(this::getWrittenItem, count);
-                newStack.setTag(comp);
+                newStack.set(ModDataComponents.CHISELED_DATA, data);
+                ModUtil.setSide(newStack, ModUtil.getPlaceFace(player));
 
                 ItemEntity itementity = player.drop(newStack, false);
                 if (itementity != null) {
@@ -191,26 +197,22 @@ public class ItemNegativePrint extends Item implements IVoxelBlobItem, IItemScro
         return true;
     }
 
-    protected CompoundTag getCompoundFromBlock(final Level world, final BlockPos pos, final Player player) {
+    protected ChiseledData getChiseledDataFromBlock(final Level world, final BlockPos pos, final Player player) {
 
         final TileEntityBlockChiseled te = ModUtil.getChiseledTileEntity(world, pos, false);
         if (te != null) {
-            final CompoundTag comp = new CompoundTag();
-            te.writeChiselData(comp);
+            final NBTBlobConverter converter;
 
             if (convertToStone()) {
-                final TileEntityBlockChiseled tmp = new TileEntityBlockChiseled(pos, world.getBlockState(pos));
-                tmp.readChiselData(comp);
-
-                final VoxelBlob bestBlob = tmp.getBlob();
+                final VoxelBlob bestBlob = new VoxelBlob(te.getBlob());
                 bestBlob.binaryReplacement(0, ModUtil.getStateId(Blocks.STONE.defaultBlockState()));
-
-                tmp.setBlob(bestBlob);
-                tmp.writeChiselData(comp);
+                converter = new NBTBlobConverter();
+                converter.setBlob(bestBlob);
+            } else {
+                converter = new NBTBlobConverter(false, te);
             }
 
-            comp.putByte(ModUtil.NBT_SIDE, (byte) ModUtil.getPlaceFace(player).ordinal());
-            return comp;
+            return converter.toComponent(false);
         }
 
         return null;
@@ -222,11 +224,14 @@ public class ItemNegativePrint extends Item implements IVoxelBlobItem, IItemScro
             return null;
         }
 
-        final CompoundTag tag = ModUtil.getTagCompound(stack);
+        final ChiseledData data = NBTBlobConverter.getComponent(stack);
+        if (data == null) {
+            return null;
+        }
 
         // Detect and provide full blocks if pattern solid full and solid.
         final NBTBlobConverter conv = new NBTBlobConverter();
-        conv.readChisleData(tag, VoxelBlob.VERSION_ANY);
+        conv.readChisleData(data, VoxelBlob.VERSION_ANY);
 
         if (craftingBlocks
                 && ChiselsAndBits.getConfig().getServer().fullBlockCrafting.get()) {
@@ -241,10 +246,9 @@ public class ItemNegativePrint extends Item implements IVoxelBlobItem, IItemScro
             }
         }
 
-        final BlockState state = conv.getPrimaryBlockState();
         final ItemStack itemstack = new ItemStack(ModBlocks.getChiseledBlock(), 1);
-
-        itemstack.addTagElement(ModUtil.NBT_BLOCKENTITYTAG, tag);
+        itemstack.set(ModDataComponents.CHISELED_DATA, data);
+        ModUtil.setSide(itemstack, ModUtil.getSide(stack));
         return itemstack;
     }
 
@@ -314,8 +318,14 @@ public class ItemNegativePrint extends Item implements IVoxelBlobItem, IItemScro
         } else {
             IBitAccess ba = ChiselsAndBits.getApi().createBitItem(stack);
             ba.rotate(axis, rotation);
-            stack.setTag(ba.getBitsAsItem(side, ChiselsAndBits.getApi().getItemType(stack), false)
-                    .getTag());
+            final ItemStack rotated =
+                    ba.getBitsAsItem(side, ChiselsAndBits.getApi().getItemType(stack), false);
+            final ChiseledData rotatedData = NBTBlobConverter.getComponent(rotated);
+            if (rotatedData == null) {
+                stack.remove(ModDataComponents.CHISELED_DATA);
+            } else {
+                stack.set(ModDataComponents.CHISELED_DATA, rotatedData);
+            }
         }
 
         ModUtil.setSide(stack, side);

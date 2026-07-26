@@ -5,40 +5,36 @@ import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
 import mod.chiselsandbits.chiseledblock.data.VoxelType;
 import mod.chiselsandbits.client.culling.ICullTest;
 import mod.chiselsandbits.client.culling.MCCullTest;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
 
 public enum ChiselRenderType {
-    SOLID(RenderType.solid(), VoxelType.SOLID),
-    SOLID_FLUID(RenderType.solid(), VoxelType.FLUID),
-    CUTOUT(RenderType.cutout(), null),
-    CUTOUT_MIPPED(RenderType.cutoutMipped(), null),
-    TRANSLUCENT(RenderType.translucent(), null),
-    TRANSLUCENT_FLUID(RenderType.translucent(), VoxelType.FLUID),
-    TRIPWIRE(RenderType.tripwire(), null);
+    SOLID(ChunkSectionLayer.SOLID, VoxelType.SOLID),
+    SOLID_FLUID(ChunkSectionLayer.SOLID, VoxelType.FLUID),
+    CUTOUT(ChunkSectionLayer.CUTOUT, null),
+    CUTOUT_MIPPED(ChunkSectionLayer.CUTOUT, null),
+    TRANSLUCENT(ChunkSectionLayer.TRANSLUCENT, null),
+    TRANSLUCENT_FLUID(ChunkSectionLayer.TRANSLUCENT, VoxelType.FLUID),
+    TRIPWIRE(ChunkSectionLayer.CUTOUT, null);
 
-    public final RenderType layer;
+    public final ChunkSectionLayer layer;
     public final VoxelType type;
 
-    ChiselRenderType(final RenderType layer, final VoxelType type) {
+    ChiselRenderType(final ChunkSectionLayer layer, final VoxelType type) {
         this.layer = layer;
         this.type = type;
     }
 
-    public static ChiselRenderType fromLayer(RenderType layerInfo, final boolean isFluid) {
+    public static ChiselRenderType fromLayer(ChunkSectionLayer layerInfo, final boolean isFluid) {
         if (layerInfo == null) {
-            layerInfo = RenderType.solid();
+            layerInfo = ChunkSectionLayer.SOLID;
         }
 
-        if (ChiselRenderType.CUTOUT.layer.equals(layerInfo)) {
+        if (layerInfo == ChunkSectionLayer.CUTOUT) {
             return CUTOUT;
-        } else if (ChiselRenderType.CUTOUT_MIPPED.layer.equals(layerInfo)) {
-            return CUTOUT_MIPPED;
-        } else if (ChiselRenderType.SOLID.layer.equals(layerInfo)) {
+        } else if (layerInfo == ChunkSectionLayer.SOLID) {
             return isFluid ? SOLID_FLUID : SOLID;
-        } else if (ChiselRenderType.TRANSLUCENT.layer.equals(layerInfo)) {
+        } else if (layerInfo == ChunkSectionLayer.TRANSLUCENT) {
             return isFluid ? TRANSLUCENT_FLUID : TRANSLUCENT;
-        } else if (ChiselRenderType.TRIPWIRE.layer.equals(layerInfo)) {
-            return TRIPWIRE;
         }
 
         throw new InvalidParameterException();

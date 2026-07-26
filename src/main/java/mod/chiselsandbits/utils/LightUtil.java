@@ -4,8 +4,10 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormatElement;
 import mod.chiselsandbits.utils.forge.IVertexConsumer;
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.model.geom.builders.UVPair;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.core.Direction;
+import org.joml.Vector3fc;
 
 public final class LightUtil {
 
@@ -13,97 +15,50 @@ public final class LightUtil {
         throw new IllegalStateException("Tried to construct a LightUtil instance, but this is a utility class!");
     }
 
-    public static void pack(float[] from, int[] to, VertexFormat formatTo, int v, int e) {
-        VertexFormatElement element = formatTo.getElements().get(e);
-        int vertexStart = v * formatTo.getVertexSize() + formatTo.offsets.getInt(e);
-        int count = element.getCount();
-        VertexFormatElement.Type type = element.getType();
-        int size = type.getSize();
-        int mask = (256 << (8 * (size - 1))) - 1;
-        for (int i = 0; i < 4; i++) {
-            if (i < count) {
-                int pos = vertexStart + size * i;
-                int index = pos >> 2;
-                int offset = pos & 3;
-                int bits = 0;
-                float f = i < from.length ? from[i] : 0;
-                if (type == VertexFormatElement.Type.FLOAT) {
-                    bits = Float.floatToRawIntBits(f);
-                } else if (type == VertexFormatElement.Type.UBYTE
-                        || type == VertexFormatElement.Type.USHORT
-                        || type == VertexFormatElement.Type.UINT) {
-                    bits = Math.round(f * mask);
-                } else {
-                    bits = Math.round(f * (mask >> 1));
+    public static void pipe(final IVertexConsumer consumer) {}
+
+    /** Replays the 26.2 baked-quad record through the legacy C&B model readers. */
+    public static void put(final IVertexConsumer consumer, final BakedQuad quad) {
+        final BakedQuad.MaterialInfo material = quad.materialInfo();
+        consumer.setTexture(material.sprite());
+        consumer.setQuadOrientation(quad.direction());
+        if (material.isTinted()) {
+            consumer.setQuadTint(material.tintIndex());
+        }
+        consumer.setApplyDiffuseLighting(material.shade());
+
+        final VertexFormat format = consumer.getVertexFormat();
+        final int elementCount = format.getElements().size();
+        final float packedLight = material.lightEmission() * (32.0f / 0xffff);
+        for (int vertex = 0; vertex < 4; vertex++) {
+            final Vector3fc position = quad.position(vertex);
+            final long packedUv = quad.packedUV(vertex);
+            for (int elementIndex = 0; elementIndex < elementCount; elementIndex++) {
+                final VertexFormatElement element = format.getElements().get(elementIndex);
+                switch (element.name()) {
+                    case DefaultVertexFormat.POSITION_SEMANTIC_NAME ->
+                        consumer.put(vertex, elementIndex, position.x(), position.y(), position.z(), 1);
+                    case DefaultVertexFormat.COLOR_SEMANTIC_NAME -> consumer.put(vertex, elementIndex, 1, 1, 1, 1);
+                    case DefaultVertexFormat.UV0_SEMANTIC_NAME ->
+                        consumer.put(vertex, elementIndex, UVPair.unpackU(packedUv), UVPair.unpackV(packedUv));
+                    case DefaultVertexFormat.UV2_SEMANTIC_NAME ->
+                        consumer.put(vertex, elementIndex, packedLight, packedLight);
+                    case DefaultVertexFormat.NORMAL_SEMANTIC_NAME ->
+                        consumer.put(
+                                vertex,
+                                elementIndex,
+                                quad.direction().getStepX(),
+                                quad.direction().getStepY(),
+                                quad.direction().getStepZ());
+                    default -> consumer.put(vertex, elementIndex);
                 }
-                to[index] &= ~(mask << (offset * 8));
-                to[index] |= (((bits & mask) << (offset * 8)));
-            }
-        }
-    }
-
-    public static void pipe(IVertexConsumer consumer) {}
-
-    public static void put(IVertexConsumer consumer, BakedQuad quad) {
-        consumer.setTexture(quad.getSprite());
-        consumer.setQuadOrientation(quad.getDirection());
-        if (quad.isTinted()) {
-            consumer.setQuadTint(quad.getTintIndex());
-        }
-        consumer.setApplyDiffuseLighting(quad.isShade());
-        float[] data = new float[4];
-        VertexFormat format = DefaultVertexFormat.BLOCK;
-        int elementCount = consumer.getVertexFormat().getElements().size();
-        for (int v = 0; v < 4; v++) {
-            for (int e = 0; e < elementCount; e++) {
-                unpack(quad.getVertices(), data, format, v, e);
-                consumer.put(v, e, data);
             }
         }
 
         consumer.onComplete();
     }
 
-    public static void unpack(int[] from, float[] to, VertexFormat formatFrom, int v, int e) {
-        int length = Math.min(4, to.length);
-        VertexFormatElement element = formatFrom.getElements().get(e);
-        int vertexStart = v * formatFrom.getVertexSize() + formatFrom.offsets.getInt(e);
-        int count = element.getCount();
-        VertexFormatElement.Type type = element.getType();
-        VertexFormatElement.Usage usage = element.getUsage();
-        int size = type.getSize();
-        int mask = (256 << (8 * (size - 1))) - 1;
-        for (int i = 0; i < length; i++) {
-            if (i < count) {
-                int pos = vertexStart + size * i;
-                int index = pos >> 2;
-                int offset = pos & 3;
-                int bits = from[index];
-                bits = bits >>> (offset * 8);
-                if ((pos + size - 1) / 4 != index) {
-                    bits |= from[index + 1] << ((4 - offset) * 8);
-                }
-                bits &= mask;
-                if (type == VertexFormatElement.Type.FLOAT) {
-                    to[i] = Float.intBitsToFloat(bits);
-                } else if (type == VertexFormatElement.Type.UBYTE || type == VertexFormatElement.Type.USHORT) {
-                    to[i] = (float) bits / mask;
-                } else if (type == VertexFormatElement.Type.UINT) {
-                    to[i] = (float) ((double) (bits & 0xFFFFFFFFL) / 0xFFFFFFFFL);
-                } else if (type == VertexFormatElement.Type.BYTE) {
-                    to[i] = ((float) (byte) bits) / (mask >> 1);
-                } else if (type == VertexFormatElement.Type.SHORT) {
-                    to[i] = ((float) (short) bits) / (mask >> 1);
-                } else if (type == VertexFormatElement.Type.INT) {
-                    to[i] = (float) ((double) (bits & 0xFFFFFFFFL) / (0xFFFFFFFFL >> 1));
-                }
-            } else {
-                to[i] = (i == 3 && usage == VertexFormatElement.Usage.POSITION) ? 1 : 0;
-            }
-        }
-    }
-
-    public static float diffuseLight(Direction side) {
+    public static float diffuseLight(final Direction side) {
         return switch (side) {
             case DOWN -> .5f;
             case UP -> 1f;

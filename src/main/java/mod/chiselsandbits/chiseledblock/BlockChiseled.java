@@ -1,6 +1,5 @@
 package mod.chiselsandbits.chiseledblock;
 
-import com.communi.suggestu.saecularia.caudices.core.block.IBlockWithWorldlyProperties;
 import mod.chiselsandbits.api.BoxType;
 import mod.chiselsandbits.api.IMultiStateBlock;
 import mod.chiselsandbits.chiseledblock.data.BitLocation;
@@ -23,11 +22,14 @@ import mod.chiselsandbits.utils.SingleBlockBlockReader;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -35,9 +37,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.DirectionalPlaceContext;
-import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
@@ -52,6 +52,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -60,11 +61,11 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class BlockChiseled extends Block
-        implements EntityBlock, IMultiStateBlock, IBlockWithWorldlyProperties, BlockExtension {
+public class BlockChiseled extends Block implements EntityBlock, IMultiStateBlock, BlockExtension {
 
     public static final BlockPos ZERO = BlockPos.ZERO;
     public static final BooleanProperty FULL_BLOCK = BooleanProperty.create("full_block");
+    public static final IntegerProperty LIGHT_LEVEL = IntegerProperty.create("light_level", 0, 15);
     private static final ThreadLocal<BlockState> actingAs = new ThreadLocal<>();
     static ExceptionNoTileEntity noTileEntity = new ExceptionNoTileEntity();
     public final String name;
@@ -72,7 +73,8 @@ public class BlockChiseled extends Block
     public BlockChiseled(final String name, final BlockBehaviour.Properties properties) {
         super(properties);
         this.name = name;
-        this.registerDefaultState(this.stateDefinition.any().setValue(FULL_BLOCK, false));
+        this.registerDefaultState(
+                this.stateDefinition.any().setValue(FULL_BLOCK, false).setValue(LIGHT_LEVEL, 0));
     }
 
     public static @NotNull TileEntityBlockChiseled getTileEntity(final BlockEntity te) throws ExceptionNoTileEntity {
@@ -187,25 +189,34 @@ public class BlockChiseled extends Block
         return newState;
     }
 
-    @Override
+    /**
+     * Legacy contextual hook retained for callers that still expose the pre-26.2 contract. Vanilla 26.2 now uses
+     * {@link BlockState#isRedstoneConductor(BlockGetter, BlockPos)}; the matching state predicate is registered in
+     * {@link ModBlocks}.
+     */
     public boolean shouldCheckWeakPower(
             BlockState blockState, SignalGetter signalGetter, BlockPos blockPos, Direction direction) {
         return isFullCube(blockState);
     }
 
-    @Override
+    /** Legacy Fabric/Forge rendering compatibility contract; false is the vanilla 26.2 behavior. */
     public boolean shouldDisplayFluidOverlay(
             BlockState blockState, BlockAndTintGetter blockAndTintGetter, BlockPos blockPos, FluidState fluidState) {
         return false;
     }
 
-    @Override
+    /** Legacy beacon-color compatibility contract; an empty result means no beacon tint. */
     public float[] getBeaconColorMultiplier(
             BlockState blockState, LevelReader levelReader, BlockPos blockPos, BlockPos blockPos1) {
         return new float[0];
     }
 
-    @Override
+    /**
+     * Context-aware sound endpoint retained for chiseled blocks on 26.2.
+     *
+     * <p>Vanilla callers are routed here through {@link BlockPropertyResolver} so the primary contained material
+     * continues to determine the sound.
+     */
     public SoundType getSoundType(
             BlockState blockState, LevelReader levelReader, BlockPos blockPos, @Nullable Entity entity) {
         try {
@@ -213,19 +224,23 @@ public class BlockChiseled extends Block
             int p = te.getPrimaryBlockStateId();
 
             BlockState s = ModUtil.getStateById(p);
-            return s.getSoundType();
+            return s == null ? SoundType.STONE : s.getSoundType();
         } catch (ExceptionNoTileEntity e) {
             return SoundType.STONE;
         }
     }
 
     @Override
-    public float getExplosionResistance(
-            BlockState blockState, BlockGetter blockGetter, BlockPos blockPos, Explosion explosion) {
+    public float getExplosionResistance() {
         return 0;
     }
 
-    @Override
+    /**
+     * Context-aware friction endpoint retained for chiseled blocks on 26.2.
+     *
+     * <p>Vanilla movement callers are routed here through {@link BlockPropertyResolver} so the primary contained
+     * material continues to determine friction.
+     */
     public float getFriction(
             BlockState blockState, LevelReader levelReader, BlockPos blockPos, @Nullable Entity entity) {
         try {
@@ -263,7 +278,7 @@ public class BlockChiseled extends Block
     }
 
     @Override
-    public int getLightBlock(final BlockState state, final BlockGetter worldIn, final BlockPos pos) {
+    protected int getLightDampening(final BlockState state) {
         return isFullCube(state) ? 0 : 1;
     }
 
@@ -291,12 +306,12 @@ public class BlockChiseled extends Block
             @Nullable final LivingEntity placer,
             final ItemStack stack) {
         try {
-            if (stack == null || placer == null || !stack.hasTag()) {
+            if (stack == null || placer == null || !ModUtil.hasChiseledData(stack)) {
                 return;
             }
 
             final TileEntityBlockChiseled bc = getTileEntity(worldIn, pos);
-            if (worldIn.isClientSide) {
+            if (worldIn.isClientSide()) {
                 bc.getState();
             }
             int rotations = ModUtil.getRotations(placer, ModUtil.getSide(stack));
@@ -312,6 +327,24 @@ public class BlockChiseled extends Block
     }
 
     @Override
+    public ItemStack getCloneItemStack(
+            final LevelReader levelReader,
+            final BlockPos blockPos,
+            final BlockState blockState,
+            final boolean includeData) {
+        try {
+            return getTileEntity(levelReader, blockPos).getItemStack(null);
+        } catch (final ExceptionNoTileEntity e) {
+            Log.noTileError(e);
+            return ModUtil.getEmptyStack();
+        }
+    }
+
+    /**
+     * Compatibility overload for integrations compiled against the old hit-aware contract. Vanilla 26.2's server
+     * pick packet no longer carries a hit location; the built-in C&B path is restored through PlayerPickItemEvents.
+     */
+    @Deprecated(forRemoval = false)
     public ItemStack getCloneItemStack(
             BlockState blockState, HitResult target, LevelReader levelReader, BlockPos blockPos, Player player) {
         if (!(target instanceof BlockHitResult)) {
@@ -336,16 +369,7 @@ public class BlockChiseled extends Block
     public ItemStack getPickBlock(final BlockHitResult target, final BlockPos pos, final TileEntityBlockChiseled te) {
         if (te.getLevel().isClientSide()) {
             if (getClientHeldTool() != null) {
-                final VoxelBlob vb = te.getBlob();
-
-                final BitLocation bitLoc = new BitLocation(target, BitOperation.CHISEL);
-
-                final int itemBlock = vb.get(bitLoc.bitX, bitLoc.bitY, bitLoc.bitZ);
-                if (itemBlock == 0) {
-                    return ModUtil.getEmptyStack();
-                }
-
-                return ItemChiseledBit.createStack(itemBlock, 1, false);
+                return getPickedBit(target, te);
             }
 
             return te.getItemStack(ClientSide.instance.getPlayer());
@@ -354,10 +378,18 @@ public class BlockChiseled extends Block
         return te.getItemStack(null);
     }
 
+    public ItemStack getPickedBit(final BlockHitResult target, final TileEntityBlockChiseled te) {
+        final VoxelBlob vb = te.getBlob();
+        final BitLocation bitLoc = new BitLocation(target, BitOperation.CHISEL);
+        final int itemBlock = vb.get(bitLoc.bitX, bitLoc.bitY, bitLoc.bitZ);
+
+        return itemBlock == 0 ? ModUtil.getEmptyStack() : ItemChiseledBit.createStack(itemBlock, 1, false);
+    }
+
     @Override
     protected void createBlockStateDefinition(final StateDefinition.Builder<Block, BlockState> builder) {
         super.createBlockStateDefinition(builder);
-        builder.add(FULL_BLOCK);
+        builder.add(FULL_BLOCK, LIGHT_LEVEL);
     }
 
     @Nullable
@@ -425,7 +457,6 @@ public class BlockChiseled extends Block
         return true;
     }
 
-    @Override
     public BlockState rotate(
             final BlockState state, final LevelAccessor world, final BlockPos pos, final Rotation direction) {
         try {
@@ -450,7 +481,6 @@ public class BlockChiseled extends Block
         return null;
     }
 
-    @Override
     public int getLightEmission(BlockState blockState, BlockGetter blockGetter, BlockPos blockPos) {
         // is this the right block?
         final BlockState realState = blockGetter.getBlockState(blockPos);
@@ -471,7 +501,6 @@ public class BlockChiseled extends Block
         return 0;
     }
 
-    @Override
     public boolean canHarvestBlock(
             final BlockState state, final BlockGetter world, final BlockPos pos, final Player player) {
         if (ChiselsAndBits.getConfig().getServer().enableToolHarvestLevels.get()) {
@@ -489,12 +518,7 @@ public class BlockChiseled extends Block
 
     private boolean canHarvestBlockInternal(BlockGetter world, BlockPos pos, Player player) {
         BlockState blockState = world.getBlockState(pos);
-        Block var6 = blockState.getBlock();
-        if (var6 instanceof IBlockWithWorldlyProperties blockWithWorldlyProperties) {
-            return blockWithWorldlyProperties.canHarvestBlock(blockState, world, pos, player);
-        } else {
-            return player.hasCorrectToolForDrops(blockState);
-        }
+        return player.hasCorrectToolForDrops(blockState);
     }
 
     @Override
@@ -514,8 +538,8 @@ public class BlockChiseled extends Block
 
             // since we can't call getDigSpeed on the acting state, we can just
             // do some math to try and roughly estimate it.
-            float denom = player.inventory.getDestroySpeed(actingState);
-            float numer = player.inventory.getDestroySpeed(state);
+            float denom = player.getDestroySpeed(actingState);
+            float numer = player.getDestroySpeed(state);
 
             if (!canHarvestBlockInternal(new SingleBlockBlockReader(state), ZERO, player)) {
                 return player.getDestroySpeed(actingState) / hardness / 100F * (numer / denom);
@@ -527,8 +551,17 @@ public class BlockChiseled extends Block
         return super.getDestroyProgress(state, player, worldIn, pos);
     }
 
-    public ResourceLocation getModel() {
-        return new ResourceLocation(ChiselsAndBits.MODID, name);
+    public Identifier getModel() {
+        return Identifier.fromNamespaceAndPath(ChiselsAndBits.MODID, name);
+    }
+
+    @Override
+    protected void tick(
+            final BlockState state, final ServerLevel level, final BlockPos pos, final RandomSource randomSource) {
+        if (level.getBlockEntity(pos) instanceof TileEntityBlockChiseled blockEntity) {
+            blockEntity.synchronizeBlockStateProperties();
+            level.getLightEngine().checkBlock(pos);
+        }
     }
 
     @Override
@@ -545,7 +578,7 @@ public class BlockChiseled extends Block
     protected void spawnDestroyParticles(Level level, Player player, BlockPos blockPos, BlockState blockState) {
         if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT) {
             if (!blockState.isAir()) {
-                SoundType soundType = blockState.getSoundType();
+                SoundType soundType = BlockPropertyResolver.resolveSoundType(blockState, level, blockPos, player);
                 level.playLocalSound(
                         blockPos,
                         soundType.getBreakSound(),

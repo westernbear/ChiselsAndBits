@@ -3,17 +3,21 @@ package mod.chiselsandbits.network.packets;
 import mod.chiselsandbits.bitbag.BagContainer;
 import mod.chiselsandbits.network.ModPacket;
 import mod.chiselsandbits.utils.Constants;
-import net.fabricmc.fabric.api.networking.v1.PacketType;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 
 public class PacketBagGui extends ModPacket {
 
-    public static final PacketType<PacketBagGui> PACKET_TYPE =
-            PacketType.create(new ResourceLocation(Constants.MOD_ID, "packet_bag_gui"), PacketBagGui::new);
+    public static final CustomPacketPayload.Type<PacketBagGui> PACKET_TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "packet_bag_gui"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketBagGui> STREAM_CODEC =
+            CustomPacketPayload.codec(PacketBagGui::getPayload, PacketBagGui::new);
 
     private int slotNumber = -1;
     private int mouseButton = -1;
@@ -61,7 +65,7 @@ public class PacketBagGui extends ModPacket {
     }
 
     @Override
-    public PacketType<?> getType() {
+    public CustomPacketPayload.Type<? extends CustomPacketPayload> type() {
         return PACKET_TYPE;
     }
 }

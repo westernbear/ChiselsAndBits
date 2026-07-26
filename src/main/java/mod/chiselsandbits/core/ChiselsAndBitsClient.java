@@ -17,8 +17,7 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.renderer.texture.TextureAtlas;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.packs.resources.ReloadableResourceManager;
+import net.minecraft.resources.Identifier;
 
 public class ChiselsAndBitsClient {
 
@@ -36,10 +35,9 @@ public class ChiselsAndBitsClient {
 
     @Environment(EnvType.CLIENT)
     public static void registerIconTextures() {
+        // AtlasManager owns block-atlas reloads in 26.2. The C&B atlas source is merged through
+        // assets/minecraft/atlases/blocks.json and the existing post-stitch callback refreshes these handles.
         spriteUploader = new IconSpriteUploader();
-        if (Minecraft.getInstance().getResourceManager() instanceof ReloadableResourceManager resourceManager) {
-            resourceManager.registerReloadListener(spriteUploader);
-        }
     }
 
     @Environment(EnvType.CLIENT)
@@ -47,15 +45,15 @@ public class ChiselsAndBitsClient {
         if (!map.location().equals(IconSpriteUploader.TEXTURE_MAP_NAME)) {
             return;
         }
-        ClientSide.swapIcon = spriteUploader.getSprite(new ResourceLocation("chiselsandbits", "swap"));
-        ClientSide.placeIcon = spriteUploader.getSprite(new ResourceLocation("chiselsandbits", "place"));
-        ClientSide.undoIcon = spriteUploader.getSprite(new ResourceLocation("chiselsandbits", "undo"));
-        ClientSide.redoIcon = spriteUploader.getSprite(new ResourceLocation("chiselsandbits", "redo"));
-        ClientSide.trashIcon = spriteUploader.getSprite(new ResourceLocation("chiselsandbits", "trash"));
-        ClientSide.sortIcon = spriteUploader.getSprite(new ResourceLocation("chiselsandbits", "sort"));
-        ClientSide.roll_x = spriteUploader.getSprite(new ResourceLocation("chiselsandbits", "roll_x"));
-        ClientSide.roll_z = spriteUploader.getSprite(new ResourceLocation("chiselsandbits", "roll_z"));
-        ClientSide.white = spriteUploader.getSprite(new ResourceLocation("chiselsandbits", "white"));
+        ClientSide.swapIcon = spriteUploader.getSprite(Identifier.fromNamespaceAndPath("chiselsandbits", "swap"));
+        ClientSide.placeIcon = spriteUploader.getSprite(Identifier.fromNamespaceAndPath("chiselsandbits", "place"));
+        ClientSide.undoIcon = spriteUploader.getSprite(Identifier.fromNamespaceAndPath("chiselsandbits", "undo"));
+        ClientSide.redoIcon = spriteUploader.getSprite(Identifier.fromNamespaceAndPath("chiselsandbits", "redo"));
+        ClientSide.trashIcon = spriteUploader.getSprite(Identifier.fromNamespaceAndPath("chiselsandbits", "trash"));
+        ClientSide.sortIcon = spriteUploader.getSprite(Identifier.fromNamespaceAndPath("chiselsandbits", "sort"));
+        ClientSide.roll_x = spriteUploader.getSprite(Identifier.fromNamespaceAndPath("chiselsandbits", "roll_x"));
+        ClientSide.roll_z = spriteUploader.getSprite(Identifier.fromNamespaceAndPath("chiselsandbits", "roll_z"));
+        ClientSide.white = spriteUploader.getSprite(Identifier.fromNamespaceAndPath("chiselsandbits", "white"));
 
         for (final ChiselMode mode : ChiselMode.values()) {
             loadIcon(spriteUploader, mode);
@@ -74,9 +72,9 @@ public class ChiselsAndBitsClient {
     private static void loadIcon(final IconSpriteUploader spriteUploader, final IToolMode mode) {
         final SpriteIconPositioning sip = new SpriteIconPositioning();
 
-        final ResourceLocation sprite =
-                new ResourceLocation("chiselsandbits", mode.name().toLowerCase());
-        final ResourceLocation png = new ResourceLocation(
+        final Identifier sprite =
+                Identifier.fromNamespaceAndPath("chiselsandbits", mode.name().toLowerCase());
+        final Identifier png = Identifier.fromNamespaceAndPath(
                 "chiselsandbits", "textures/icons/" + mode.name().toLowerCase() + ".png");
 
         sip.sprite = spriteUploader.getSprite(sprite);

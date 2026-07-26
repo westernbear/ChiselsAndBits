@@ -29,6 +29,7 @@ import mod.chiselsandbits.chiseledblock.data.BitLocation;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
 import mod.chiselsandbits.client.RenderHelper;
 import mod.chiselsandbits.client.UndoTracker;
+import mod.chiselsandbits.client.model.baked.LegacyBakedModel;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.core.ClientSide;
 import mod.chiselsandbits.helpers.BitInventoryFeeder;
@@ -49,7 +50,6 @@ import mod.chiselsandbits.registry.ModItems;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -261,18 +261,18 @@ public class ChiselAndBitsAPI implements IChiselAndBitsAPI {
             spawnPos = new Vec3(player.getX(), player.getY(), player.getZ());
         }
 
-        final ItemEntity ei = new ItemEntity(player.getCommandSenderWorld(), spawnPos.x, spawnPos.y, spawnPos.z, stack);
+        final ItemEntity ei = new ItemEntity(player.level(), spawnPos.x, spawnPos.y, spawnPos.z, stack);
 
         if (stack.getItem() == ModItems.ITEM_BLOCK_BIT.get()) {
-            if (player.getCommandSenderWorld().isClientSide) {
+            if (player.level().isClientSide()) {
                 return;
             }
 
-            BitInventoryFeeder feeder = new BitInventoryFeeder(player, player.getCommandSenderWorld());
+            BitInventoryFeeder feeder = new BitInventoryFeeder(player, player.level());
             feeder.addItem(ei);
-        } else if (!player.inventory.add(stack)) {
+        } else if (!player.getInventory().add(stack)) {
             ei.setItem(stack);
-            player.getCommandSenderWorld().addFreshEntity(ei);
+            player.level().addFreshEntity(ei);
         }
     }
 
@@ -397,7 +397,7 @@ public class ChiselAndBitsAPI implements IChiselAndBitsAPI {
     @Override
     public void renderModel(
             final PoseStack stack,
-            final BakedModel model,
+            final LegacyBakedModel model,
             final Level world,
             final BlockPos pos,
             final int alpha,
@@ -410,7 +410,7 @@ public class ChiselAndBitsAPI implements IChiselAndBitsAPI {
     @Environment(EnvType.CLIENT)
     public void renderGhostModel(
             final PoseStack stack,
-            final BakedModel model,
+            final LegacyBakedModel model,
             final Level world,
             final BlockPos pos,
             final boolean isUnplaceable,

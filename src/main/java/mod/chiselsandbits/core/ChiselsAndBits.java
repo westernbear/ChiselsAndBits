@@ -1,6 +1,6 @@
 package mod.chiselsandbits.core;
 
-import fuzs.forgeconfigapiport.fabric.api.forge.v4.ForgeModConfigEvents;
+import fuzs.forgeconfigapiport.fabric.api.v5.ModConfigEvents;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,11 +12,13 @@ import mod.chiselsandbits.client.UndoTracker;
 import mod.chiselsandbits.config.Configuration;
 import mod.chiselsandbits.core.api.ChiselAndBitsAPI;
 import mod.chiselsandbits.events.EventPlayerInteract;
+import mod.chiselsandbits.events.PickBlockHandler;
 import mod.chiselsandbits.events.VaporizeWater;
 import mod.chiselsandbits.interfaces.ICacheClearable;
 import mod.chiselsandbits.network.NetworkChannel;
 import mod.chiselsandbits.registry.ModBlocks;
 import mod.chiselsandbits.registry.ModContainerTypes;
+import mod.chiselsandbits.registry.ModDataComponents;
 import mod.chiselsandbits.registry.ModItemGroups;
 import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.registry.ModRecipeSerializers;
@@ -53,6 +55,8 @@ public class ChiselsAndBits {
                 EnvType.CLIENT, () -> () -> ClientLifecycleEvents.CLIENT_STARTED.register(this::clientSetup));
         VaporizeWater.register();
         EventPlayerInteract.register();
+        PickBlockHandler.register();
+        ModDataComponents.onModConstruction();
         ModBlocks.onModConstruction();
         ModContainerTypes.onModConstruction();
         ModItems.onModConstruction();
@@ -62,8 +66,8 @@ public class ChiselsAndBits {
         networkChannel.registerCommonMessages();
         EnvExecutor.runWhenOn(EnvType.CLIENT, () -> () -> {
             setupClipboard(new File(Minecraft.getInstance().gameDirectory, MODID + "_clipboard"));
-            ForgeModConfigEvents.loading(Constants.MOD_ID).register(c -> handleIdMapping(Minecraft.getInstance()));
-            ForgeModConfigEvents.reloading(Constants.MOD_ID).register(c -> handleIdMapping(Minecraft.getInstance()));
+            ModConfigEvents.loading(Constants.MOD_ID).register(c -> handleIdMapping(Minecraft.getInstance()));
+            ModConfigEvents.reloading(Constants.MOD_ID).register(c -> handleIdMapping(Minecraft.getInstance()));
         });
     }
 
@@ -95,7 +99,7 @@ public class ChiselsAndBits {
     public void clientSetup(Minecraft inst) {
         EnvExecutor.runWhenOn(
                 EnvType.CLIENT,
-                () -> () -> ForgeModConfigEvents.reloading(ChiselsAndBits.MODID)
+                () -> () -> ModConfigEvents.reloading(ChiselsAndBits.MODID)
                         .register(ChiseledBlockSmartModel::onConfigurationReload));
     }
 

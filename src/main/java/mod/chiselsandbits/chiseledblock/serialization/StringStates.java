@@ -8,7 +8,7 @@ import java.util.Optional;
 import mod.chiselsandbits.core.Log;
 import mod.chiselsandbits.helpers.ModUtil;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -22,7 +22,7 @@ public class StringStates {
 
         parts[0] = URLDecoder.decode(parts[0], StandardCharsets.UTF_8);
 
-        final Block blk = BuiltInRegistries.BLOCK.get(new ResourceLocation(parts[0]));
+        final Block blk = BuiltInRegistries.BLOCK.getValue(Identifier.parse(parts[0]));
 
         if (blk == null || blk == Blocks.AIR) {
             return 0;

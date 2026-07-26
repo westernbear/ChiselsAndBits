@@ -21,11 +21,13 @@ import mod.chiselsandbits.items.ItemBitBag;
 import mod.chiselsandbits.items.ItemChisel;
 import mod.chiselsandbits.network.ModPacket;
 import mod.chiselsandbits.utils.Constants;
-import net.fabricmc.fabric.api.networking.v1.PacketType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -34,8 +36,10 @@ import net.minecraft.world.level.Level;
 
 public class PacketUndo extends ModPacket {
 
-    public static final PacketType<PacketUndo> PACKET_TYPE =
-            PacketType.create(new ResourceLocation(Constants.MOD_ID, "packet_undo"), PacketUndo::new);
+    public static final CustomPacketPayload.Type<PacketUndo> PACKET_TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "packet_undo"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketUndo> STREAM_CODEC =
+            CustomPacketPayload.codec(PacketUndo::getPayload, PacketUndo::new);
 
     private BlockPos pos;
     private VoxelBlobStateReference before;
@@ -228,7 +232,7 @@ public class PacketUndo extends ModPacket {
     }
 
     @Override
-    public PacketType<?> getType() {
+    public CustomPacketPayload.Type<? extends CustomPacketPayload> type() {
         return PACKET_TYPE;
     }
 }

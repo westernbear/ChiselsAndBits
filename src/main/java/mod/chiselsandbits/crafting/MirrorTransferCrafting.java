@@ -2,16 +2,15 @@ package mod.chiselsandbits.crafting;
 
 import mod.chiselsandbits.chiseledblock.NBTBlobConverter;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
+import mod.chiselsandbits.components.ChiseledData;
 import mod.chiselsandbits.helpers.ModUtil;
+import mod.chiselsandbits.registry.ModDataComponents;
 import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.registry.ModRecipeSerializers;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.CraftingBookCategory;
+import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
@@ -19,22 +18,23 @@ import net.minecraft.world.level.block.Blocks;
 
 public class MirrorTransferCrafting extends CustomRecipe {
 
-    public MirrorTransferCrafting(CraftingBookCategory name) {
-        super(name);
+    public MirrorTransferCrafting() {
+        super();
     }
 
     @Override
-    public boolean matches(final CraftingContainer craftingInv, final Level worldIn) {
-        return analzyeCraftingInventory(craftingInv, true) != null;
+    public boolean matches(final CraftingInput craftingInv, final Level worldIn) {
+        return (craftingInv.width() > 1 || craftingInv.height() > 1)
+                && analzyeCraftingInventory(craftingInv, true) != null;
     }
 
-    public ItemStack analzyeCraftingInventory(final CraftingContainer craftingInv, final boolean generatePattern) {
+    public ItemStack analzyeCraftingInventory(final CraftingInput craftingInv, final boolean generatePattern) {
         ItemStack targetA = null;
         ItemStack targetB = null;
 
         boolean isNegative = false;
 
-        for (int x = 0; x < craftingInv.getContainerSize(); x++) {
+        for (int x = 0; x < craftingInv.size(); x++) {
             final ItemStack f = craftingInv.getItem(x);
             if (f == null) {
                 continue;
@@ -83,7 +83,11 @@ public class MirrorTransferCrafting extends CustomRecipe {
             }
 
             final NBTBlobConverter tmp = new NBTBlobConverter();
-            tmp.readChisleData(targetA.getTag(), VoxelBlob.VERSION_ANY);
+            final ChiseledData sourceData = NBTBlobConverter.getComponent(targetA);
+            if (sourceData == null) {
+                return null;
+            }
+            tmp.readChisleData(sourceData, VoxelBlob.VERSION_ANY);
 
             final VoxelBlob bestBlob = tmp.getBlob();
 
@@ -92,9 +96,6 @@ public class MirrorTransferCrafting extends CustomRecipe {
             }
 
             tmp.setBlob(bestBlob);
-
-            final CompoundTag comp = ModUtil.getTagCompound(targetA).copy();
-            tmp.writeChisleData(comp, false);
 
             Item resultItem;
 
@@ -105,7 +106,12 @@ public class MirrorTransferCrafting extends CustomRecipe {
             }
 
             final ItemStack outputPattern = new ItemStack(resultItem);
-            outputPattern.setTag(comp);
+            final ChiseledData outputData = tmp.toComponent(false);
+            if (outputData == null) {
+                return null;
+            }
+            outputPattern.set(ModDataComponents.CHISELED_DATA, outputData);
+            ModUtil.setSide(outputPattern, ModUtil.getSide(targetA));
 
             return outputPattern;
         }
@@ -114,27 +120,17 @@ public class MirrorTransferCrafting extends CustomRecipe {
     }
 
     @Override
-    public ItemStack assemble(CraftingContainer craftingInv, RegistryAccess registryAccess) {
+    public ItemStack assemble(final CraftingInput craftingInv) {
         return analzyeCraftingInventory(craftingInv, false);
     }
 
     @Override
-    public boolean canCraftInDimensions(final int width, final int height) {
-        return width > 1 || height > 1;
-    }
-
-    @Override
-    public ItemStack getResultItem(RegistryAccess registryAccess) {
-        return ModUtil.getEmptyStack();
-    }
-
-    @Override
-    public NonNullList<ItemStack> getRemainingItems(final CraftingContainer craftingInv) {
-        final NonNullList<ItemStack> aitemstack = NonNullList.withSize(craftingInv.getContainerSize(), ItemStack.EMPTY);
+    public NonNullList<ItemStack> getRemainingItems(final CraftingInput craftingInv) {
+        final NonNullList<ItemStack> aitemstack = NonNullList.withSize(craftingInv.size(), ItemStack.EMPTY);
 
         for (int i = 0; i < aitemstack.size(); ++i) {
             final ItemStack itemstack = craftingInv.getItem(i);
-            if (itemstack.getItem() == ModItems.ITEM_MIRROR_PRINT_WRITTEN.get() && itemstack.hasTag()) {
+            if (itemstack.getItem() == ModItems.ITEM_MIRROR_PRINT_WRITTEN.get() && ModUtil.hasChiseledData(itemstack)) {
                 ModUtil.adjustStackSize(itemstack, 1);
             }
         }
@@ -143,7 +139,7 @@ public class MirrorTransferCrafting extends CustomRecipe {
     }
 
     @Override
-    public RecipeSerializer<?> getSerializer() {
+    public RecipeSerializer<MirrorTransferCrafting> getSerializer() {
         return ModRecipeSerializers.MIRROR_TRANSFER_CRAFTING.get();
     }
 }

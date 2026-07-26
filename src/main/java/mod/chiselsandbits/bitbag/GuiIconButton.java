@@ -1,7 +1,8 @@
 package mod.chiselsandbits.bitbag;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
 
@@ -14,10 +15,9 @@ public class GuiIconButton extends Button {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics guiGraphics, int i, int j, float f) {
-        super.renderWidget(guiGraphics, i, j, f);
-        guiGraphics.setColor(1f, 1f, 1f, 1f);
-        guiGraphics.blit(x + 1, y + 1, 0, 16, 16, icon);
+    protected void extractContents(GuiGraphicsExtractor guiGraphics, int i, int j, float f) {
+        extractDefaultSprite(guiGraphics);
+        guiGraphics.blitSprite(RenderPipelines.GUI_TEXTURED, icon, getX() + 1, getY() + 1, 16, 16);
     }
 
     public interface OnToolTip {

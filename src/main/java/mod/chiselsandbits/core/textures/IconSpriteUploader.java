@@ -1,28 +1,22 @@
 package mod.chiselsandbits.core.textures;
 
-import mod.chiselsandbits.utils.Constants;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.TextureAtlasHolder;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 
-public class IconSpriteUploader extends TextureAtlasHolder {
-    public static final ResourceLocation TEXTURE_MAP_NAME =
-            new ResourceLocation(Constants.MOD_ID, "textures/atlases/icons.png");
+/** Provides C&B icon sprites from the 26.2-managed block atlas. */
+public class IconSpriteUploader {
+    public static final Identifier TEXTURE_MAP_NAME = TextureAtlas.LOCATION_BLOCKS;
 
-    public IconSpriteUploader() {
-        super(
-                Minecraft.getInstance().getTextureManager(),
-                TEXTURE_MAP_NAME,
-                new ResourceLocation(Constants.MOD_ID, "icons"));
-    }
+    public IconSpriteUploader() {}
 
-    /**
-     * Overridden to make it public
-     */
-    @Override
-    public @NotNull TextureAtlasSprite getSprite(@NotNull ResourceLocation location) {
-        return super.getSprite(location);
+    public @NotNull TextureAtlasSprite getSprite(@NotNull Identifier location) {
+        return Minecraft.getInstance()
+                .getAtlasManager()
+                .getAtlasOrThrow(AtlasIds.BLOCKS)
+                .getSprite(location);
     }
 }

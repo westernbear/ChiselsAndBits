@@ -1,7 +1,5 @@
 package mod.chiselsandbits.bitbag;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.core.ClientSide;
 import mod.chiselsandbits.helpers.LocalStrings;
@@ -10,24 +8,24 @@ import mod.chiselsandbits.network.packets.PacketBagGui;
 import mod.chiselsandbits.network.packets.PacketClearBagGui;
 import mod.chiselsandbits.network.packets.PacketSortBagGui;
 import mod.chiselsandbits.registry.ModItems;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 public class BagGui extends AbstractContainerScreen<BagContainer> {
 
-    private static final ResourceLocation BAG_GUI_TEXTURE =
-            new ResourceLocation(ChiselsAndBits.MODID, "textures/gui/container/bitbag.png");
+    private static final Identifier BAG_GUI_TEXTURE =
+            Identifier.fromNamespaceAndPath(ChiselsAndBits.MODID, "textures/gui/container/bitbag.png");
 
     private static GuiBagFontRenderer specialFontRenderer = null;
     boolean requireConfirm = true;
@@ -37,14 +35,13 @@ public class BagGui extends AbstractContainerScreen<BagContainer> {
     private Slot hoveredBitSlot = null;
 
     public BagGui(final BagContainer container, final Inventory playerInventory, final Component title) {
-        super(container, playerInventory, title);
-        imageHeight = 239;
+        super(container, playerInventory, title, 176, 239);
     }
 
     @Override
     protected void init() {
         super.init();
-        trashBtn = addWidget(new GuiIconButton(leftPos - 18, topPos, ClientSide.trashIcon, p_onPress_1_ -> {
+        trashBtn = addRenderableWidget(new GuiIconButton(leftPos - 18, topPos, ClientSide.trashIcon, button -> {
             if (requireConfirm) {
                 dontThrow = true;
                 if (isValidBitItem()) {
@@ -52,18 +49,18 @@ public class BagGui extends AbstractContainerScreen<BagContainer> {
                 }
             } else {
                 requireConfirm = true;
-                // server side!
                 ChiselsAndBits.getNetworkChannel().sendToServer(new PacketClearBagGui(getInHandItem()));
                 dontThrow = false;
             }
         }));
 
-        sortBtn = addWidget(new GuiIconButton(leftPos - 18, topPos + 18, ClientSide.sortIcon, new Button.OnPress() {
-            @Override
-            public void onPress(final Button p_onPress_1_) {
-                ChiselsAndBits.getNetworkChannel().sendToServer(new PacketSortBagGui());
-            }
-        }));
+        sortBtn = addRenderableWidget(
+                new GuiIconButton(leftPos - 18, topPos + 18, ClientSide.sortIcon, new Button.OnPress() {
+                    @Override
+                    public void onPress(final Button button) {
+                        ChiselsAndBits.getNetworkChannel().sendToServer(new PacketSortBagGui());
+                    }
+                }));
     }
 
     BagContainer getBagContainer() {
@@ -71,8 +68,7 @@ public class BagGui extends AbstractContainerScreen<BagContainer> {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float ticks) {
-        renderBackground(guiGraphics, mouseX, mouseY, ticks);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float ticks) {
         if (trashBtn.isMouseOver(mouseX, mouseY)) {
             if (isValidBitItem()) {
                 final String msgNotConfirm = ModUtil.notEmpty(getInHandItem())
@@ -88,75 +84,81 @@ public class BagGui extends AbstractContainerScreen<BagContainer> {
                 trashBtn.setTooltip(Tooltip.create(Component.literal(LocalStrings.TrashInvalidItem.getLocal(
                         getInHandItem().getHoverName().getString()))));
             }
+        } else {
+            requireConfirm = true;
         }
 
         if (sortBtn.isMouseOver(mouseX, mouseY)) {
             sortBtn.setTooltip(Tooltip.create(Component.literal(LocalStrings.Sort.getLocal())));
         }
+
+        super.extractRenderState(guiGraphics, mouseX, mouseY, ticks);
     }
 
     @Override
-    protected void renderBg(GuiGraphics guiGraphics, float f, int mouseX, int mouseY) {
-        final int xOffset = (width - imageWidth) / 2;
-        final int yOffset = (height - imageHeight) / 2;
-        guiGraphics.setColor(1f, 1f, 1f, 1f);
+    public void extractBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float ticks) {
+        super.extractBackground(guiGraphics, mouseX, mouseY, ticks);
+        guiGraphics.blit(
+                RenderPipelines.GUI_TEXTURED,
+                BAG_GUI_TEXTURE,
+                leftPos,
+                topPos,
+                0,
+                0,
+                imageWidth,
+                imageHeight,
+                256,
+                256);
+    }
 
-        guiGraphics.blit(BAG_GUI_TEXTURE, xOffset, yOffset, 0, 0, imageWidth, imageHeight);
-
+    @Override
+    protected void extractSlots(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
         if (specialFontRenderer == null) {
             specialFontRenderer = new GuiBagFontRenderer(
                     font, ChiselsAndBits.getConfig().getServer().bagStackSize.get());
         }
-        PoseStack posestack = RenderSystem.getModelViewStack();
-        posestack.pushPose();
-        posestack.translate(this.leftPos, this.topPos, 0.0D);
+
         hoveredBitSlot = null;
-        guiGraphics.pose().pushPose();
-        for (int slotIdx = 0; slotIdx < getBagContainer().customSlots.size(); ++slotIdx) {
-            final Slot slot = getBagContainer().customSlots.get(slotIdx);
-
-            final Font defaultFontRenderer = font;
-
-            try {
-                font = specialFontRenderer;
-                renderSlot(guiGraphics, slot);
-            } finally {
-                font = defaultFontRenderer;
+        for (final Slot slot : getBagContainer().customSlots) {
+            if (!slot.isActive()) {
+                continue;
             }
 
-            if (isHovering(slot, mouseX, mouseY) && slot.isActive()) {
-                final int xDisplayPos = this.leftPos + slot.x;
-                final int yDisplayPos = this.topPos + slot.y;
+            extractBitSlot(guiGraphics, slot);
+
+            if (isHovering(slot.x, slot.y, 16, 16, mouseX, mouseY)) {
                 hoveredBitSlot = slot;
-
-                RenderSystem.disableDepthTest();
-                RenderSystem.colorMask(true, true, true, false);
-                final int INNER_SLOT_SIZE = 16;
-
-                guiGraphics.fillGradient(
-                        xDisplayPos,
-                        yDisplayPos,
-                        xDisplayPos + INNER_SLOT_SIZE,
-                        yDisplayPos + INNER_SLOT_SIZE,
-                        -2130706433,
-                        -2130706433);
-                RenderSystem.colorMask(true, true, true, true);
-                RenderSystem.enableDepthTest();
+                guiGraphics.fillGradient(slot.x, slot.y, slot.x + 16, slot.y + 16, -2130706433, -2130706433);
             }
         }
-        posestack.popPose();
-        RenderSystem.applyModelViewMatrix();
-        guiGraphics.pose().popPose();
-        if (!trashBtn.isMouseOver(mouseX, mouseY)) {
-            requireConfirm = true;
+
+        super.extractSlots(guiGraphics, mouseX, mouseY);
+    }
+
+    private void extractBitSlot(final GuiGraphicsExtractor guiGraphics, final Slot slot) {
+        final ItemStack itemStack = slot.getItem();
+        if (itemStack.isEmpty()) {
+            final Identifier icon = slot.getNoItemIcon();
+            if (icon != null) {
+                guiGraphics.blitSprite(RenderPipelines.GUI_TEXTURED, icon, slot.x, slot.y, 16, 16);
+            }
+            return;
         }
+
+        final int seed = slot.x + slot.y * imageWidth;
+        if (slot.isFake()) {
+            guiGraphics.fakeItem(itemStack, slot.x, slot.y, seed);
+        } else {
+            guiGraphics.item(itemStack, slot.x, slot.y, seed);
+        }
+
+        guiGraphics.itemDecorations(font, itemStack, slot.x, slot.y, itemStack.getCount() == 1 ? null : "");
+        specialFontRenderer.extractCount(guiGraphics, itemStack.getCount(), slot.x, slot.y);
     }
 
     @Override
-    public boolean mouseClicked(final double mouseX, final double mouseY, final int button) {
-        // This is what vanilla does...
-        final boolean duplicateButton =
-                button == Minecraft.getInstance().options.keyPickItem.key.getValue() + 100;
+    public boolean mouseClicked(final MouseButtonEvent event, final boolean doubleClick) {
+        final boolean duplicateButton = minecraft.options.keyPickItem.matchesMouse(event);
 
         Slot slot = hoveredSlot;
         if (slot == null) {
@@ -164,7 +166,7 @@ public class BagGui extends AbstractContainerScreen<BagContainer> {
         }
         if (slot != null && slot.container instanceof TargetedInventory) {
             final PacketBagGui bagGuiPacket =
-                    new PacketBagGui(slot.index, button, duplicateButton, ClientSide.instance.holdingShift());
+                    new PacketBagGui(slot.index, event.button(), duplicateButton, ClientSide.instance.holdingShift());
             bagGuiPacket.doAction(ClientSide.instance.getPlayer());
 
             ChiselsAndBits.getNetworkChannel().sendToServer(bagGuiPacket);
@@ -172,7 +174,7 @@ public class BagGui extends AbstractContainerScreen<BagContainer> {
             return true;
         }
 
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     private ItemStack getInHandItem() {
@@ -184,15 +186,15 @@ public class BagGui extends AbstractContainerScreen<BagContainer> {
     }
 
     @Override
-    protected void renderLabels(GuiGraphics guiGraphics, int x, int y) {
-
-        guiGraphics.drawString(
+    protected void extractLabels(GuiGraphicsExtractor guiGraphics, int x, int y) {
+        guiGraphics.text(
                 font,
                 Language.getInstance()
                         .getVisualOrder(ModItems.ITEM_BIT_BAG_DEFAULT.get().getName(ModUtil.getEmptyStack())),
                 8,
                 6,
-                0x404040);
-        guiGraphics.drawString(font, I18n.get("container.inventory"), 8, imageHeight - 93, 0x404040);
+                0xFF404040,
+                false);
+        guiGraphics.text(font, I18n.get("container.inventory"), 8, imageHeight - 93, 0xFF404040, false);
     }
 }

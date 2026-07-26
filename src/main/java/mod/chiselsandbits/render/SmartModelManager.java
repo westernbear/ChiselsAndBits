@@ -1,27 +1,28 @@
 package mod.chiselsandbits.render;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.Map;
+import mod.chiselsandbits.client.model.baked.BaseSmartModel;
+import mod.chiselsandbits.client.model.baked.LegacyBakedModel;
 import mod.chiselsandbits.client.model.loader.FabricBakedModelDelegate;
-import mod.chiselsandbits.core.ChiselsAndBits;
-import mod.chiselsandbits.interfaces.ICacheClearable;
+import mod.chiselsandbits.client.model.loader.LegacyItemModelDelegate;
+import mod.chiselsandbits.registry.ModBlocks;
 import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.render.bit.BitItemSmartModel;
 import mod.chiselsandbits.render.chiseledblock.ChiseledBlockSmartModel;
 import mod.chiselsandbits.render.patterns.PrintSmartModel;
-import mod.chiselsandbits.utils.Constants;
 import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin;
-import net.minecraft.client.resources.model.BakedModel;
-import net.minecraft.client.resources.model.ModelResourceLocation;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 
-public class SmartModelManager {
+/** Installs the split 26.2 block/item model adapters on every resource reload. */
+public final class SmartModelManager {
 
     private static final SmartModelManager INSTANCE = new SmartModelManager();
-    private final HashMap<ResourceLocation, BakedModel> models = new HashMap<ResourceLocation, BakedModel>();
-    private final List<ICacheClearable> clearable = new ArrayList<ICacheClearable>();
-    private boolean setup = false;
+    private volatile Map<Identifier, BaseSmartModel> itemModels = Map.of();
 
     private SmartModelManager() {}
 
@@ -29,55 +30,63 @@ public class SmartModelManager {
         return INSTANCE;
     }
 
-    private void setup() {
-        if (setup) {
-            return;
-        }
+    public void initialize(final ModelLoadingPlugin.Context context) {
+        final ChiseledBlockSmartModel chiseledModel = new ChiseledBlockSmartModel();
+        final BitItemSmartModel bitModel = new BitItemSmartModel();
+        chiseledModel.clearCache();
+        bitModel.clearCache();
 
-        setup = true;
-        FabricBakedModelDelegate smartModel = new FabricBakedModelDelegate(new ChiseledBlockSmartModel());
-        add(Constants.DataGenerator.CHISELED_BLOCK_MODEL, smartModel);
+        context.modifyBlockModelAfterBake().register((model, modifierContext) -> {
+            if (modifierContext.state().getBlock() != ModBlocks.CHISELED_BLOCK.get()) {
+                return model;
+            }
 
-        ChiselsAndBits.getInstance().addClearable(smartModel);
+            return new FabricBakedModelDelegate(chiseledModel, model);
+        });
 
-        add(new ResourceLocation(ChiselsAndBits.MODID, "block_bit"), new BitItemSmartModel());
-        add(
-                new ResourceLocation(ChiselsAndBits.MODID, "positiveprint_written_preview"),
-                new PrintSmartModel("positiveprint", ModItems.ITEM_POSITIVE_PRINT_WRITTEN.get()));
-        add(
-                new ResourceLocation(ChiselsAndBits.MODID, "negativeprint_written_preview"),
-                new PrintSmartModel("negativeprint", ModItems.ITEM_NEGATIVE_PRINT_WRITTEN.get()));
-        add(
-                new ResourceLocation(ChiselsAndBits.MODID, "mirrorprint_written_preview"),
-                new PrintSmartModel("mirrorprint", ModItems.ITEM_MIRROR_PRINT_WRITTEN.get()));
+        final Map<Identifier, BaseSmartModel> itemModels = Map.of(
+                itemId(ModItems.ITEM_BLOCK_BIT.get()), bitModel,
+                itemId(ModItems.ITEM_CHISELED_BLOCK.get()), chiseledModel,
+                itemId(ModItems.ITEM_POSITIVE_PRINT_WRITTEN.get()),
+                        new PrintSmartModel("positiveprint", ModItems.ITEM_POSITIVE_PRINT_WRITTEN.get()),
+                itemId(ModItems.ITEM_NEGATIVE_PRINT_WRITTEN.get()),
+                        new PrintSmartModel("negativeprint", ModItems.ITEM_NEGATIVE_PRINT_WRITTEN.get()),
+                itemId(ModItems.ITEM_MIRROR_PRINT_WRITTEN.get()),
+                        new PrintSmartModel("mirrorprint", ModItems.ITEM_MIRROR_PRINT_WRITTEN.get()));
+        this.itemModels = itemModels;
+
+        context.modifyItemModelAfterBake().register((model, modifierContext) -> {
+            final BaseSmartModel dynamicModel = itemModels.get(modifierContext.itemId());
+            if (dynamicModel == null) {
+                return model;
+            }
+
+            return new LegacyItemModelDelegate(dynamicModel, model, modifierContext.transformation());
+        });
     }
 
-    private void add(final ResourceLocation modelLocation, final BakedModel modelGen) {
-        final ResourceLocation second = new ResourceLocation(
-                modelLocation.getNamespace(),
-                modelLocation.getPath().substring(1 + modelLocation.getPath().lastIndexOf('/')));
-
-        if (modelGen instanceof ICacheClearable) {
-            clearable.add((ICacheClearable) modelGen);
+    /**
+     * Resolves the same generated C&B geometry used by the 26.2 item-model
+     * adapter. Placement previews need this quad model directly instead of an
+     * already-submitted item render state.
+     */
+    @Nullable
+    public LegacyBakedModel resolveLegacyItemModel(
+            final ItemStack stack, @Nullable final ClientLevel level, @Nullable final LivingEntity entity) {
+        final BaseSmartModel dynamicModel = itemModels.get(itemId(stack.getItem()));
+        if (dynamicModel == null) {
+            return null;
         }
 
-        models.put(new ModelResourceLocation(modelLocation, "normal"), modelGen);
-        models.put(new ModelResourceLocation(second, "normal"), modelGen);
+        final LegacyBakedModel resolved = dynamicModel.resolve(NullBakedModel.instance, stack, level, entity);
+        if (resolved == null || resolved == NullBakedModel.instance || resolved == dynamicModel) {
+            return null;
+        }
 
-        models.put(new ModelResourceLocation(modelLocation, "inventory"), modelGen);
-        models.put(new ModelResourceLocation(second, "inventory"), modelGen);
-
-        models.put(new ModelResourceLocation(modelLocation, "multipart"), modelGen);
-        models.put(new ModelResourceLocation(second, "multipart"), modelGen);
+        return resolved;
     }
 
-    public void onModelBakeEvent(ModelLoadingPlugin.Context context) {
-        setup();
-        for (final ICacheClearable c : clearable) {
-            c.clearCache();
-        }
-
-        context.modifyModelAfterBake()
-                .register((model, modifierContext) -> models.getOrDefault(modifierContext.id(), model));
+    private static Identifier itemId(final net.minecraft.world.item.Item item) {
+        return BuiltInRegistries.ITEM.getKey(item);
     }
 }

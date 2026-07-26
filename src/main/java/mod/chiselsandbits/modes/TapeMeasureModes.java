@@ -2,8 +2,9 @@ package mod.chiselsandbits.modes;
 
 import mod.chiselsandbits.core.Log;
 import mod.chiselsandbits.helpers.LocalStrings;
+import mod.chiselsandbits.helpers.ModUtil;
+import mod.chiselsandbits.registry.ModDataComponents;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.StringTag;
 import net.minecraft.world.item.ItemStack;
 
 public enum TapeMeasureModes implements IToolMode {
@@ -23,9 +24,15 @@ public enum TapeMeasureModes implements IToolMode {
     public static TapeMeasureModes getMode(final ItemStack stack) {
         if (stack != null) {
             try {
-                final CompoundTag nbt = stack.getTag();
-                if (nbt != null && nbt.contains("mode")) {
-                    return valueOf(nbt.getString("mode"));
+                final String component = stack.get(ModDataComponents.TOOL_MODE);
+                if (component != null) {
+                    return valueOf(component);
+                }
+                final CompoundTag nbt = ModUtil.getTagCompound(stack);
+                if (nbt.contains("mode")) {
+                    final TapeMeasureModes mode = valueOf(nbt.getStringOr("mode", BIT.name()));
+                    stack.set(ModDataComponents.TOOL_MODE, mode.name());
+                    return mode;
                 }
             } catch (final IllegalArgumentException iae) {
                 // nope!
@@ -48,7 +55,7 @@ public enum TapeMeasureModes implements IToolMode {
     @Override
     public void setMode(final ItemStack stack) {
         if (stack != null) {
-            stack.addTagElement("mode", StringTag.valueOf(name()));
+            stack.set(ModDataComponents.TOOL_MODE, name());
         }
     }
 

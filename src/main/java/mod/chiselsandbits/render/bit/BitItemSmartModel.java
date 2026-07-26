@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import java.util.HashMap;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
 import mod.chiselsandbits.client.model.baked.BaseSmartModel;
+import mod.chiselsandbits.client.model.baked.LegacyBakedModel;
 import mod.chiselsandbits.core.ClientSide;
 import mod.chiselsandbits.events.TickHandler;
 import mod.chiselsandbits.interfaces.ICacheClearable;
@@ -12,19 +13,18 @@ import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.render.ModelCombined;
 import mod.chiselsandbits.render.chiseledblock.ChiselRenderType;
 import mod.chiselsandbits.render.chiseledblock.ChiseledBlockBakedModel;
-import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 public class BitItemSmartModel extends BaseSmartModel implements ICacheClearable {
-    private static final HashMap<Integer, BakedModel> modelCache = new HashMap<Integer, BakedModel>();
-    private static final HashMap<Integer, BakedModel> largeModelCache = new HashMap<Integer, BakedModel>();
+    private static final HashMap<Integer, LegacyBakedModel> modelCache = new HashMap<>();
+    private static final HashMap<Integer, LegacyBakedModel> largeModelCache = new HashMap<>();
 
     private static final NonNullList<ItemStack> alternativeStacks = NonNullList.create();
 
-    private BakedModel getCachedModel(int stateID, final boolean large) {
+    private LegacyBakedModel getCachedModel(int stateID, final boolean large) {
         if (stateID == 0) {
             // We are running an empty bit, for display purposes.
             // Lets loop:
@@ -38,15 +38,15 @@ public class BitItemSmartModel extends BaseSmartModel implements ICacheClearable
             stateID = ItemChiseledBit.getStackState(alternativeStacks.get(alternativeIndex));
         }
 
-        final HashMap<Integer, BakedModel> target = large ? largeModelCache : modelCache;
-        BakedModel out = target.get(stateID);
+        final HashMap<Integer, LegacyBakedModel> target = large ? largeModelCache : modelCache;
+        LegacyBakedModel out = target.get(stateID);
 
         if (out == null) {
             if (large) {
                 final VoxelBlob blob = new VoxelBlob();
                 blob.fill(stateID);
                 ChiselRenderType[] layers = ChiselRenderType.values();
-                BakedModel[] models = new BakedModel[layers.length];
+                LegacyBakedModel[] models = new LegacyBakedModel[layers.length];
                 for (int i = 0; i < layers.length; i++) {
                     ChiselRenderType layer = layers[i];
                     models[i] = new ChiseledBlockBakedModel(stateID, layer, blob, DefaultVertexFormat.BLOCK, true);
@@ -62,13 +62,13 @@ public class BitItemSmartModel extends BaseSmartModel implements ICacheClearable
         return out;
     }
 
-    public BakedModel func_239290_a_(
-            final BakedModel originalModel, final ItemStack stack, final Level world, final LivingEntity entity) {
+    public LegacyBakedModel func_239290_a_(
+            final LegacyBakedModel originalModel, final ItemStack stack, final Level world, final LivingEntity entity) {
         return getCachedModel(ItemChiseledBit.getStackState(stack), ClientSide.instance.holdingShift());
     }
 
     @Override
-    public BakedModel resolve(BakedModel originalModel, ItemStack stack, Level world, LivingEntity entity) {
+    public LegacyBakedModel resolve(LegacyBakedModel originalModel, ItemStack stack, Level world, LivingEntity entity) {
         return func_239290_a_(originalModel, stack, world, entity);
     }
 

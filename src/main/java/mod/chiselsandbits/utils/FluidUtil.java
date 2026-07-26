@@ -5,11 +5,12 @@ import net.fabricmc.fabric.api.transfer.v1.client.fluid.FluidVariantRendering;
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidStorageUtil;
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant;
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage;
-import net.minecraft.Util;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.Util;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.material.Fluid;
@@ -30,7 +31,7 @@ public final class FluidUtil {
         } else if (fluid == Fluids.LAVA) {
             translationKey = "block.minecraft.lava";
         } else {
-            ResourceLocation id = BuiltInRegistries.FLUID.getKey(fluid);
+            Identifier id = BuiltInRegistries.FLUID.getKey(fluid);
             String key = Util.makeDescriptionId("block", id);
             String translated = I18n.get(key);
             translationKey = translated.equals(key) ? Util.makeDescriptionId("fluid", id) : key;
@@ -39,7 +40,7 @@ public final class FluidUtil {
         return translationKey;
     }
 
-    public static ResourceLocation getRegistryName(Fluid fluid) {
+    public static Identifier getRegistryName(Fluid fluid) {
         return BuiltInRegistries.FLUID.getKey(fluid);
     }
 
@@ -48,11 +49,21 @@ public final class FluidUtil {
     }
 
     public static TextureAtlasSprite getStillTexture(Fluid fluid) {
-        return FluidVariantRendering.getSprites(FluidVariant.of(fluid))[0];
+        return Minecraft.getInstance()
+                .getModelManager()
+                .getFluidStateModelSet()
+                .get(fluid.defaultFluidState())
+                .stillMaterial()
+                .sprite();
     }
 
     public static TextureAtlasSprite getFlowingTexture(Fluid fluid) {
-        return FluidVariantRendering.getSprites(FluidVariant.of(fluid))[1];
+        return Minecraft.getInstance()
+                .getModelManager()
+                .getFluidStateModelSet()
+                .get(fluid.defaultFluidState())
+                .flowingMaterial()
+                .sprite();
     }
 
     public static boolean interactWithFluidHandler(

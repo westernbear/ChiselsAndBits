@@ -3,15 +3,13 @@ package mod.chiselsandbits.client.model.baked;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.renderer.block.model.ItemOverrides;
-import net.minecraft.client.resources.model.BakedModel;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
-public abstract class BaseBakedItemModel extends BaseBakedPerspectiveModel implements BakedModel {
+public abstract class BaseBakedItemModel extends BaseBakedPerspectiveModel {
     protected ArrayList<BakedQuad> list = new ArrayList<BakedQuad>();
 
     @Override
@@ -39,7 +37,7 @@ public abstract class BaseBakedItemModel extends BaseBakedPerspectiveModel imple
     }
 
     @Override
-    public ItemOverrides getOverrides() {
-        return ItemOverrides.EMPTY;
+    public LegacyItemOverrides getOverrides() {
+        return LegacyItemOverrides.EMPTY;
     }
 }

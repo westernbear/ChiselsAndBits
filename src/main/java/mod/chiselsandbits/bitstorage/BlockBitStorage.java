@@ -68,8 +68,28 @@ public class BlockBitStorage extends Block implements EntityBlock {
     }
 
     @Override
-    public InteractionResult use(
+    protected InteractionResult useItemOn(
+            final ItemStack stack,
             final BlockState state,
+            final Level worldIn,
+            final BlockPos pos,
+            final Player player,
+            final InteractionHand handIn,
+            final BlockHitResult hit) {
+        return interact(worldIn, pos, player, handIn, hit);
+    }
+
+    @Override
+    protected InteractionResult useWithoutItem(
+            final BlockState state,
+            final Level worldIn,
+            final BlockPos pos,
+            final Player player,
+            final BlockHitResult hit) {
+        return interact(worldIn, pos, player, InteractionHand.MAIN_HAND, hit);
+    }
+
+    private InteractionResult interact(
             final Level worldIn,
             final BlockPos pos,
             final Player player,
@@ -77,7 +97,7 @@ public class BlockBitStorage extends Block implements EntityBlock {
             final BlockHitResult hit) {
         try {
             final TileEntityBitStorage tank = getTileEntity(worldIn, pos);
-            final ItemStack current = ModUtil.nonNull(player.inventory.getSelected());
+            final ItemStack current = ModUtil.nonNull(player.getItemInHand(handIn));
 
             if (!ModUtil.isEmpty(current)) {
                 if (FluidUtil.interactWithFluidHandler(player, handIn, tank.getFluidStorage(null))) {
@@ -129,10 +149,11 @@ public class BlockBitStorage extends Block implements EntityBlock {
     }
 
     @Override
-    public ItemStack getCloneItemStack(final LevelReader level, final BlockPos pos, final BlockState state) {
+    protected ItemStack getCloneItemStack(
+            final LevelReader level, final BlockPos pos, final BlockState state, final boolean includeData) {
         final BlockEntity blockEntity = level.getBlockEntity(pos);
         return blockEntity instanceof TileEntityBitStorage bitTank
                 ? getTankDrop(bitTank)
-                : super.getCloneItemStack(level, pos, state);
+                : super.getCloneItemStack(level, pos, state, includeData);
     }
 }

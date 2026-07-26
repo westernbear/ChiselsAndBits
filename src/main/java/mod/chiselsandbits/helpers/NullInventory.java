@@ -1,6 +1,7 @@
 package mod.chiselsandbits.helpers;
 
 import net.minecraft.world.Container;
+import net.minecraft.world.entity.ContainerUser;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
@@ -49,10 +50,10 @@ public class NullInventory implements Container {
     }
 
     @Override
-    public void startOpen(final Player player) {}
+    public void startOpen(final ContainerUser player) {}
 
     @Override
-    public void stopOpen(final Player player) {}
+    public void stopOpen(final ContainerUser player) {}
 
     @Override
     public boolean canPlaceItem(final int index, final ItemStack stack) {

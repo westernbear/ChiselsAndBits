@@ -1,9 +1,9 @@
 package mod.chiselsandbits.config;
 
-import fuzs.forgeconfigapiport.fabric.api.forge.v4.ForgeConfigRegistry;
+import fuzs.forgeconfigapiport.fabric.api.v5.ConfigRegistry;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.fml.config.ModConfig;
+import net.neoforged.fml.config.ModConfig;
 import org.apache.commons.lang3.tuple.Pair;
 
 /**
@@ -34,9 +34,9 @@ public class Configuration {
         serverConfigSpec = ser.getRight();
         commonConfigSpec = com.getRight();
 
-        ForgeConfigRegistry.INSTANCE.register(ChiselsAndBits.MODID, ModConfig.Type.COMMON, commonConfigSpec);
-        ForgeConfigRegistry.INSTANCE.register(ChiselsAndBits.MODID, ModConfig.Type.CLIENT, clientConfigSpec);
-        ForgeConfigRegistry.INSTANCE.register(ChiselsAndBits.MODID, ModConfig.Type.SERVER, serverConfigSpec);
+        ConfigRegistry.INSTANCE.register(ChiselsAndBits.MODID, ModConfig.Type.COMMON, commonConfigSpec);
+        ConfigRegistry.INSTANCE.register(ChiselsAndBits.MODID, ModConfig.Type.CLIENT, clientConfigSpec);
+        ConfigRegistry.INSTANCE.register(ChiselsAndBits.MODID, ModConfig.Type.SERVER, serverConfigSpec);
     }
 
     public ClientConfiguration getClient() {

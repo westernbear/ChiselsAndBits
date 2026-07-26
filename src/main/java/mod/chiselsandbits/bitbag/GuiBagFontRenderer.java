@@ -1,106 +1,35 @@
 package mod.chiselsandbits.bitbag;
 
-import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.MultiBufferSource;
-import org.joml.Matrix4f;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
-public class GuiBagFontRenderer extends Font {
-    Font talkto;
+public class GuiBagFontRenderer {
+    private final Font font;
+    private final int offsetX;
+    private final int offsetY;
+    private final float scale;
 
-    int offsetX, offsetY;
-    float scale;
-
-    public GuiBagFontRenderer(final Font src, final int bagStackSize) {
-        super(src.fonts, false);
-        talkto = src;
-
-        if (bagStackSize < 100) {
-            scale = 1f;
-        } else if (bagStackSize >= 100) {
-            scale = 0.75f;
-            offsetX = 3;
-            offsetY = 2;
-        }
+    public GuiBagFontRenderer(final Font font, final int bagStackSize) {
+        this.font = font;
+        scale = bagStackSize < 100 ? 1f : 0.75f;
+        offsetX = bagStackSize < 100 ? 0 : 3;
+        offsetY = bagStackSize < 100 ? 0 : 2;
     }
 
-    @Override
-    public int width(String text) {
-        text = convertText(text);
-        return talkto.width(text);
-    }
-
-    @Override
-    protected int drawInternal(
-            String text,
-            float x,
-            float y,
-            int color,
-            boolean dropShadow,
-            Matrix4f matrix,
-            MultiBufferSource multiBufferSource,
-            DisplayMode displayMode,
-            int j,
-            int k,
-            boolean bl2) {
-        final PoseStack stack = new PoseStack();
-        final Matrix4f original = new Matrix4f(matrix);
-
-        try {
-            stack.last().pose().mul(matrix);
-            stack.scale(scale, scale, scale);
-
-            x /= scale;
-            y /= scale;
-            x += offsetX;
-            y += offsetY;
-
-            return super.drawInternal(text, x, y, color, dropShadow, matrix, multiBufferSource, displayMode, j, k, bl2);
-        } finally {
-            matrix.set(original);
+    public void extractCount(final GuiGraphicsExtractor graphics, final int count, final int x, final int y) {
+        if (count == 1) {
+            return;
         }
-    }
 
-    @Override
-    public int drawInBatch(
-            String text,
-            float x,
-            float y,
-            int color,
-            boolean dropShadow,
-            Matrix4f matrix,
-            MultiBufferSource buffer,
-            DisplayMode displayMode,
-            int colorBackgroundIn,
-            int packedLight,
-            boolean transparentIn) {
-        final PoseStack stack = new PoseStack();
-        final Matrix4f original = new Matrix4f(matrix);
+        final String text = convertText(Integer.toString(count));
+        final int textX = x + 17 - font.width(text);
+        final int textY = y + 9;
 
-        try {
-            stack.last().pose().mul(matrix);
-            stack.scale(scale, scale, scale);
-
-            x /= scale;
-            y /= scale;
-            x += offsetX;
-            y += offsetY;
-
-            return super.drawInBatch(
-                    text,
-                    x,
-                    y,
-                    color,
-                    dropShadow,
-                    matrix,
-                    buffer,
-                    displayMode,
-                    colorBackgroundIn,
-                    packedLight,
-                    transparentIn);
-        } finally {
-            matrix.set(original);
-        }
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(textX, textY);
+        graphics.pose().scale(scale, scale);
+        graphics.text(font, text, offsetX, offsetY, -1, true);
+        graphics.pose().popMatrix();
     }
 
     private String convertText(final String text) {

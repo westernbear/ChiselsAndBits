@@ -1,9 +1,8 @@
 package mod.chiselsandbits.helpers;
 
-import com.jamieswhiteshirt.reachentityattributes.ReachEntityAttributes;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -15,20 +14,25 @@ import mod.chiselsandbits.chiseledblock.NBTBlobConverter;
 import mod.chiselsandbits.chiseledblock.TileEntityBlockChiseled;
 import mod.chiselsandbits.chiseledblock.data.IntegerBox;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
+import mod.chiselsandbits.components.ChiseledData;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.helpers.StateLookup.CachedStateLookup;
 import mod.chiselsandbits.items.ItemBitBag;
 import mod.chiselsandbits.items.ItemChiseledBit;
+import mod.chiselsandbits.registry.ModDataComponents;
 import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.render.chiseledblock.ChiselRenderType;
 import mod.chiselsandbits.render.helpers.SimpleInstanceCache;
 import mod.chiselsandbits.utils.SingleBlockBlockReader;
-import net.minecraft.client.renderer.ItemBlockRenderTypes;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.Container;
@@ -38,13 +42,14 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.DirtPathBlock;
-import net.minecraft.world.level.block.FarmBlock;
+import net.minecraft.world.level.block.FarmlandBlock;
 import net.minecraft.world.level.block.FireBlock;
 import net.minecraft.world.level.block.FlowerPotBlock;
 import net.minecraft.world.level.block.Rotation;
@@ -69,8 +74,8 @@ public class ModUtil {
     private static final Random RAND = new Random();
     private static final float DEG_TO_RAD = 0.017453292f;
 
-    private static final SimpleInstanceCache<CompoundTag, VoxelBlob> STACK_VOXEL_BLOB_SIMPLE_INSTANCE_CACHE =
-            new SimpleInstanceCache<>(new CompoundTag(), null);
+    private static final SimpleInstanceCache<ChiseledData, VoxelBlob> STACK_VOXEL_BLOB_SIMPLE_INSTANCE_CACHE =
+            new SimpleInstanceCache<>(null, null);
     private static StateLookup IDRelay = new StateLookup();
 
     public static Direction getPlaceFace(final LivingEntity placer) {
@@ -81,14 +86,14 @@ public class ModUtil {
     }
 
     public static Pair<Vec3, Vec3> getPlayerRay(final Player playerIn) {
-        double reachDistance = 5.0d;
+        final double reachDistance = playerIn.blockInteractionRange();
 
         final double x = playerIn.xo + (playerIn.getX() - playerIn.xo);
         final double y = playerIn.yo + (playerIn.getY() - playerIn.yo) + playerIn.getEyeHeight();
         final double z = playerIn.zo + (playerIn.getZ() - playerIn.zo);
 
-        final float playerPitch = playerIn.xRotO + (playerIn.xRot - playerIn.xRotO);
-        final float playerYaw = playerIn.yRotO + (playerIn.yRot - playerIn.yRotO);
+        final float playerPitch = playerIn.getXRot();
+        final float playerYaw = playerIn.getYRot();
 
         final float yawRayX = Mth.sin(-playerYaw * DEG_TO_RAD - (float) Math.PI);
         final float yawRayZ = Mth.cos(-playerYaw * DEG_TO_RAD - (float) Math.PI);
@@ -97,12 +102,6 @@ public class ModUtil {
         final float eyeRayY = Mth.sin(-playerPitch * DEG_TO_RAD);
         final float eyeRayX = yawRayX * pitchMultiplier;
         final float eyeRayZ = yawRayZ * pitchMultiplier;
-
-        if (playerIn instanceof ServerPlayer) {
-
-            reachDistance = ReachEntityAttributes.getReachDistance(
-                    playerIn, ReachEntityAttributes.ATTACK_RANGE.getDefaultValue());
-        }
 
         final Vec3 from = new Vec3(x, y, z);
         final Vec3 to = from.add(eyeRayX * reachDistance, eyeRayY * reachDistance, eyeRayZ * reachDistance);
@@ -141,31 +140,73 @@ public class ModUtil {
     }
 
     public static ChiselRenderType[] getRenderType(BlockState state) {
-        RenderType renderType = ItemBlockRenderTypes.getChunkRenderType(state);
-
-        if (state.getFluidState().isEmpty()) {
-            return new ChiselRenderType[] {ChiselRenderType.fromLayer(renderType, false)};
+        final LinkedHashSet<ChiselRenderType> result = new LinkedHashSet<>();
+        for (final ChunkSectionLayer layer : getBlockRenderLayers(state)) {
+            result.add(ChiselRenderType.fromLayer(layer, false));
         }
 
-        renderType = ItemBlockRenderTypes.getRenderLayer(state.getFluidState());
-
-        return new ChiselRenderType[] {
-            ChiselRenderType.fromLayer(renderType, false), ChiselRenderType.fromLayer(renderType, true)
-        };
-    }
-
-    public static RenderType get(BlockState state) {
         if (!state.getFluidState().isEmpty()) {
-            return ItemBlockRenderTypes.getRenderLayer(state.getFluidState());
+            result.add(ChiselRenderType.fromLayer(getFluidRenderLayer(state), true));
         }
-        return ItemBlockRenderTypes.getChunkRenderType(state);
+
+        return result.toArray(ChiselRenderType[]::new);
     }
 
-    public static Set<RenderType> extractRenderTypes(VoxelBlob blob) {
+    public static Set<ChunkSectionLayer> getBlockRenderLayers(final BlockState state) {
+        final LinkedHashSet<ChunkSectionLayer> result = new LinkedHashSet<>();
+        if (state == null || state.isAir()) {
+            return result;
+        }
+
+        final BlockStateModel model = Minecraft.getInstance()
+                .getModelManager()
+                .getBlockStateModelSet()
+                .get(state);
+        final List<BlockStateModelPart> parts = new ArrayList<>();
+        model.collectParts(RandomSource.create(42L), parts);
+
+        for (final BlockStateModelPart part : parts) {
+            collectLayers(result, part.getQuads(null));
+            for (final Direction direction : Direction.values()) {
+                collectLayers(result, part.getQuads(direction));
+            }
+        }
+
+        if (result.isEmpty() && state.getFluidState().isEmpty()) {
+            result.add(ChunkSectionLayer.SOLID);
+        }
+
+        return result;
+    }
+
+    private static void collectLayers(final Set<ChunkSectionLayer> target, final List<BakedQuad> quads) {
+        for (final BakedQuad quad : quads) {
+            target.add(quad.materialInfo().layer());
+        }
+    }
+
+    public static ChunkSectionLayer getFluidRenderLayer(final BlockState state) {
+        return Minecraft.getInstance()
+                .getModelManager()
+                .getFluidStateModelSet()
+                .get(state.getFluidState())
+                .layer();
+    }
+
+    public static ChunkSectionLayer get(final BlockState state) {
+        if (!state.getFluidState().isEmpty() && ModUtil.isFluid(state)) {
+            return getFluidRenderLayer(state);
+        }
+
+        return getBlockRenderLayers(state).stream().findFirst().orElse(ChunkSectionLayer.SOLID);
+    }
+
+    public static Set<ChunkSectionLayer> extractRenderTypes(VoxelBlob blob) {
         return getAllStates(blob).stream()
                 .map(ModUtil::getStateById)
                 .filter(state -> !state.isAir())
-                .map(ModUtil::get)
+                .flatMap(state -> Stream.of(getRenderType(state)))
+                .map(renderType -> renderType.layer)
                 .collect(Collectors.toSet());
     }
 
@@ -392,18 +433,12 @@ public class ModUtil {
     }
 
     public static VoxelBlob getBlobFromStack(final ItemStack stack, final LivingEntity rotationPlayer) {
-        if (stack.hasTag()) {
+        final ChiseledData data = NBTBlobConverter.getComponent(stack);
+        if (data != null) {
             VoxelBlob blob;
-            CompoundTag cData = getSubCompound(stack, NBT_BLOCKENTITYTAG, false);
-
-            if (STACK_VOXEL_BLOB_SIMPLE_INSTANCE_CACHE.needsUpdate(cData)) {
+            if (STACK_VOXEL_BLOB_SIMPLE_INSTANCE_CACHE.needsUpdate(data)) {
                 final NBTBlobConverter tmp = new NBTBlobConverter();
-
-                if (cData.size() == 0) {
-                    cData = stack.getTag();
-                }
-
-                tmp.readChisleData(cData, VoxelBlob.VERSION_ANY);
+                tmp.readChisleData(data, VoxelBlob.VERSION_ANY);
                 blob = tmp.getBlob();
                 STACK_VOXEL_BLOB_SIMPLE_INSTANCE_CACHE.updateCachedValue(new VoxelBlob(blob));
             } else {
@@ -437,15 +472,15 @@ public class ModUtil {
         if (block.equals(Blocks.LAVA)) {
             return Items.LAVA_BUCKET;
         } else if (block instanceof CropBlock) {
-            final ItemStack stack = block.getCloneItemStack(null, null, blockState);
-            if (stack != null) {
-                return stack.getItem();
+            final Item item = block.asItem();
+            if (item != Items.AIR) {
+                return item;
             }
 
             return Items.WHEAT_SEEDS;
         }
         // oh no...
-        else if (block instanceof FarmBlock || block instanceof DirtPathBlock) {
+        else if (block instanceof FarmlandBlock || block instanceof DirtPathBlock) {
             return getItemFromBlock(Blocks.DIRT);
         } else if (block instanceof FireBlock) {
             return Items.FLINT_AND_STEEL;
@@ -476,11 +511,7 @@ public class ModUtil {
         final Item item = getItem(blockState);
         if (item != Items.AIR && item != null) {
             if (item instanceof BlockItem blockItem) {
-                Block block = blockItem.getBlock();
-                try {
-                    return block.getCloneItemStack(null, null, blockState);
-                } catch (Exception e) {
-                }
+                return new ItemStack(blockItem.getBlock().asItem());
             }
             return new ItemStack(item, 1);
         }
@@ -488,9 +519,9 @@ public class ModUtil {
         return new ItemStack(blockState.getBlock(), 1);
     }
 
-    public static boolean support(int primaryStateId, RenderType renderType) {
-        BlockState blockState = ModUtil.getStateById(primaryStateId);
-        return ItemBlockRenderTypes.getChunkRenderType(blockState) == renderType;
+    public static boolean support(int primaryStateId, ChunkSectionLayer renderType) {
+        final BlockState blockState = ModUtil.getStateById(primaryStateId);
+        return getBlockRenderLayers(blockState).contains(renderType);
     }
 
     @Nullable
@@ -518,57 +549,42 @@ public class ModUtil {
     }
 
     public static Direction getSide(final ItemStack stack) {
-        if (stack != null) {
-            final CompoundTag blueprintTag = stack.getTag();
-
-            int byteValue = Direction.NORTH.ordinal();
-
-            if (blueprintTag == null) {
-                return Direction.NORTH;
-            }
-
-            if (blueprintTag.contains(NBT_SIDE)) {
-                byteValue = blueprintTag.getByte(NBT_SIDE);
-            }
-
-            if (blueprintTag.contains(NBT_BLOCKENTITYTAG)) {
-                final CompoundTag c = blueprintTag.getCompound(NBT_BLOCKENTITYTAG);
-                if (c.contains(NBT_SIDE)) {
-                    byteValue = c.getByte(NBT_SIDE);
-                }
-            }
-
-            Direction side = Direction.NORTH;
-
-            if (byteValue >= 0 && byteValue < Direction.values().length) {
-                side = Direction.values()[byteValue];
-            }
-
-            if (side == Direction.DOWN || side == Direction.UP) {
-                side = Direction.NORTH;
-            }
-
-            return side;
+        if (stack == null || stack.isEmpty()) {
+            return Direction.NORTH;
         }
 
-        return Direction.NORTH;
+        Direction side = stack.get(ModDataComponents.PLACEMENT_SIDE);
+        if (side == null) {
+            NBTBlobConverter.getComponent(stack);
+            side = stack.get(ModDataComponents.PLACEMENT_SIDE);
+        }
+
+        return side == null || side.getAxis() == Direction.Axis.Y ? Direction.NORTH : side;
     }
 
     public static void setSide(final ItemStack stack, final Direction side) {
-        if (stack != null) {
-            CompoundTag blueprintTag = stack.getTag();
-
-            if (blueprintTag == null) {
-                blueprintTag = new CompoundTag();
-            }
-            if (blueprintTag.contains(NBT_BLOCKENTITYTAG)) {
-                blueprintTag.getCompound(NBT_BLOCKENTITYTAG).putByte(NBT_SIDE, (byte) +side.ordinal());
-            }
-
-            blueprintTag.putInt(NBT_SIDE, +side.ordinal());
-
-            stack.setTag(blueprintTag);
+        if (stack == null || stack.isEmpty()) {
+            return;
         }
+
+        stack.set(
+                ModDataComponents.PLACEMENT_SIDE,
+                side == null || side.getAxis() == Direction.Axis.Y ? Direction.NORTH : side);
+
+        final CompoundTag legacy = getTagCompound(stack);
+        legacy.remove(NBT_SIDE);
+        if (legacy.contains(NBT_BLOCKENTITYTAG)) {
+            final CompoundTag nested = legacy.getCompoundOrEmpty(NBT_BLOCKENTITYTAG);
+            nested.remove(NBT_SIDE);
+            if (nested.isEmpty()) {
+                legacy.remove(NBT_BLOCKENTITYTAG);
+            }
+        }
+        setTagCompound(stack, legacy);
+    }
+
+    public static boolean hasChiseledData(final ItemStack stack) {
+        return NBTBlobConverter.hasChiseledData(stack);
     }
 
     public static BlockState getStateById(final int blockStateID) {
@@ -599,13 +615,13 @@ public class ModUtil {
     }
 
     public static CompoundTag getSubCompound(final ItemStack stack, final String tag, final boolean create) {
-        if (create) {
-            if (!stack.getOrCreateTag().contains(tag)) {
-                Objects.requireNonNull(stack.getTag()).put(tag, new CompoundTag());
-            }
+        final CompoundTag root = getTagCompound(stack);
+        if (!root.contains(tag) && create) {
+            root.put(tag, new CompoundTag());
+            setTagCompound(stack, root);
         }
 
-        return stack.getOrCreateTag().getCompound(tag);
+        return root.getCompoundOrEmpty(tag);
     }
 
     public static @NotNull ItemStack getEmptyStack() {
@@ -621,7 +637,21 @@ public class ModUtil {
     }
 
     public static @NotNull CompoundTag getTagCompound(final ItemStack ei) {
-        return ei.getOrCreateTag();
+        final CustomData customData = ei.get(DataComponents.CUSTOM_DATA);
+        return customData == null ? new CompoundTag() : customData.copyTag();
+    }
+
+    public static boolean hasTag(final ItemStack stack) {
+        final CustomData customData = stack == null ? null : stack.get(DataComponents.CUSTOM_DATA);
+        return customData != null && !customData.isEmpty();
+    }
+
+    public static void setTagCompound(final ItemStack stack, @Nullable final CompoundTag tag) {
+        if (tag == null || tag.isEmpty()) {
+            stack.remove(DataComponents.CUSTOM_DATA);
+        } else {
+            CustomData.set(DataComponents.CUSTOM_DATA, stack, tag);
+        }
     }
 
     @SuppressWarnings("deprecation")
@@ -641,7 +671,8 @@ public class ModUtil {
 
     public static void damageItem(@NotNull final ItemStack is, @NotNull final RandomSource r) {
         if (is.isDamageableItem()) {
-            if (is.hurt(1, r, null)) {
+            is.setDamageValue(is.getDamageValue() + 1);
+            if (is.isBroken()) {
                 is.shrink(1);
                 is.setDamageValue(0);
             }

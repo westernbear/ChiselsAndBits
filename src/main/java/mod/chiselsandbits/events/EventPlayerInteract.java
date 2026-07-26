@@ -51,13 +51,6 @@ public class EventPlayerInteract {
         if ((is.getItem() instanceof ItemChisel || is.getItem() instanceof ItemChiseledBit) && validEvent) {
             final BlockState state = world.getBlockState(pos);
             if (BlockBitInfo.canChisel(state)) {
-                if (world.isClientSide) {
-                    // this is called when the player is survival -
-                    // client side.
-                    is.getItem().canAttackBlock(state, world, pos, player);
-                    //                    is.getItem().onBlockStartBreak(is, event.getPos(), event.getPlayer());
-                }
-
                 // cancel interactions vs chiseable blocks, creative is
                 // magic.
                 return InteractionResult.FAIL;
@@ -76,14 +69,14 @@ public class EventPlayerInteract {
     private static InteractionResult testInteractionSupression(
             Player player, Level world, InteractionHand hand, BlockHitResult hitResult) {
         // client is dragging...
-        if (world.isClientSide) {
+        if (world.isClientSide()) {
             if (ClientSide.instance.getStartPos() != null) {
                 return InteractionResult.FAIL;
             }
         }
         ItemStack itemEntity = player.getItemInHand(hand);
         // server is supressed.
-        if (!world.isClientSide && itemEntity != null) {
+        if (!world.isClientSide() && itemEntity != null) {
             if (serverSuppressEvent.containsKey(player)) {
                 return InteractionResult.FAIL;
             }
@@ -93,14 +86,14 @@ public class EventPlayerInteract {
 
     private static InteractionResult testInteractionSupression(Level level, Player player) {
         // client is dragging...
-        if (level.isClientSide) {
+        if (level.isClientSide()) {
             if (ClientSide.instance.getStartPos() != null) {
                 return InteractionResult.FAIL;
             }
         }
 
         // server is supressed.
-        if (!level.isClientSide) {
+        if (!level.isClientSide()) {
             if (serverSuppressEvent.containsKey(player)) {
                 return InteractionResult.FAIL;
             }

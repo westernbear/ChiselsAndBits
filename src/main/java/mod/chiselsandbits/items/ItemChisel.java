@@ -1,14 +1,16 @@
 package mod.chiselsandbits.items;
 
-import static net.minecraft.world.item.Tiers.DIAMOND;
-import static net.minecraft.world.item.Tiers.GOLD;
-import static net.minecraft.world.item.Tiers.IRON;
-import static net.minecraft.world.item.Tiers.WOOD;
+import static net.minecraft.world.item.ToolMaterial.DIAMOND;
+import static net.minecraft.world.item.ToolMaterial.GOLD;
+import static net.minecraft.world.item.ToolMaterial.IRON;
+import static net.minecraft.world.item.ToolMaterial.NETHERITE;
+import static net.minecraft.world.item.ToolMaterial.WOOD;
 
-import com.communi.suggestu.saecularia.caudices.core.block.IBlockWithWorldlyProperties;
 import com.google.common.base.Stopwatch;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
 import mod.chiselsandbits.chiseledblock.BlockChiseled;
 import mod.chiselsandbits.chiseledblock.data.BitLocation;
@@ -39,15 +41,15 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.DiggerItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.Tier;
+import net.minecraft.world.item.ToolMaterial;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
@@ -58,15 +60,32 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-public class ItemChisel extends DiggerItem implements IItemScrollWheel, IChiselModeItem {
+public class ItemChisel extends Item implements IItemScrollWheel, IChiselModeItem {
     private static final float one_16th = 1.0f / 16.0f;
     private static Stopwatch timer;
     private static boolean testingChisel = false;
+    private final ToolMaterial material;
 
-    public ItemChisel(final Tier material, final Item.Properties properties) {
-        super(0.1F, -2.8F, material, ModTags.Blocks.CHISELED_BLOCK, properties);
+    public ItemChisel(final ToolMaterial material, final Item.Properties properties) {
+        super(properties.tool(material, ModTags.Blocks.CHISELED_BLOCK, 0.1F, -2.8F, 0.0F));
+        this.material = material;
+    }
+
+    public int getMaterialLevel() {
+        if (NETHERITE.equals(material)) {
+            return 4;
+        }
+        if (DIAMOND.equals(material)) {
+            return 3;
+        }
+        if (IRON.equals(material)) {
+            return 2;
+        }
+        if (GOLD.equals(material) || WOOD.equals(material)) {
+            return 0;
+        }
+        return 1;
     }
 
     public static void resetDelay() {
@@ -79,7 +98,7 @@ public class ItemChisel extends DiggerItem implements IItemScrollWheel, IChiselM
             final @NotNull BlockPos pos,
             final Player player,
             final InteractionHand hand) {
-        final BlockState state = player.getCommandSenderWorld().getBlockState(pos);
+        final BlockState state = player.level().getBlockState(pos);
         if (ItemChiseledBit.checkRequiredSpace(player, state)) {
             return false;
         }
@@ -94,7 +113,7 @@ public class ItemChisel extends DiggerItem implements IItemScrollWheel, IChiselM
                     final ClipContext context =
                             new ClipContext(ray_from, ray_to, ClipContext.Block.VISUAL, ClipContext.Fluid.NONE, player);
 
-                    final HitResult mop = player.level.clip(context);
+                    final HitResult mop = player.level().clip(context);
                     if (mop != null && mop instanceof BlockHitResult rayTraceResult) {
                         final BitLocation loc = new BitLocation(rayTraceResult, BitOperation.CHISEL);
                         ClientSide.instance.pointAt(ChiselToolType.CHISEL, loc, hand);
@@ -104,7 +123,7 @@ public class ItemChisel extends DiggerItem implements IItemScrollWheel, IChiselM
                     return true;
                 }
 
-                if (!player.level.isClientSide) {
+                if (!player.level().isClientSide()) {
                     return true;
                 }
 
@@ -114,7 +133,7 @@ public class ItemChisel extends DiggerItem implements IItemScrollWheel, IChiselM
                 final ClipContext context =
                         new ClipContext(ray_from, ray_to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player);
 
-                BlockHitResult mop = player.level.clip(context);
+                BlockHitResult mop = player.level().clip(context);
                 if (mop.getType() != HitResult.Type.MISS) {
                     if ((Minecraft.getInstance().hitResult != null
                                     ? Minecraft.getInstance().hitResult.getType()
@@ -129,14 +148,14 @@ public class ItemChisel extends DiggerItem implements IItemScrollWheel, IChiselM
                         }
                     }
 
-                    useChisel(mode, player, player.level, mop, hand);
+                    useChisel(mode, player, player.level(), mop, hand);
                 }
             }
 
             return true;
         }
 
-        if (player.getCommandSenderWorld().isClientSide) {
+        if (player.level().isClientSide()) {
             return ClientSide.instance.getStartPos() != null;
         }
 
@@ -204,7 +223,7 @@ public class ItemChisel extends DiggerItem implements IItemScrollWheel, IChiselM
             return output;
         }
 
-        if (!world.isClientSide && !isCreative) {
+        if (!world.isClientSide() && !isCreative) {
             double hitX = x * one_16th;
             double hitY = y * one_16th;
             double hitZ = z * one_16th;
@@ -259,10 +278,8 @@ public class ItemChisel extends DiggerItem implements IItemScrollWheel, IChiselM
                 BlockChiseled.setActingAs(state);
                 testingChisel = true;
                 chiselSlot.swapWithWeapon();
-                boolean canHarvest = false;
-                if (blk instanceof IBlockWithWorldlyProperties prop) {
-                    canHarvest = prop.canHarvestBlock(world.getBlockState(pos), world, pos, player);
-                }
+                boolean canHarvest = blk instanceof BlockChiseled block
+                        && block.canHarvestBlock(world.getBlockState(pos), world, pos, player);
                 chiselSlot.swapWithWeapon();
                 testingChisel = false;
                 BlockChiseled.setActingAs(null);
@@ -287,26 +304,33 @@ public class ItemChisel extends DiggerItem implements IItemScrollWheel, IChiselM
     @Override
     public void appendHoverText(
             final ItemStack stack,
-            @Nullable final Level worldIn,
-            final List<Component> tooltip,
+            final TooltipContext context,
+            final TooltipDisplay display,
+            final Consumer<Component> tooltip,
             final TooltipFlag flagIn) {
-        super.appendHoverText(stack, worldIn, tooltip, flagIn);
+        super.appendHoverText(stack, context, display, tooltip, flagIn);
+        final List<Component> helpText = new ArrayList<>();
         ChiselsAndBits.getConfig()
                 .getCommon()
                 .helpText(
                         LocalStrings.HelpChisel,
-                        tooltip,
+                        helpText,
                         ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyAttack),
                         ClientSide.instance.getModeKey());
+        helpText.forEach(tooltip);
     }
 
     @Override
-    public boolean canAttackBlock(BlockState blockState, Level level, BlockPos pos, Player player) {
-        ItemStack itemStack = player.getItemInHand(player.getUsedItemHand());
+    public boolean canDestroyBlock(
+            ItemStack stack, BlockState blockState, Level level, BlockPos pos, LivingEntity entity) {
+        if (!(entity instanceof Player player)) {
+            return true;
+        }
+
         return ItemChisel.fromBreakToChisel(
                 ChiselMode.castMode(
                         ChiselModeManager.getChiselMode(player, ChiselToolType.CHISEL, InteractionHand.MAIN_HAND)),
-                itemStack,
+                stack,
                 pos,
                 player,
                 InteractionHand.MAIN_HAND);
@@ -338,18 +362,15 @@ public class ItemChisel extends DiggerItem implements IItemScrollWheel, IChiselM
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(
-            final Level worldIn, final Player playerIn, final InteractionHand hand) {
-        final ItemStack itemStackIn = playerIn.getItemInHand(hand);
-
-        if (worldIn.isClientSide
+    public InteractionResult use(final Level worldIn, final Player playerIn, final InteractionHand hand) {
+        if (worldIn.isClientSide()
                 && ChiselsAndBits.getConfig()
                         .getClient()
                         .enableRightClickModeChange
                         .get()) {
             final IToolMode mode = ChiselModeManager.getChiselMode(playerIn, ChiselToolType.CHISEL, hand);
             ChiselModeManager.scrollOption(ChiselToolType.CHISEL, mode, mode, playerIn.isShiftKeyDown() ? -1 : 1);
-            return new InteractionResultHolder<>(InteractionResult.SUCCESS, itemStackIn);
+            return InteractionResult.SUCCESS;
         }
 
         return super.use(worldIn, playerIn, hand);
@@ -357,7 +378,7 @@ public class ItemChisel extends DiggerItem implements IItemScrollWheel, IChiselM
 
     @Override
     public InteractionResult useOn(UseOnContext context) {
-        if (context.getLevel().isClientSide
+        if (context.getLevel().isClientSide()
                 && ChiselsAndBits.getConfig()
                         .getClient()
                         .enableRightClickModeChange
@@ -370,10 +391,10 @@ public class ItemChisel extends DiggerItem implements IItemScrollWheel, IChiselM
     }
 
     @Override
-    public boolean isCorrectToolForDrops(final BlockState blk) {
+    public boolean isCorrectToolForDrops(final ItemStack stack, final BlockState blk) {
         Item it;
 
-        final Tier tier = getTier();
+        final ToolMaterial tier = material;
         if (DIAMOND.equals(tier)) {
             it = Items.DIAMOND_PICKAXE;
         } else if (GOLD.equals(tier)) {
@@ -386,7 +407,7 @@ public class ItemChisel extends DiggerItem implements IItemScrollWheel, IChiselM
             it = Items.STONE_PICKAXE;
         }
 
-        return blk.getBlock() instanceof BlockChiseled || it.isCorrectToolForDrops(blk);
+        return blk.getBlock() instanceof BlockChiseled || it.isCorrectToolForDrops(new ItemStack(it), blk);
     }
 
     //    @Override

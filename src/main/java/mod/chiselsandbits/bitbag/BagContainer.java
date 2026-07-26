@@ -25,6 +25,7 @@ public class BagContainer extends AbstractContainerMenu {
     static final int OUTER_SLOT_SIZE = 18;
     public final List<Slot> customSlots = new ArrayList<Slot>();
     public final List<ItemStack> customSlotsItems = new ArrayList<ItemStack>();
+    private final List<ContainerListener> bagListeners = new ArrayList<>();
     final Player thePlayer;
     final TargetedInventory visibleInventory = new TargetedInventory();
     BagInventory bagInv;
@@ -33,6 +34,7 @@ public class BagContainer extends AbstractContainerMenu {
     public BagContainer(final int id, final Inventory playerInventory) {
         super(ModContainerTypes.BAG_CONTAINER.get(), id);
         thePlayer = playerInventory.player;
+        final Inventory inventory = thePlayer.getInventory();
 
         final int playerInventoryOffset = (7 - 4) * OUTER_SLOT_SIZE;
 
@@ -52,7 +54,7 @@ public class BagContainer extends AbstractContainerMenu {
         for (int xPlayerInventory = 0; xPlayerInventory < 3; ++xPlayerInventory) {
             for (int yPlayerInventory = 0; yPlayerInventory < 9; ++yPlayerInventory) {
                 addSlot(new Slot(
-                        thePlayer.inventory,
+                        inventory,
                         yPlayerInventory + xPlayerInventory * 9 + 9,
                         8 + yPlayerInventory * OUTER_SLOT_SIZE,
                         104 + xPlayerInventory * OUTER_SLOT_SIZE + playerInventoryOffset));
@@ -60,16 +62,12 @@ public class BagContainer extends AbstractContainerMenu {
         }
 
         for (int xToolbar = 0; xToolbar < 9; ++xToolbar) {
-            if (thePlayer.inventory.selected == xToolbar) {
+            if (inventory.getSelectedSlot() == xToolbar) {
                 addSlot(
                         bagSlot = new SlotReadonly(
-                                thePlayer.inventory,
-                                xToolbar,
-                                8 + xToolbar * OUTER_SLOT_SIZE,
-                                162 + playerInventoryOffset));
+                                inventory, xToolbar, 8 + xToolbar * OUTER_SLOT_SIZE, 162 + playerInventoryOffset));
             } else {
-                addSlot(new Slot(
-                        thePlayer.inventory, xToolbar, 8 + xToolbar * OUTER_SLOT_SIZE, 162 + playerInventoryOffset));
+                addSlot(new Slot(inventory, xToolbar, 8 + xToolbar * OUTER_SLOT_SIZE, 162 + playerInventoryOffset));
             }
         }
     }
@@ -205,7 +203,7 @@ public class BagContainer extends AbstractContainerMenu {
             } else if (ModUtil.notEmpty(held) && slot.hasItem() && slot.mayPlace(held)) {
                 if (held.getItem() == slotStack.getItem()
                         && held.getDamageValue() == slotStack.getDamageValue()
-                        && ItemStack.isSameItemSameTags(held, slotStack)) {
+                        && ItemStack.isSameItemSameComponents(held, slotStack)) {
                     final ItemStack newStackSlot = ModUtil.copy(slotStack);
                     ModUtil.adjustStackSize(newStackSlot, ModUtil.getStackSize(held));
                     int held_stackSize = 0;
@@ -287,8 +285,8 @@ public class BagContainer extends AbstractContainerMenu {
                 clientstack = ModUtil.isEmpty(realStack) ? ModUtil.getEmptyStack() : realStack.copy();
                 customSlotsItems.set(slotIdx, clientstack);
 
-                for (int crafterIndex = 0; crafterIndex < containerListeners.size(); ++crafterIndex) {
-                    final ContainerListener cl = containerListeners.get(crafterIndex);
+                for (int crafterIndex = 0; crafterIndex < bagListeners.size(); ++crafterIndex) {
+                    final ContainerListener cl = bagListeners.get(crafterIndex);
 
                     if (cl instanceof ServerPlayer) {
                         final PacketBagGuiStack pbgs = new PacketBagGuiStack(slotIdx, clientstack);
@@ -297,6 +295,20 @@ public class BagContainer extends AbstractContainerMenu {
                 }
             }
         }
+    }
+
+    @Override
+    public void addSlotListener(final ContainerListener listener) {
+        super.addSlotListener(listener);
+        if (!bagListeners.contains(listener)) {
+            bagListeners.add(listener);
+        }
+    }
+
+    @Override
+    public void removeSlotListener(final ContainerListener listener) {
+        super.removeSlotListener(listener);
+        bagListeners.remove(listener);
     }
 
     public void clear(final ItemStack stack) {

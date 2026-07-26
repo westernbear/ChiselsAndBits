@@ -3,15 +3,20 @@ package mod.chiselsandbits.network.packets;
 import mod.chiselsandbits.events.EventPlayerInteract;
 import mod.chiselsandbits.network.ModPacket;
 import mod.chiselsandbits.utils.Constants;
-import net.fabricmc.fabric.api.networking.v1.PacketType;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
 public class PacketSuppressInteraction extends ModPacket {
 
-    public static final PacketType<PacketSuppressInteraction> PACKET_TYPE = PacketType.create(
-            new ResourceLocation(Constants.MOD_ID, "packet_suppress_interaction"), PacketSuppressInteraction::new);
+    public static final CustomPacketPayload.Type<PacketSuppressInteraction> PACKET_TYPE =
+            new CustomPacketPayload.Type<>(
+                    Identifier.fromNamespaceAndPath(Constants.MOD_ID, "packet_suppress_interaction"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketSuppressInteraction> STREAM_CODEC =
+            CustomPacketPayload.codec(PacketSuppressInteraction::getPayload, PacketSuppressInteraction::new);
 
     private boolean newSetting = false;
 
@@ -39,7 +44,7 @@ public class PacketSuppressInteraction extends ModPacket {
     }
 
     @Override
-    public PacketType<?> getType() {
+    public CustomPacketPayload.Type<? extends CustomPacketPayload> type() {
         return PACKET_TYPE;
     }
 }

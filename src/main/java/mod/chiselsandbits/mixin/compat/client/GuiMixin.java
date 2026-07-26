@@ -3,9 +3,10 @@ package mod.chiselsandbits.mixin.compat.client;
 import mod.chiselsandbits.compat.client.OverlayRenderCallback;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Gui;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.Hud;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -16,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Environment(EnvType.CLIENT)
-@Mixin(Gui.class)
+@Mixin(Hud.class)
 public abstract class GuiMixin {
     @Shadow
     @Final
@@ -25,21 +26,22 @@ public abstract class GuiMixin {
     @Unique
     private float partialTicks;
 
-    @Inject(method = "render", at = @At("HEAD"))
-    public void render(GuiGraphics matrixStack, float f, CallbackInfo ci) {
-        partialTicks = f;
+    @Inject(method = "extractRenderState", at = @At("HEAD"))
+    public void extractRenderState(
+            GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo callbackInfo) {
+        partialTicks = deltaTracker.getGameTimeDeltaPartialTick(false);
     }
 
     // This might be the wrong method to inject to
     @Inject(
-            method = "renderPlayerHealth",
+            method = "extractPlayerHealth",
             at =
                     @At(
                             value = "INVOKE",
                             shift = At.Shift.AFTER,
                             target = "Lnet/minecraft/util/profiling/ProfilerFiller;pop()V"),
             cancellable = true)
-    private void renderStatusBars(GuiGraphics guiGraphics, CallbackInfo ci) {
+    private void renderStatusBars(GuiGraphicsExtractor guiGraphics, CallbackInfo ci) {
         if (OverlayRenderCallback.EVENT
                 .invoker()
                 .onOverlayRender(guiGraphics, partialTicks, minecraft.getWindow(), OverlayRenderCallback.Types.AIR)) {
@@ -47,9 +49,9 @@ public abstract class GuiMixin {
         }
     }
 
-    @Inject(method = "renderHearts", at = @At(value = "HEAD"), cancellable = true)
+    @Inject(method = "extractHearts", at = @At(value = "HEAD"), cancellable = true)
     private void renderHealth(
-            GuiGraphics guiGraphics,
+            GuiGraphicsExtractor guiGraphics,
             Player player,
             int i,
             int j,
@@ -69,8 +71,8 @@ public abstract class GuiMixin {
         }
     }
 
-    @Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
-    private void renderCrosshair(GuiGraphics guiGraphics, CallbackInfo ci) {
+    @Inject(method = "extractCrosshair", at = @At("HEAD"), cancellable = true)
+    private void renderCrosshair(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
         if (OverlayRenderCallback.EVENT
                 .invoker()
                 .onOverlayRender(

@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import mod.chiselsandbits.api.ReplacementStateHandler;
 import mod.chiselsandbits.bitstorage.BlockBitStorage;
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
@@ -34,6 +35,7 @@ import mod.chiselsandbits.items.ItemBitBag.BagPos;
 import mod.chiselsandbits.modes.ChiselMode;
 import mod.chiselsandbits.modes.IToolMode;
 import mod.chiselsandbits.network.packets.PacketChisel;
+import mod.chiselsandbits.registry.ModDataComponents;
 import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.utils.FluidUtil;
 import net.fabricmc.api.EnvType;
@@ -43,15 +45,16 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.IntTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
@@ -100,7 +103,7 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
                 }
             } else {
                 try {
-                    target = state.getBlock().getCloneItemStack(null, null, state);
+                    target = state.getCloneItemStack(null, null, false);
                 } catch (Exception ex) {
                     target = new ItemStack(() -> Item.byBlock(state.getBlock()), 1);
                 }
@@ -168,19 +171,30 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
     }
 
     public static boolean sameBit(final ItemStack output, final int blk) {
-        return output.hasTag() && getStackState(output) == blk;
+        return output.has(ModDataComponents.BIT_STATE) && getStackState(output) == blk;
     }
 
     public static @NotNull ItemStack createStack(final int id, final int count, final boolean RequireStack) {
         final ItemStack out = new ItemStack(ModItems.ITEM_BLOCK_BIT.get(), count);
-        out.addTagElement("id", IntTag.valueOf(id));
+        out.set(ModDataComponents.BIT_STATE, id);
         return out;
     }
 
     public static int getStackState(final ItemStack inHand) {
-        return inHand != null && inHand.hasTag()
-                ? ModUtil.getTagCompound(inHand).getInt("id")
-                : 0;
+        if (inHand == null) {
+            return 0;
+        }
+
+        final Integer component = inHand.get(ModDataComponents.BIT_STATE);
+        if (component != null) {
+            return component;
+        }
+
+        final int legacy = ModUtil.getTagCompound(inHand).getIntOr("id", 0);
+        if (legacy != 0) {
+            inHand.set(ModDataComponents.BIT_STATE, legacy);
+        }
+        return legacy;
     }
 
     public static boolean placeBit(
@@ -211,7 +225,7 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
     }
 
     public static boolean hasBitSpace(final Player player, final int blk) {
-        final List<BagPos> bags = ItemBitBag.getBags(player.inventory);
+        final List<BagPos> bags = ItemBitBag.getBags(player.getInventory());
         for (final BagPos bp : bags) {
             for (int x = 0; x < bp.inv.getContainerSize(); x++) {
                 final ItemStack is = bp.inv.getItem(x);
@@ -222,7 +236,7 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
             }
         }
         for (int x = 0; x < 36; x++) {
-            final ItemStack is = player.inventory.getItem(x);
+            final ItemStack is = player.getInventory().getItem(x);
             if ((ItemChiseledBit.sameBit(is, blk) && ModUtil.getStackSize(is) < is.getMaxStackSize())
                     || ModUtil.isEmpty(is)) {
                 return true;
@@ -237,8 +251,7 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
             // send them a message.
             final int stateId = ModUtil.getStateId(blkstate);
             if (!ItemChiseledBit.hasBitSpace(player, stateId)) {
-                if (player.getCommandSenderWorld().isClientSide
-                        && (timer == null || timer.elapsed(TimeUnit.MILLISECONDS) > 1000)) {
+                if (player.level().isClientSide() && (timer == null || timer.elapsed(TimeUnit.MILLISECONDS) > 1000)) {
                     // Timer is client-sided so it doesn't have to be made player-specific
                     timer = Stopwatch.createStarted();
                     // Only client should handle messaging.
@@ -253,24 +266,30 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
     @Override
     @Environment(EnvType.CLIENT)
     public void appendHoverText(
-            final ItemStack stack, final Level worldIn, final List<Component> tooltip, final TooltipFlag advanced) {
-        super.appendHoverText(stack, worldIn, tooltip, advanced);
+            final ItemStack stack,
+            final TooltipContext context,
+            final TooltipDisplay display,
+            final Consumer<Component> tooltip,
+            final TooltipFlag advanced) {
+        super.appendHoverText(stack, context, display, tooltip, advanced);
+        final List<Component> tooltipLines = new ArrayList<>();
         ChiselsAndBits.getConfig()
                 .getCommon()
                 .helpText(
                         LocalStrings.HelpBit,
-                        tooltip,
+                        tooltipLines,
                         ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyAttack),
                         ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse),
                         ClientSide.instance.getModeKey());
 
         final int stateId = ItemChiseledBit.getStackState(stack);
         if (stateId == 0) {
-            tooltip.add(Component.literal(ChatFormatting.RED.toString()
+            tooltipLines.add(Component.literal(ChatFormatting.RED.toString()
                     + ChatFormatting.ITALIC
                     + LocalStrings.AnyHelpBit.getLocal()
                     + ChatFormatting.RESET));
         }
+        tooltipLines.forEach(tooltip);
     }
 
     @Override
@@ -287,7 +306,7 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
 
     @Override
     public InteractionResult useOn(final UseOnContext context) {
-        if (!context.getLevel().isClientSide) {
+        if (!context.getLevel().isClientSide()) {
             return InteractionResult.PASS;
         }
 
@@ -327,13 +346,13 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
         final BlockState usedState = world.getBlockState(usedBlock);
         final Block blk = usedState.getBlock();
         if (blk instanceof BlockBitStorage) {
-            if (blk.use(usedState, world, usedBlock, player, hand, rayTraceResult) == InteractionResult.SUCCESS) {
+            if (usedState.useItemOn(stack, world, player, hand, rayTraceResult) == InteractionResult.SUCCESS) {
                 return InteractionResult.SUCCESS;
             }
             return InteractionResult.FAIL;
         }
 
-        if (world.isClientSide) {
+        if (world.isClientSide()) {
             final IToolMode mode =
                     ChiselModeManager.getChiselMode(player, ClientSide.instance.getHeldToolType(hand), hand);
             final BitLocation bitLocation = new BitLocation(rayTraceResult, getBitOperation(player, hand, stack));
@@ -352,7 +371,7 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
             if (tebc != null) {
                 PacketChisel pc = null;
                 if (mode == ChiselMode.DRAWN_REGION) {
-                    if (world.isClientSide) {
+                    if (world.isClientSide()) {
                         ClientSide.instance.pointAt(
                                 getBitOperation(player, hand, stack).getToolType(), bitLocation, hand);
                     }
@@ -380,8 +399,12 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
     }
 
     @Override
-    public boolean canAttackBlock(BlockState blockState, Level level, BlockPos blockPos, Player player) {
-        ItemStack itemStack = player.getItemInHand(player.getUsedItemHand());
+    public boolean canDestroyBlock(
+            ItemStack itemStack, BlockState blockState, Level level, BlockPos blockPos, LivingEntity entity) {
+        if (!(entity instanceof Player player)) {
+            return super.canDestroyBlock(itemStack, blockState, level, blockPos, entity);
+        }
+
         return ItemChisel.fromBreakToChisel(
                 ChiselMode.castMode(
                         ChiselModeManager.getChiselMode(player, ChiselToolType.BIT, InteractionHand.MAIN_HAND)),
@@ -392,8 +415,8 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
     }
 
     @Override
-    public boolean isCorrectToolForDrops(final BlockState blk) {
-        return blk.getBlock() instanceof BlockChiseled || super.isCorrectToolForDrops(blk);
+    public boolean isCorrectToolForDrops(final ItemStack stack, final BlockState blk) {
+        return blk.getBlock() instanceof BlockChiseled || super.isCorrectToolForDrops(stack, blk);
     }
 
     @Override
@@ -417,7 +440,7 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
             BlockState blockState = block.defaultBlockState();
 
             if (block instanceof LiquidBlock liquidBlock) {
-                Fluid fluid = liquidBlock.getFluidState(blockState).getType();
+                Fluid fluid = blockState.getFluidState().getType();
                 if (fluid instanceof FlowingFluid flowingFluid) {
                     blockState = flowingFluid.getSource().defaultFluidState().createLegacyBlock();
                 }

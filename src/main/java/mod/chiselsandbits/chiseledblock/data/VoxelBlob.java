@@ -35,11 +35,12 @@ import mod.chiselsandbits.helpers.IVoxelSrc;
 import mod.chiselsandbits.helpers.LocalStrings;
 import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.items.ItemChiseledBit;
+import mod.chiselsandbits.render.chiseledblock.ChiselRenderType;
 import mod.chiselsandbits.utils.EnvExecutor;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.renderer.ItemBlockRenderTypes;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.AxisDirection;
@@ -117,7 +118,7 @@ public final class VoxelBlob implements IVoxelSrc {
 
         final Map<Object, BitSet> layerFilters = VoxelBlob.layerFilters;
 
-        for (final RenderType layer : RenderType.chunkBufferLayers()) {
+        for (final ChunkSectionLayer layer : ChunkSectionLayer.values()) {
             layerFilters.put(layer, new BitSet(4096));
         }
         final var blockReg = BuiltInRegistries.BLOCK;
@@ -132,10 +133,8 @@ public final class VoxelBlob implements IVoxelSrc {
                     continue;
                 }
 
-                for (RenderType renderType : RenderType.chunkBufferLayers()) {
-                    if (ItemBlockRenderTypes.getChunkRenderType(state) == renderType) {
-                        layerFilters.get(renderType).set(id);
-                    }
+                for (final ChiselRenderType renderType : ModUtil.getRenderType(state)) {
+                    layerFilters.get(renderType.layer).set(id);
                 }
             }
         }
@@ -143,11 +142,12 @@ public final class VoxelBlob implements IVoxelSrc {
         for (final Fluid fluid : BuiltInRegistries.FLUID) {
             for (final FluidState state : fluid.getStateDefinition().getPossibleStates()) {
                 final int id = ModUtil.getStateId(state.createLegacyBlock());
-                for (RenderType renderType : RenderType.chunkBufferLayers()) {
-                    if (ItemBlockRenderTypes.getRenderLayer(state) == renderType) {
-                        layerFilters.get(renderType).set(id);
-                    }
-                }
+                final ChunkSectionLayer layer = Minecraft.getInstance()
+                        .getModelManager()
+                        .getFluidStateModelSet()
+                        .get(state)
+                        .layer();
+                layerFilters.get(layer).set(id);
             }
         }
     }
@@ -800,7 +800,7 @@ public final class VoxelBlob implements IVoxelSrc {
         return hasValues;
     }
 
-    public boolean simulateFilter(final RenderType layer) {
+    public boolean simulateFilter(final ChunkSectionLayer layer) {
         final BitSet layerFilterState = layerFilters.get(layer);
         boolean hasValues = false;
 
@@ -818,7 +818,7 @@ public final class VoxelBlob implements IVoxelSrc {
         return hasValues;
     }
 
-    public boolean filter(final RenderType layer) {
+    public boolean filter(final ChunkSectionLayer layer) {
         final BitSet layerFilterState = layerFilters.get(layer);
         boolean hasValues = false;
 

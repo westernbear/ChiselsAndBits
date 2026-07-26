@@ -5,16 +5,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import mod.chiselsandbits.client.model.baked.BaseBakedBlockModel;
+import mod.chiselsandbits.client.model.baked.LegacyBakedModel;
 import mod.chiselsandbits.client.model.data.IModelData;
 import mod.chiselsandbits.core.ClientSide;
 import mod.chiselsandbits.render.chiseledblock.ChiselRenderType;
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.BakedModel;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -23,7 +23,7 @@ public class ModelCombined extends BaseBakedBlockModel {
 
     private static final RandomSource COMBINED_RANDOM_MODEL = RandomSource.create();
 
-    BakedModel[] merged;
+    LegacyBakedModel[] merged;
 
     List<BakedQuad>[] face;
     List<BakedQuad> generic;
@@ -33,7 +33,7 @@ public class ModelCombined extends BaseBakedBlockModel {
     Set<ChiselRenderType> renderTypes = Set.of();
 
     @SuppressWarnings("unchecked")
-    public ModelCombined(final BakedModel... args) {
+    public ModelCombined(final LegacyBakedModel... args) {
         face = new ArrayList[Direction.values().length];
 
         generic = new ArrayList<>();
@@ -43,17 +43,17 @@ public class ModelCombined extends BaseBakedBlockModel {
 
         merged = args;
 
-        for (final BakedModel m : merged) {
+        for (final LegacyBakedModel m : merged) {
             generic.addAll(m.getQuads(null, null, COMBINED_RANDOM_MODEL));
             for (final Direction f : Direction.values()) {
                 face[f.ordinal()].addAll(m.getQuads(null, f, COMBINED_RANDOM_MODEL));
             }
         }
 
-        isSideLit = Arrays.stream(args).anyMatch(BakedModel::usesBlockLight);
+        isSideLit = Arrays.stream(args).anyMatch(LegacyBakedModel::usesBlockLight);
     }
 
-    public ModelCombined(Set<ChiselRenderType> renderTypes, final BakedModel... args) {
+    public ModelCombined(Set<ChiselRenderType> renderTypes, final LegacyBakedModel... args) {
         this.renderTypes = renderTypes;
         face = new ArrayList[Direction.values().length];
 
@@ -64,14 +64,14 @@ public class ModelCombined extends BaseBakedBlockModel {
 
         merged = args;
 
-        for (final BakedModel m : merged) {
+        for (final LegacyBakedModel m : merged) {
             generic.addAll(m.getQuads(null, null, COMBINED_RANDOM_MODEL));
             for (final Direction f : Direction.values()) {
                 face[f.ordinal()].addAll(m.getQuads(null, f, COMBINED_RANDOM_MODEL));
             }
         }
 
-        isSideLit = Arrays.stream(args).anyMatch(BakedModel::usesBlockLight);
+        isSideLit = Arrays.stream(args).anyMatch(LegacyBakedModel::usesBlockLight);
     }
 
     public Set<ChiselRenderType> getRenderTypes() {
@@ -80,7 +80,7 @@ public class ModelCombined extends BaseBakedBlockModel {
 
     @Override
     public TextureAtlasSprite getParticleIcon() {
-        for (final BakedModel a : merged) {
+        for (final LegacyBakedModel a : merged) {
             return a.getParticleIcon();
         }
 

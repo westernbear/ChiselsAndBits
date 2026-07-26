@@ -1,30 +1,30 @@
 package mod.chiselsandbits.render.bit;
 
+import com.mojang.math.Quadrant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import mod.chiselsandbits.client.model.baked.BaseBakedBlockModel;
 import mod.chiselsandbits.client.model.data.IModelData;
-import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.core.ClientSide;
 import mod.chiselsandbits.render.chiseledblock.ChiselRenderType;
 import mod.chiselsandbits.render.helpers.ModelQuadLayer;
 import mod.chiselsandbits.render.helpers.ModelUtil;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.renderer.block.model.BlockElementFace;
-import net.minecraft.client.renderer.block.model.BlockElementRotation;
-import net.minecraft.client.renderer.block.model.BlockFaceUV;
-import net.minecraft.client.renderer.block.model.FaceBakery;
+import net.minecraft.client.renderer.block.dispatch.BlockModelRotation;
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.BlockModelRotation;
+import net.minecraft.client.resources.model.ModelBaker;
+import net.minecraft.client.resources.model.cuboid.CuboidFace;
+import net.minecraft.client.resources.model.cuboid.FaceBakery;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
+import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
+import org.joml.Vector3fc;
 
 public class BitItemBaked extends BaseBakedBlockModel {
     public static final float PIXELS_PER_BLOCK = 16.0f;
@@ -32,19 +32,25 @@ public class BitItemBaked extends BaseBakedBlockModel {
     private static final float BIT_BEGIN = 6.0f;
     private static final float BIT_END = 10.0f;
     private static final RandomSource RANDOM = RandomSource.create();
+    private static final ModelBaker.Interner INTERNER = new ModelBaker.Interner() {
+        @Override
+        public Vector3fc vector(final Vector3fc value) {
+            return value;
+        }
+
+        @Override
+        public BakedQuad.MaterialInfo materialInfo(final BakedQuad.MaterialInfo value) {
+            return value;
+        }
+    };
     final ArrayList<BakedQuad> generic = new ArrayList<BakedQuad>(6);
 
     public BitItemBaked(final int BlockRef) {
-        final FaceBakery faceBakery = new FaceBakery();
-
         final Vector3f to = new Vector3f(BIT_BEGIN, BIT_BEGIN, BIT_BEGIN);
         final Vector3f from = new Vector3f(BIT_END, BIT_END, BIT_END);
 
-        final BlockElementRotation bpr = null;
-        final BlockModelRotation mr = BlockModelRotation.X0_Y0;
-
         for (final Direction myFace : Direction.values()) {
-            for (final RenderType layer : RenderType.chunkBufferLayers()) {
+            for (final ChunkSectionLayer layer : ChunkSectionLayer.values()) {
 
                 final ModelQuadLayer[] layers = ModelUtil.getCachedFace(BlockRef, RANDOM, myFace, layer);
 
@@ -53,8 +59,7 @@ public class BitItemBaked extends BaseBakedBlockModel {
                 }
 
                 for (final ModelQuadLayer clayer : layers) {
-                    final BlockFaceUV uv = new BlockFaceUV(getFaceUvs(myFace), 0);
-                    final BlockElementFace bpf = new BlockElementFace(myFace, 0, "", uv);
+                    final float[] faceUvs = getFaceUvs(myFace);
 
                     Vector3f toB, fromB;
 
@@ -86,16 +91,24 @@ public class BitItemBaked extends BaseBakedBlockModel {
                         default:
                             throw new NullPointerException();
                     }
-                    generic.add(faceBakery.bakeQuad(
+                    final int packedTint =
+                            0 <= clayer.tint && clayer.tint <= 0xff ? (BlockRef << 8) | clayer.tint : clayer.tint;
+                    final BakedQuad.MaterialInfo materialInfo = BakedQuad.MaterialInfo.of(
+                            new Material.Baked(clayer.sprite, false),
+                            clayer.sprite.transparency(),
+                            packedTint,
+                            true,
+                            clayer.light);
+                    generic.add(FaceBakery.bakeQuad(
+                            INTERNER,
                             toB,
                             fromB,
-                            bpf,
-                            clayer.sprite,
+                            new CuboidFace.UVs(faceUvs[0], faceUvs[1], faceUvs[2], faceUvs[3]),
+                            Quadrant.R0,
+                            materialInfo,
                             myFace,
-                            mr,
-                            bpr,
-                            false,
-                            new ResourceLocation(ChiselsAndBits.MODID, "bit")));
+                            BlockModelRotation.IDENTITY,
+                            null));
                 }
             }
         }

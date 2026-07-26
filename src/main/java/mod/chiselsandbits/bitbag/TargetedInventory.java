@@ -1,6 +1,7 @@
 package mod.chiselsandbits.bitbag;
 
 import net.minecraft.world.Container;
+import net.minecraft.world.entity.ContainerUser;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
@@ -57,13 +58,13 @@ public class TargetedInventory implements Container {
     }
 
     @Override
-    public void startOpen(final Player player) {
-        src.startOpen(player);
+    public void startOpen(final ContainerUser user) {
+        src.startOpen(user);
     }
 
     @Override
-    public void stopOpen(final Player player) {
-        src.stopOpen(player);
+    public void stopOpen(final ContainerUser user) {
+        src.stopOpen(user);
     }
 
     @Override

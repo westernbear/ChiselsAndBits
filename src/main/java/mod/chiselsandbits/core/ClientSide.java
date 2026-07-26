@@ -3,10 +3,11 @@ package mod.chiselsandbits.core;
 import com.google.common.base.Stopwatch;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -29,17 +30,13 @@ import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlobStateReference;
 import mod.chiselsandbits.chiseledblock.iterators.ChiselIterator;
 import mod.chiselsandbits.chiseledblock.iterators.ChiselTypeIterator;
-import mod.chiselsandbits.client.ChiseledBlockColor;
 import mod.chiselsandbits.client.CreativeClipboardTab;
-import mod.chiselsandbits.client.ItemColorBitBag;
-import mod.chiselsandbits.client.ItemColorBits;
-import mod.chiselsandbits.client.ItemColorChiseled;
-import mod.chiselsandbits.client.ItemColorPatterns;
 import mod.chiselsandbits.client.RenderHelper;
 import mod.chiselsandbits.client.TapeMeasures;
 import mod.chiselsandbits.client.UndoTracker;
 import mod.chiselsandbits.client.gui.ChiselsAndBitsMenu;
 import mod.chiselsandbits.client.gui.SpriteIconPositioning;
+import mod.chiselsandbits.client.model.baked.LegacyBakedModel;
 import mod.chiselsandbits.compat.client.DrawSelectionEvents;
 import mod.chiselsandbits.compat.client.GameMouseEvents;
 import mod.chiselsandbits.compat.client.OverlayRenderCallback;
@@ -64,47 +61,49 @@ import mod.chiselsandbits.network.packets.PacketChisel;
 import mod.chiselsandbits.network.packets.PacketRotateVoxelBlob;
 import mod.chiselsandbits.network.packets.PacketSetColor;
 import mod.chiselsandbits.network.packets.PacketSuppressInteraction;
-import mod.chiselsandbits.registry.ModBlocks;
 import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.registry.ModTileEntityTypes;
+import mod.chiselsandbits.render.SmartModelManager;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
-import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.FabricRenderState;
+import net.fabricmc.fabric.api.client.rendering.v1.RenderStateDataKey;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.fabricmc.fabric.api.entity.FakePlayer;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
-import net.minecraft.client.Camera;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.ParticleEngine;
 import net.minecraft.client.particle.TerrainParticle;
-import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
+import net.minecraft.client.renderer.state.level.BlockOutlineRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -121,9 +120,14 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
-import org.lwjgl.opengl.GL11;
 
 public class ClientSide {
+
+    private static final RenderStateDataKey<ClientRenderState> CLIENT_RENDER_STATE =
+            RenderStateDataKey.create(() -> ChiselsAndBits.MODID + ":client_render_state");
+
+    private static final KeyMapping.Category KEY_CATEGORY =
+            KeyMapping.Category.register(Identifier.fromNamespaceAndPath(ChiselsAndBits.MODID, "main"));
 
     public static final ClientSide instance = new ClientSide();
     private static final Random RANDOM = new SecureRandom();
@@ -159,7 +163,10 @@ public class ClientSide {
     private Stopwatch rotateTimer;
     private ItemStack previousItem;
     private int previousRotations;
-    private Object previousModel;
+    private LegacyBakedModel previousModel;
+    private RenderHelper.PreparedModel previousPreparedModel;
+    private int previousPreparedAlpha = Integer.MIN_VALUE;
+    private BlockPos previousPreparedPosition;
     private Object previousCacheRef;
     private IntegerBox modelBounds;
     private boolean isVisible = true;
@@ -169,6 +176,26 @@ public class ClientSide {
     private BitLocation drawStart;
     private int ticksSinceRelease = 0;
     private int lastRenderedFrame = Integer.MIN_VALUE;
+
+    private record ClientRenderState(
+            TapeMeasures.RenderState tapeMeasures,
+            List<SelectionBoxRenderState> selectionBoxes,
+            GhostRenderState ghost,
+            boolean cancelDefaultOutline) {
+        private ClientRenderState {
+            selectionBoxes = List.copyOf(selectionBoxes);
+        }
+    }
+
+    private record SelectionBoxRenderState(AABB box, BlockPos blockPos) {}
+
+    private record GhostRenderState(
+            RenderHelper.PreparedModel model,
+            BlockPos blockPos,
+            Vec3 partialTranslation,
+            boolean isUnplaceable,
+            int combinedLight,
+            boolean alwaysOnTop) {}
 
     public static void placeSound(final Level world, final BlockPos pos, final int stateID) {
         final BlockState state = ModUtil.getStateById(stateID);
@@ -203,7 +230,7 @@ public class ClientSide {
             return false;
         }
 
-        if (player.getCommandSenderWorld().isClientSide) {
+        if (player.level().isClientSide()) {
             return !getOffGridPlacementKey().isUnbound()
                     && getOffGridPlacementKey().isDown();
         }
@@ -238,8 +265,9 @@ public class ClientSide {
         UseBlockCallback.EVENT.register(this::drawingInteractionPrevention);
         ClientTickEvents.START_CLIENT_TICK.register(this::applyChiselDelay);
         ClientTickEvents.END_CLIENT_TICK.register(this::interaction);
-        WorldRenderEvents.LAST.register(this::drawLast);
-        WorldRenderEvents.LAST.register(this::drawHighlight);
+        LevelExtractionEvents.END_EXTRACTION.register(this::extractLevelRenderState);
+        LevelRenderEvents.COLLECT_SUBMITS.register(this::collectLevelRenderState);
+        DrawSelectionEvents.registerFabricBridge();
         DrawSelectionEvents.BLOCK.register(this::drawHighlight);
 
         GameMouseEvents.BEFORE_SCROLL.register(this::wheelEvent);
@@ -247,9 +275,7 @@ public class ClientSide {
 
     public void init() {
         readyState = readyState.updateState(ReadyState.TRIGGER_INIT);
-        BlockEntityRenderers.register(
-                ModTileEntityTypes.BIT_STORAGE.get(),
-                context -> new TileEntitySpecialRenderBitStorage(context.getBlockEntityRenderDispatcher()));
+        BlockEntityRenderers.register(ModTileEntityTypes.BIT_STORAGE.get(), TileEntitySpecialRenderBitStorage::new);
 
         for (final ChiselMode mode : ChiselMode.values()) {
             mode.binding = registerKeybind(mode.string.toString(), InputConstants.UNKNOWN, "itemGroup.chiselsandbits");
@@ -280,29 +306,11 @@ public class ClientSide {
 
     private KeyMapping registerKeybind(
             final String bindingName, final InputConstants.Key defaultKey, final String groupName) {
-        final KeyMapping kb = new KeyMapping(bindingName, defaultKey.getValue(), groupName);
-        KeyBindingHelper.registerKeyBinding(kb);
-        return kb;
+        return new KeyMapping(bindingName, defaultKey.getType(), defaultKey.getValue(), KEY_CATEGORY);
     }
 
     public void postInit() {
         readyState = readyState.updateState(ReadyState.TRIGGER_POST);
-
-        var itemColorRegistry = ColorProviderRegistry.ITEM;
-        var blockColorRegistry = ColorProviderRegistry.BLOCK;
-
-        itemColorRegistry.register(new ItemColorBitBag(), ModItems.ITEM_BIT_BAG_DEFAULT.get());
-        itemColorRegistry.register(new ItemColorBitBag(), ModItems.ITEM_BIT_BAG_DYED.get());
-        itemColorRegistry.register(new ItemColorBits(), ModItems.ITEM_BLOCK_BIT.get());
-        itemColorRegistry.register(new ItemColorPatterns(), ModItems.ITEM_POSITIVE_PRINT.get());
-        itemColorRegistry.register(new ItemColorPatterns(), ModItems.ITEM_POSITIVE_PRINT_WRITTEN.get());
-        itemColorRegistry.register(new ItemColorPatterns(), ModItems.ITEM_NEGATIVE_PRINT.get());
-        itemColorRegistry.register(new ItemColorPatterns(), ModItems.ITEM_NEGATIVE_PRINT_WRITTEN.get());
-        itemColorRegistry.register(new ItemColorPatterns(), ModItems.ITEM_MIRROR_PRINT.get());
-        itemColorRegistry.register(new ItemColorPatterns(), ModItems.ITEM_MIRROR_PRINT_WRITTEN.get());
-
-        blockColorRegistry.register(new ChiseledBlockColor(), ModBlocks.CHISELED_BLOCK.get());
-        itemColorRegistry.register(new ItemColorChiseled(), ModItems.ITEM_CHISELED_BLOCK.get());
     }
 
     public SpriteIconPositioning getIconForMode(final IToolMode mode) {
@@ -314,7 +322,7 @@ public class ClientSide {
     }
 
     public boolean onRenderGUI(
-            GuiGraphics guiGraphics, float partialTicks, Window window, OverlayRenderCallback.Types type) {
+            GuiGraphicsExtractor guiGraphics, float partialTicks, Window window, OverlayRenderCallback.Types type) {
         final ChiselToolType tool = getHeldToolType(lastHand);
         if (type == OverlayRenderCallback.Types.CROSSHAIRS && tool != null && tool.hasMenu()) {
             final boolean wasVisible = ChiselsAndBitsMenu.instance.isVisible();
@@ -398,12 +406,11 @@ public class ClientSide {
             }
 
             if (ChiselsAndBitsMenu.instance.isVisible()) {
-                ChiselsAndBitsMenu.instance.init(
-                        Minecraft.getInstance(), window.getGuiScaledWidth(), window.getGuiScaledHeight());
+                ChiselsAndBitsMenu.instance.init(window.getGuiScaledWidth(), window.getGuiScaledHeight());
                 ChiselsAndBitsMenu.instance.configure(window.getGuiScaledWidth(), window.getGuiScaledHeight());
 
                 if (!wasVisible) {
-                    Minecraft.getInstance().screen = ChiselsAndBitsMenu.instance;
+                    Minecraft.getInstance().gui.setScreen(ChiselsAndBitsMenu.instance);
                     Minecraft.getInstance().mouseHandler.releaseMouse();
                 }
 
@@ -475,7 +482,7 @@ public class ClientSide {
                 final Gui sc = mc.gui;
 
                 for (int slot = 0; slot < 9; ++slot) {
-                    final ItemStack stack = mc.player.inventory.items.get(slot);
+                    final ItemStack stack = mc.player.getInventory().getItem(slot);
                     if (stack.getItem() instanceof ItemChisel) {
                         final ChiselToolType toolType = getToolTypeForItem(stack);
                         IToolMode mode = toolType.getMode(stack);
@@ -490,16 +497,9 @@ public class ClientSide {
 
                         final int x = window.getGuiScaledWidth() / 2 - 90 + slot * 20 + 2;
                         final int y = window.getGuiScaledHeight() - 16 - 3;
-                        guiGraphics.setColor(1, 1, 1, 1);
-
-                        //
-                        // Minecraft.getInstance().getTextureManager().bind(InventoryMenu.BLOCK_ATLAS);
                         final TextureAtlasSprite sprite =
                                 chiselModeIcons.get(mode) == null ? getMissingIcon() : chiselModeIcons.get(mode).sprite;
-
-                        RenderSystem.enableBlend();
-                        guiGraphics.blit(x + 1, y + 1, 0, 8, 8, sprite);
-                        RenderSystem.disableBlend();
+                        guiGraphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, x + 1, y + 1, 8, 8);
                     }
                 }
             }
@@ -526,9 +526,11 @@ public class ClientSide {
         final Player player = getPlayer();
 
         for (int x = 0; x < 9; x++) {
-            final ItemStack stack = player.inventory.getItem(x);
-            if (stack != null && ItemStack.isSameItem(stack, result) && ItemStack.isSameItemSameTags(stack, result)) {
-                player.inventory.selected = x;
+            final ItemStack stack = player.getInventory().getItem(x);
+            if (stack != null
+                    && ItemStack.isSameItem(stack, result)
+                    && ItemStack.isSameItemSameComponents(stack, result)) {
+                player.getInventory().setSelectedSlot(x);
                 return true;
             }
         }
@@ -537,20 +539,22 @@ public class ClientSide {
             return false;
         }
 
-        int slot = player.inventory.getFreeSlot();
+        int slot = player.getInventory().getFreeSlot();
         if (slot < 0 || slot >= 9) {
-            slot = player.inventory.selected;
+            slot = player.getInventory().getSelectedSlot();
         }
 
         // update inventory..
-        player.inventory.setItem(slot, result);
-        player.inventory.selected = slot;
+        player.getInventory().setItem(slot, result);
+        player.getInventory().setSelectedSlot(slot);
 
         // update server...
-        final int j = player.inventoryMenu.slots.size() - 9 + player.inventory.selected;
+        final int j =
+                player.inventoryMenu.slots.size() - 9 + player.getInventory().getSelectedSlot();
         Minecraft.getInstance()
                 .gameMode
-                .handleCreativeModeItemAdd(player.inventory.getItem(player.inventory.selected), j);
+                .handleCreativeModeItemAdd(
+                        player.getInventory().getItem(player.getInventory().getSelectedSlot()), j);
         return true;
     }
 
@@ -566,53 +570,13 @@ public class ClientSide {
     }
 
     private ChiselToolType getToolTypeForItem(final ItemStack is) {
-        if (is != null && is.getItem() instanceof ItemChisel) {
-            return ChiselToolType.CHISEL;
-        }
-
-        if (is != null && is.getItem().equals(ModItems.ITEM_BLOCK_BIT.get())) {
-            return ChiselToolType.BIT;
-        }
-
-        if (is != null && is.getItem() instanceof ItemBlockChiseled) {
-            return ChiselToolType.CHISELED_BLOCK;
-        }
-
-        if (is != null && is.getItem() == ModItems.ITEM_TAPE_MEASURE.get()) {
-            return ChiselToolType.TAPEMEASURE;
-        }
-
-        if (is != null && is.getItem() == ModItems.ITEM_POSITIVE_PRINT.get()) {
-            return ChiselToolType.POSITIVEPATTERN;
-        }
-
-        if (is != null && is.getItem() == ModItems.ITEM_POSITIVE_PRINT_WRITTEN.get()) {
-            return ChiselToolType.POSITIVEPATTERN;
-        }
-
-        if (is != null && is.getItem() == ModItems.ITEM_NEGATIVE_PRINT.get()) {
-            return ChiselToolType.NEGATIVEPATTERN;
-        }
-
-        if (is != null && is.getItem() == ModItems.ITEM_NEGATIVE_PRINT_WRITTEN.get()) {
-            return ChiselToolType.NEGATIVEPATTERN;
-        }
-
-        if (is != null && is.getItem() == ModItems.ITEM_MIRROR_PRINT.get()) {
-            return ChiselToolType.MIRRORPATTERN;
-        }
-
-        if (is != null && is.getItem() == ModItems.ITEM_MIRROR_PRINT_WRITTEN.get()) {
-            return ChiselToolType.MIRRORPATTERN;
-        }
-
-        return null;
+        return ChiselToolType.fromItemStack(is);
     }
 
     public InteractionResult drawingInteractionPrevention(
             Player player, Level world, InteractionHand hand, BlockHitResult hitResult) {
 
-        if (world.isClientSide) {
+        if (world.isClientSide()) {
             final ChiselToolType tool = getHeldToolType(hand);
             final IToolMode chMode = ChiselModeManager.getChiselMode(getPlayer(), tool, hand);
 
@@ -713,12 +677,81 @@ public class ClientSide {
     }
 
     @Environment(EnvType.CLIENT)
-    public void drawHighlight(WorldRenderContext context) {
-        PoseStack stack = context.matrixStack();
-        float partialTicks = context.tickDelta();
-        stack.pushPose();
-        Vec3 renderView = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
-        stack.translate(-renderView.x, -renderView.y, -renderView.z);
+    private void extractLevelRenderState(final LevelExtractionContext context) {
+        ++lastRenderedFrame;
+
+        final float partialTicks = context.deltaTracker().getGameTimeDeltaPartialTick(false);
+        final Player player = getPlayer();
+        final ClientRenderState state = player == null
+                ? new ClientRenderState(new TapeMeasures.RenderState(List.of()), List.of(), null, false)
+                : new ClientRenderState(
+                        extractTapeMeasureRenderState(partialTicks),
+                        extractSelectionBoxes(partialTicks),
+                        Minecraft.getInstance().gui.hud.isHidden() ? null : extractGhostRenderState(),
+                        false);
+
+        ((FabricRenderState) context.levelState()).setData(CLIENT_RENDER_STATE, state);
+    }
+
+    @Environment(EnvType.CLIENT)
+    private void collectLevelRenderState(final LevelRenderContext context) {
+        final ClientRenderState state = ((FabricRenderState) context.levelState()).getData(CLIENT_RENDER_STATE);
+        if (state == null) {
+            return;
+        }
+
+        final PoseStack matrixStack = context.poseStack();
+        final SubmitNodeCollector collector = context.submitNodeCollector();
+        final CameraRenderState camera = context.levelState().cameraRenderState;
+
+        RenderHelper.withSubmitCollector(collector, () -> {
+            tapeMeasures.submitRenderState(state.tapeMeasures(), matrixStack, collector, camera);
+            if (camera.pos == null) {
+                return;
+            }
+
+            matrixStack.pushPose();
+            matrixStack.translate(-camera.pos.x, -camera.pos.y, -camera.pos.z);
+            for (final SelectionBoxRenderState selectionBox : state.selectionBoxes()) {
+                RenderHelper.drawSelectionBoundingBoxIfExists(
+                        matrixStack, collector, selectionBox.box(), selectionBox.blockPos(), false);
+            }
+            matrixStack.popPose();
+
+            final GhostRenderState ghost = state.ghost();
+            if (ghost == null) {
+                return;
+            }
+
+            matrixStack.pushPose();
+            if (ghost.partialTranslation() != null) {
+                final Vec3 translation = ghost.partialTranslation();
+                matrixStack.translate(translation.x, translation.y, translation.z);
+            }
+            matrixStack.translate(
+                    ghost.blockPos().getX() - camera.pos.x - 0.000125,
+                    ghost.blockPos().getY() - camera.pos.y + 0.000125,
+                    ghost.blockPos().getZ() - camera.pos.z - 0.000125);
+            matrixStack.scale(1.001F, 1.001F, 1.001F);
+            RenderHelper.submitPreparedModel(
+                    collector,
+                    matrixStack.last().copy(),
+                    ghost.model(),
+                    ghost.combinedLight(),
+                    OverlayTexture.NO_OVERLAY,
+                    ghost.alwaysOnTop());
+            matrixStack.popPose();
+        });
+    }
+
+    @Environment(EnvType.CLIENT)
+    private boolean drawHighlight(final LevelRenderContext context, final BlockOutlineRenderState outline) {
+        final ClientRenderState state = ((FabricRenderState) context.levelState()).getData(CLIENT_RENDER_STATE);
+        return state != null && state.cancelDefaultOutline();
+    }
+
+    @Environment(EnvType.CLIENT)
+    private TapeMeasures.RenderState extractTapeMeasureRenderState(final float partialTicks) {
         ChiselToolType tool = getHeldToolType(lastHand);
         final IToolMode chMode = ChiselModeManager.getChiselMode(getPlayer(), tool, lastHand);
         if (chMode == ChiselMode.DRAWN_REGION) {
@@ -731,7 +764,7 @@ public class ClientSide {
             final Player player = getPlayer();
             final HitResult mop = Minecraft.getInstance().hitResult;
 
-            final Level theWorld = player.level;
+            final Level theWorld = player.level();
 
             if (mop != null && mop.getType() == HitResult.Type.BLOCK) {
                 final BlockHitResult blockRayTraceResult = (BlockHitResult) mop;
@@ -753,8 +786,6 @@ public class ClientSide {
             }
         }
 
-        tapeMeasures.render(stack, context.consumers(), partialTicks);
-
         final boolean isDrawing =
                 (chMode == ChiselMode.DRAWN_REGION || tool == ChiselToolType.TAPEMEASURE) && getStartPos() != null;
         if (isDrawing != wasDrawing) {
@@ -763,194 +794,175 @@ public class ClientSide {
             ChiselsAndBits.getNetworkChannel().sendToServer(packet);
         }
 
-        stack.popPose();
+        return tapeMeasures.extractRenderState(partialTicks);
     }
 
     @Environment(EnvType.CLIENT)
-    public boolean drawHighlight(
-            LevelRenderer context,
-            Camera info,
-            HitResult target,
-            float partialTicks,
-            PoseStack stack,
-            MultiBufferSource buffers) {
-        try {
-            stack.pushPose();
-            Vec3 renderView =
-                    Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
-            stack.translate(-renderView.x, -renderView.y, -renderView.z);
+    private List<SelectionBoxRenderState> extractSelectionBoxes(final float partialTicks) {
+        final List<SelectionBoxRenderState> selectionBoxes = new ArrayList<>();
+        ChiselToolType tool = getHeldToolType(lastHand);
 
-            ChiselToolType tool = getHeldToolType(lastHand);
+        final IToolMode chMode = ChiselModeManager.getChiselMode(getPlayer(), tool, lastHand);
+        if (chMode == ChiselMode.DRAWN_REGION) {
+            tool = lastTool;
+        }
 
-            final IToolMode chMode = ChiselModeManager.getChiselMode(getPlayer(), tool, lastHand);
-            if (chMode == ChiselMode.DRAWN_REGION) {
-                tool = lastTool;
+        if (tool != null && tool.isBitOrChisel() && chMode != null) {
+            final Player player = Minecraft.getInstance().player;
+            final HitResult mop = Minecraft.getInstance().hitResult;
+
+            final Level theWorld = player.level();
+
+            if (mop == null || mop.getType() != HitResult.Type.BLOCK) {
+                return selectionBoxes;
             }
 
-            if (tool != null && tool.isBitOrChisel() && chMode != null) {
-                final Player player = Minecraft.getInstance().player;
-                final HitResult mop = Minecraft.getInstance().hitResult;
+            boolean showBox = false;
+            if (mop.getType() == HitResult.Type.BLOCK) {
+                final BlockHitResult rayTraceResult = (BlockHitResult) mop;
+                final BitLocation location = new BitLocation(
+                        rayTraceResult,
+                        getLastBitOperation(player, lastHand, getPlayer().getItemInHand(lastHand)));
+                if (theWorld.getWorldBorder().isWithinBounds(location.blockPos)) {
+                    // this logic originated in the vanilla bounding box...
+                    final BlockState state = theWorld.getBlockState(location.blockPos);
 
-                final Level theWorld = player.level;
+                    final boolean isChisel = getDrawnTool() == ChiselToolType.CHISEL;
+                    final boolean isBit = getHeldToolType(InteractionHand.MAIN_HAND) == ChiselToolType.BIT;
+                    final TileEntityBlockChiseled data =
+                            ModUtil.getChiseledTileEntity(theWorld, location.blockPos, false);
 
-                if (mop == null || mop.getType() != HitResult.Type.BLOCK) {
-                    return false;
-                }
+                    final VoxelRegionSrc region = new VoxelRegionSrc(theWorld, location.blockPos, 1);
+                    final VoxelBlob vb = data != null ? data.getBlob() : new VoxelBlob();
 
-                boolean showBox = false;
-                if (mop.getType() == HitResult.Type.BLOCK) {
-                    final BlockHitResult rayTraceResult = (BlockHitResult) mop;
-                    final BitLocation location = new BitLocation(
-                            rayTraceResult,
-                            getLastBitOperation(player, lastHand, getPlayer().getItemInHand(lastHand)));
-                    if (theWorld.getWorldBorder().isWithinBounds(location.blockPos)) {
-                        // this logic originated in the vanilla bounding box...
-                        final BlockState state = theWorld.getBlockState(location.blockPos);
+                    if ((isChisel) && data == null) {
+                        showBox = true;
+                        vb.fill(1);
+                    }
 
-                        final boolean isChisel = getDrawnTool() == ChiselToolType.CHISEL;
-                        final boolean isBit = getHeldToolType(InteractionHand.MAIN_HAND) == ChiselToolType.BIT;
-                        final TileEntityBlockChiseled data =
-                                ModUtil.getChiseledTileEntity(theWorld, location.blockPos, false);
+                    final BitLocation other = getStartPos();
 
-                        final VoxelRegionSrc region = new VoxelRegionSrc(theWorld, location.blockPos, 1);
-                        final VoxelBlob vb = data != null ? data.getBlob() : new VoxelBlob();
+                    if (chMode == ChiselMode.DRAWN_REGION && other != null) {
+                        final ChiselIterator oneEnd = ChiselTypeIterator.create(
+                                VoxelBlob.dim,
+                                location.bitX,
+                                location.bitY,
+                                location.bitZ,
+                                VoxelBlob.NULL_BLOB,
+                                ChiselMode.SINGLE,
+                                Direction.UP,
+                                tool == ChiselToolType.BIT);
+                        final ChiselIterator otherEnd = ChiselTypeIterator.create(
+                                VoxelBlob.dim,
+                                other.bitX,
+                                other.bitY,
+                                other.bitZ,
+                                VoxelBlob.NULL_BLOB,
+                                ChiselMode.SINGLE,
+                                Direction.UP,
+                                tool == ChiselToolType.BIT);
 
-                        if ((isChisel) && data == null) {
-                            showBox = true;
-                            vb.fill(1);
+                        final AABB a = oneEnd.getBoundingBox(VoxelBlob.NULL_BLOB, false)
+                                .move(location.blockPos.getX(), location.blockPos.getY(), location.blockPos.getZ());
+                        final AABB b = otherEnd.getBoundingBox(VoxelBlob.NULL_BLOB, false)
+                                .move(other.blockPos.getX(), other.blockPos.getY(), other.blockPos.getZ());
+
+                        final AABB bb = a.minmax(b);
+
+                        final double maxChiseSize = ChiselsAndBits.getConfig()
+                                        .getClient()
+                                        .maxDrawnRegionSize
+                                        .get()
+                                + 0.001;
+
+                        if (bb.maxX - bb.minX <= maxChiseSize
+                                && bb.maxY - bb.minY <= maxChiseSize
+                                && bb.maxZ - bb.minZ <= maxChiseSize) {
+                            selectionBoxes.add(new SelectionBoxRenderState(bb, BlockPos.ZERO));
+
+                            if (!getToolKey().isDown()) {
+                                final PacketChisel pc = new PacketChisel(
+                                        getLastBitOperation(player, lastHand, player.getItemInHand(lastHand)),
+                                        location,
+                                        other,
+                                        Direction.UP,
+                                        ChiselMode.DRAWN_REGION,
+                                        lastHand);
+
+                                if (pc.doAction(getPlayer()) > 0) {
+                                    ChiselsAndBits.getNetworkChannel().sendToServer(pc);
+                                    ClientSide.placeSound(theWorld, location.blockPos, 0);
+                                }
+
+                                drawStart = null;
+                                lastHand = InteractionHand.MAIN_HAND;
+                                lastTool = ChiselToolType.CHISEL;
+                            }
+                        }
+                    } else {
+                        final BlockEntity te = theWorld.getChunkAt(location.blockPos)
+                                .getBlockEntity(location.blockPos, LevelChunk.EntityCreationType.CHECK);
+
+                        boolean isBitBlock = te instanceof TileEntityBlockChiseled;
+                        final boolean isBlockSupported = BlockBitInfo.canChisel(state);
+
+                        if (!(isBitBlock || isBlockSupported)) {
+                            final TileEntityBlockChiseled tebc =
+                                    ModUtil.getChiseledTileEntity(theWorld, location.blockPos, false);
+                            if (tebc != null) {
+                                final VoxelBlob vx = tebc.getBlob();
+                                if (vx.get(location.bitX, location.bitY, location.bitZ) != 0) {
+                                    isBitBlock = true;
+                                }
+                            }
                         }
 
-                        final BitLocation other = getStartPos();
-
-                        if (chMode == ChiselMode.DRAWN_REGION && other != null) {
-                            final ChiselIterator oneEnd = ChiselTypeIterator.create(
+                        if (theWorld.isEmptyBlock(location.blockPos) || isBitBlock || isBlockSupported) {
+                            final ChiselIterator i = ChiselTypeIterator.create(
                                     VoxelBlob.dim,
                                     location.bitX,
                                     location.bitY,
                                     location.bitZ,
-                                    VoxelBlob.NULL_BLOB,
-                                    ChiselMode.SINGLE,
-                                    Direction.UP,
-                                    tool == ChiselToolType.BIT);
-                            final ChiselIterator otherEnd = ChiselTypeIterator.create(
+                                    region,
+                                    ChiselMode.castMode(chMode),
+                                    rayTraceResult.getDirection(),
+                                    !isChisel);
+                            final AABB bb = i.getBoundingBox(
+                                    getLastBitOperation(
+                                                            player,
+                                                            lastHand,
+                                                            getPlayer().getItemInHand(lastHand))
+                                                    != BitOperation.REPLACE
+                                            ? vb
+                                            : new VoxelBlob(),
+                                    isChisel);
+                            selectionBoxes.add(new SelectionBoxRenderState(bb, location.blockPos));
+                            showBox = false;
+                        } else if (isBit) {
+                            final VoxelBlob j = new VoxelBlob();
+                            j.fill(1);
+                            final ChiselIterator i = ChiselTypeIterator.create(
                                     VoxelBlob.dim,
-                                    other.bitX,
-                                    other.bitY,
-                                    other.bitZ,
-                                    VoxelBlob.NULL_BLOB,
-                                    ChiselMode.SINGLE,
-                                    Direction.UP,
-                                    tool == ChiselToolType.BIT);
-
-                            final AABB a = oneEnd.getBoundingBox(VoxelBlob.NULL_BLOB, false)
-                                    .move(location.blockPos.getX(), location.blockPos.getY(), location.blockPos.getZ());
-                            final AABB b = otherEnd.getBoundingBox(VoxelBlob.NULL_BLOB, false)
-                                    .move(other.blockPos.getX(), other.blockPos.getY(), other.blockPos.getZ());
-
-                            final AABB bb = a.minmax(b);
-
-                            final double maxChiseSize = ChiselsAndBits.getConfig()
-                                            .getClient()
-                                            .maxDrawnRegionSize
-                                            .get()
-                                    + 0.001;
-
-                            if (bb.maxX - bb.minX <= maxChiseSize
-                                    && bb.maxY - bb.minY <= maxChiseSize
-                                    && bb.maxZ - bb.minZ <= maxChiseSize) {
-                                RenderHelper.drawSelectionBoundingBoxIfExists(
-                                        stack, buffers, bb, BlockPos.ZERO, player, partialTicks, false);
-
-                                if (!getToolKey().isDown()) {
-                                    final PacketChisel pc = new PacketChisel(
-                                            getLastBitOperation(player, lastHand, player.getItemInHand(lastHand)),
-                                            location,
-                                            other,
-                                            Direction.UP,
-                                            ChiselMode.DRAWN_REGION,
-                                            lastHand);
-
-                                    if (pc.doAction(getPlayer()) > 0) {
-                                        ChiselsAndBits.getNetworkChannel().sendToServer(pc);
-                                        ClientSide.placeSound(theWorld, location.blockPos, 0);
-                                    }
-
-                                    drawStart = null;
-                                    lastHand = InteractionHand.MAIN_HAND;
-                                    lastTool = ChiselToolType.CHISEL;
-                                }
-                            }
-                        } else {
-                            final BlockEntity te = theWorld.getChunkAt(location.blockPos)
-                                    .getBlockEntity(location.blockPos, LevelChunk.EntityCreationType.CHECK);
-
-                            boolean isBitBlock = te instanceof TileEntityBlockChiseled;
-                            final boolean isBlockSupported = BlockBitInfo.canChisel(state);
-
-                            if (!(isBitBlock || isBlockSupported)) {
-                                final TileEntityBlockChiseled tebc =
-                                        ModUtil.getChiseledTileEntity(theWorld, location.blockPos, false);
-                                if (tebc != null) {
-                                    final VoxelBlob vx = tebc.getBlob();
-                                    if (vx.get(location.bitX, location.bitY, location.bitZ) != 0) {
-                                        isBitBlock = true;
-                                    }
-                                }
-                            }
-
-                            if (theWorld.isEmptyBlock(location.blockPos) || isBitBlock || isBlockSupported) {
-                                final ChiselIterator i = ChiselTypeIterator.create(
-                                        VoxelBlob.dim,
-                                        location.bitX,
-                                        location.bitY,
-                                        location.bitZ,
-                                        region,
-                                        ChiselMode.castMode(chMode),
-                                        rayTraceResult.getDirection(),
-                                        !isChisel);
-                                final AABB bb = i.getBoundingBox(
-                                        getLastBitOperation(
-                                                                player,
-                                                                lastHand,
-                                                                getPlayer().getItemInHand(lastHand))
-                                                        != BitOperation.REPLACE
-                                                ? vb
-                                                : new VoxelBlob(),
-                                        isChisel);
-                                RenderHelper.drawSelectionBoundingBoxIfExists(
-                                        stack, buffers, bb, location.blockPos, player, partialTicks, false);
-                                showBox = false;
-                            } else if (isBit) {
-                                final VoxelBlob j = new VoxelBlob();
-                                j.fill(1);
-                                final ChiselIterator i = ChiselTypeIterator.create(
-                                        VoxelBlob.dim,
-                                        location.bitX,
-                                        location.bitY,
-                                        location.bitZ,
-                                        j,
-                                        ChiselMode.castMode(chMode),
-                                        rayTraceResult.getDirection(),
-                                        !isChisel);
-                                final AABB bb =
-                                        snapToSide(i.getBoundingBox(j, isChisel), rayTraceResult.getDirection());
-                                RenderHelper.drawSelectionBoundingBoxIfExists(
-                                        stack, buffers, bb, location.blockPos, player, partialTicks, false);
-                            }
+                                    location.bitX,
+                                    location.bitY,
+                                    location.bitZ,
+                                    j,
+                                    ChiselMode.castMode(chMode),
+                                    rayTraceResult.getDirection(),
+                                    !isChisel);
+                            final AABB bb = snapToSide(i.getBoundingBox(j, isChisel), rayTraceResult.getDirection());
+                            selectionBoxes.add(new SelectionBoxRenderState(bb, location.blockPos));
                         }
                     }
+                }
 
-                    if (!showBox) {
-                        return false;
-                    }
+                if (!showBox) {
+                    return selectionBoxes;
                 }
             }
-
-        } finally {
-            stack.popPose();
         }
 
-        return false;
+        return selectionBoxes;
     }
 
     private BitOperation getLastBitOperation(
@@ -1020,111 +1032,76 @@ public class ClientSide {
     }
 
     @Environment(EnvType.CLIENT)
-    public void drawLast(WorldRenderContext context) {
-        // important and used for tesr / block rendering.
-        ++lastRenderedFrame;
-
-        float partialTicks = context.tickDelta();
-        PoseStack stack = context.matrixStack();
-
-        if (Minecraft.getInstance().options.hideGui) {
-            return;
-        }
-
-        // now render the ghosts...
+    private GhostRenderState extractGhostRenderState() {
         final Player player = Minecraft.getInstance().player;
         final HitResult mop = Minecraft.getInstance().hitResult;
-        final Level theWorld = player.level;
+        final Level theWorld = player.level();
         final ItemStack currentItem = player.getMainHandItem();
 
-        final double x = player.xOld + (player.getX() - player.xOld) * partialTicks;
-        final double y = player.yOld + (player.getY() - player.yOld) * partialTicks;
-        final double z = player.zOld + (player.getZ() - player.zOld) * partialTicks;
-
         if (mop == null) {
-            return;
+            return null;
         }
-        AtomicBoolean isPositivePatten = new AtomicBoolean(false);
+
+        final AtomicBoolean isPositivePatten = new AtomicBoolean(false);
         if (ModUtil.isHoldingPattern(player, isPositivePatten)) {
             if (mop.getType() != HitResult.Type.BLOCK) {
-                return;
+                return null;
             }
 
             final BlockHitResult rayTraceResult = (BlockHitResult) mop;
             final IToolMode mode =
                     ChiselModeManager.getChiselMode(player, ChiselToolType.POSITIVEPATTERN, InteractionHand.MAIN_HAND);
-
             final BlockPos pos = rayTraceResult.getBlockPos();
-            final BlockPos partial = null;
-
-            final BlockState s = theWorld.getBlockState(pos);
-            if (!(s.getBlock() instanceof BlockChiseled) && !BlockBitInfo.canChisel(s)) {
-                return;
+            final BlockState state = theWorld.getBlockState(pos);
+            if (!(state.getBlock() instanceof BlockChiseled) && !BlockBitInfo.canChisel(state)) {
+                return null;
             }
 
             if (!ModItems.ITEM_NEGATIVE_PRINT_WRITTEN.get().isWritten(currentItem)
                     && !ModItems.ITEM_POSITIVE_PRINT_WRITTEN.get().isWritten(currentItem)) {
-                return;
+                return null;
             }
 
             final ItemStack item = isPositivePatten.get()
                     ? ModItems.ITEM_POSITIVE_PRINT_WRITTEN.get().getPatternedItem(currentItem, false)
                     : ModItems.ITEM_NEGATIVE_PRINT_WRITTEN.get().getPatternedItem(currentItem, false);
-            if (item == null || !item.hasTag()) {
-                return;
+            if (item == null || !ModUtil.hasChiseledData(item)) {
+                return null;
             }
 
             final int rotations = ModUtil.getRotations(player, ModUtil.getSide(currentItem));
-
             if (mode == PositivePatternMode.PLACEMENT) {
-                doGhostForChiseledBlock(stack, x, y, z, theWorld, player, (BlockHitResult) mop, item, item, rotations);
-                return;
+                return doGhostForChiseledBlock(theWorld, player, rayTraceResult, item, item, rotations);
             }
 
-            if (item != null && !item.isEmpty()) {
-                final TileEntityBlockChiseled tebc = ModUtil.getChiseledTileEntity(theWorld, pos, false);
-                Object cacheRef = tebc != null ? tebc : s;
-                if (cacheRef instanceof TileEntityBlockChiseled) {
-                    cacheRef = ((TileEntityBlockChiseled) cacheRef).getBlobStateReference();
-                }
-
-                RenderSystem.depthFunc(GL11.GL_ALWAYS);
-                showGhost(
-                        stack,
-                        currentItem,
-                        item,
-                        rayTraceResult.getBlockPos(),
-                        player,
-                        rotations,
-                        x,
-                        y,
-                        z,
-                        rayTraceResult.getDirection(),
-                        partial,
-                        cacheRef);
-                RenderSystem.depthFunc(GL11.GL_LEQUAL);
-            }
-        } else if (ModUtil.isHoldingChiseledBlock(player)) {
-            if (mop.getType() != HitResult.Type.BLOCK) {
-                return;
+            final TileEntityBlockChiseled tebc = ModUtil.getChiseledTileEntity(theWorld, pos, false);
+            Object cacheRef = tebc != null ? tebc : state;
+            if (cacheRef instanceof TileEntityBlockChiseled chiseled) {
+                cacheRef = chiseled.getBlobStateReference();
             }
 
-            final ItemStack item = currentItem;
-            if (!item.hasTag()) {
-                return;
-            }
-
-            final int rotations = ModUtil.getRotations(player, ModUtil.getSide(item));
-            doGhostForChiseledBlock(
-                    stack, x, y, z, theWorld, player, (BlockHitResult) mop, currentItem, item, rotations);
+            return showGhost(
+                    currentItem, item, pos, player, rotations, rayTraceResult.getDirection(), null, cacheRef, true);
         }
+
+        if (ModUtil.isHoldingChiseledBlock(player) && mop.getType() == HitResult.Type.BLOCK) {
+            if (!ModUtil.hasChiseledData(currentItem)) {
+                return null;
+            }
+
+            return doGhostForChiseledBlock(
+                    theWorld,
+                    player,
+                    (BlockHitResult) mop,
+                    currentItem,
+                    currentItem,
+                    ModUtil.getRotations(player, ModUtil.getSide(currentItem)));
+        }
+
+        return null;
     }
 
-    private void doGhostForChiseledBlock(
-            final PoseStack matrixStack,
-            final double x,
-            final double y,
-            final double z,
+    private GhostRenderState doGhostForChiseledBlock(
             final Level theWorld,
             final Player player,
             final BlockHitResult mop,
@@ -1134,109 +1111,84 @@ public class ClientSide {
         final BlockPos offset = mop.getBlockPos();
 
         if (ClientSide.offGridPlacement(player)) {
-            final BitLocation bl = new BitLocation(mop, BitOperation.PLACE);
-            showGhost(
-                    matrixStack,
+            final BitLocation location = new BitLocation(mop, BitOperation.PLACE);
+            return showGhost(
                     currentItem,
                     item,
-                    bl.blockPos,
+                    location.blockPos,
                     player,
                     rotations,
-                    x,
-                    y,
-                    z,
                     mop.getDirection(),
-                    new BlockPos(bl.bitX, bl.bitY, bl.bitZ),
-                    null);
-        } else {
-            boolean canMerge = false;
-            if (currentItem.hasTag()) {
-                final TileEntityBlockChiseled tebc = ModUtil.getChiseledTileEntity(theWorld, offset, true);
+                    new BlockPos(location.bitX, location.bitY, location.bitZ),
+                    null,
+                    false);
+        }
 
-                if (tebc != null) {
-                    final VoxelBlob blob = ModUtil.getBlobFromStack(currentItem, player);
-                    canMerge = tebc.canMerge(blob);
-                }
-            }
-
-            BlockPos newOffset = offset;
-            final Block block = theWorld.getBlockState(newOffset).getBlock();
-            final InteractionHand hand =
-                    player.getUsedItemHand() != null ? player.getUsedItemHand() : InteractionHand.MAIN_HAND;
-            if (!canMerge
-                    && !ClientSide.offGridPlacement(player)
-                    && !block.canBeReplaced(
-                            theWorld.getBlockState(newOffset),
-                            new BlockPlaceContext(player, hand, player.getItemInHand(hand), mop))) {
-                newOffset = offset.relative(mop.getDirection());
-            }
-
-            final BlockEntity newTarget = theWorld.getBlockEntity(newOffset);
-
-            if (theWorld.isEmptyBlock(newOffset)
-                    || newTarget instanceof TileEntityBlockChiseled
-                    || (theWorld.getBlockEntity(newOffset) instanceof TileEntityBlockChiseled
-                            && theWorld.getBlockState(newOffset)
-                                    .getBlock()
-                                    .canBeReplaced(
-                                            theWorld.getBlockState(newOffset),
-                                            new BlockPlaceContext(
-                                                    player,
-                                                    hand,
-                                                    player.getItemInHand(hand),
-                                                    new BlockHitResult(
-                                                            mop.getLocation()
-                                                                    .add(
-                                                                            mop.getDirection()
-                                                                                    .getStepX(),
-                                                                            mop.getDirection()
-                                                                                    .getStepY(),
-                                                                            mop.getDirection()
-                                                                                    .getStepZ()),
-                                                            mop.getDirection(),
-                                                            mop.getBlockPos()
-                                                                    .offset(mop.getDirection()
-                                                                            .getNormal()),
-                                                            mop.isInside()))))
-                    || (!(theWorld.getBlockEntity(newOffset) instanceof TileEntityBlockChiseled)
-                            && theWorld.getBlockState(newOffset)
-                                    .getBlock()
-                                    .canBeReplaced(
-                                            theWorld.getBlockState(newOffset),
-                                            new BlockPlaceContext(player, hand, player.getItemInHand(hand), mop)))) {
-
-                final TileEntityBlockChiseled test = ModUtil.getChiseledTileEntity(theWorld, newOffset, false);
-                showGhost(
-                        matrixStack,
-                        currentItem,
-                        item,
-                        newOffset,
-                        player,
-                        rotations,
-                        x,
-                        y,
-                        z,
-                        mop.getDirection(),
-                        null,
-                        test == null ? null : test.getBlobStateReference());
+        boolean canMerge = false;
+        if (ModUtil.hasChiseledData(currentItem)) {
+            final TileEntityBlockChiseled tebc = ModUtil.getChiseledTileEntity(theWorld, offset, true);
+            if (tebc != null) {
+                canMerge = tebc.canMerge(ModUtil.getBlobFromStack(currentItem, player));
             }
         }
+
+        BlockPos newOffset = offset;
+        final InteractionHand hand =
+                player.getUsedItemHand() != null ? player.getUsedItemHand() : InteractionHand.MAIN_HAND;
+        if (!canMerge
+                && !ClientSide.offGridPlacement(player)
+                && !theWorld.getBlockState(newOffset)
+                        .canBeReplaced(new BlockPlaceContext(player, hand, player.getItemInHand(hand), mop))) {
+            newOffset = offset.relative(mop.getDirection());
+        }
+
+        final BlockEntity newTarget = theWorld.getBlockEntity(newOffset);
+        final BlockHitResult offsetHit = new BlockHitResult(
+                mop.getLocation()
+                        .add(
+                                mop.getDirection().getStepX(),
+                                mop.getDirection().getStepY(),
+                                mop.getDirection().getStepZ()),
+                mop.getDirection(),
+                mop.getBlockPos().relative(mop.getDirection()),
+                mop.isInside());
+
+        if (theWorld.isEmptyBlock(newOffset)
+                || newTarget instanceof TileEntityBlockChiseled
+                || (theWorld.getBlockEntity(newOffset) instanceof TileEntityBlockChiseled
+                        && theWorld.getBlockState(newOffset)
+                                .canBeReplaced(
+                                        new BlockPlaceContext(player, hand, player.getItemInHand(hand), offsetHit)))
+                || (!(theWorld.getBlockEntity(newOffset) instanceof TileEntityBlockChiseled)
+                        && theWorld.getBlockState(newOffset)
+                                .canBeReplaced(new BlockPlaceContext(player, hand, player.getItemInHand(hand), mop)))) {
+            final TileEntityBlockChiseled target = ModUtil.getChiseledTileEntity(theWorld, newOffset, false);
+            return showGhost(
+                    currentItem,
+                    item,
+                    newOffset,
+                    player,
+                    rotations,
+                    mop.getDirection(),
+                    null,
+                    target == null ? null : target.getBlobStateReference(),
+                    false);
+        }
+
+        return null;
     }
 
-    private void showGhost(
-            final PoseStack matrixStack,
+    private GhostRenderState showGhost(
             final ItemStack refItem,
             final ItemStack item,
             final BlockPos blockPos,
             final Player player,
             final int rotationCount,
-            final double x,
-            final double y,
-            final double z,
             final Direction side,
             final BlockPos partial,
-            final Object cacheRef) {
-        BakedModel baked = null;
+            final Object cacheRef,
+            final boolean alwaysOnTop) {
+        LegacyBakedModel baked = null;
 
         if (previousCacheRef == cacheRef
                 && samePos(lastPos, blockPos)
@@ -1244,7 +1196,7 @@ public class ClientSide {
                 && previousRotations == rotationCount
                 && previousModel != null
                 && samePos(lastPartial, partial)) {
-            baked = (BakedModel) previousModel;
+            baked = previousModel;
         } else {
             int rotations = rotationCount;
 
@@ -1253,10 +1205,11 @@ public class ClientSide {
             previousCacheRef = cacheRef;
             lastPos = blockPos;
             lastPartial = partial;
+            previousPreparedModel = null;
 
-            final NBTBlobConverter c = new NBTBlobConverter();
-            c.readChisleData(ModUtil.getSubCompound(item, ModUtil.NBT_BLOCKENTITYTAG, false), VoxelBlob.VERSION_ANY);
-            VoxelBlob blob = c.getBlob();
+            final NBTBlobConverter converter = new NBTBlobConverter();
+            converter.readFromStack(item, VoxelBlob.VERSION_ANY);
+            VoxelBlob blob = converter.getBlob();
 
             while (rotations-- > 0) {
                 blob = blob.spin(Axis.Y);
@@ -1268,48 +1221,39 @@ public class ClientSide {
             if (refItem.getItem() == ModItems.ITEM_NEGATIVE_PRINT_WRITTEN.get()) {
                 final VoxelBlob pattern = blob;
 
-                if (cacheRef instanceof VoxelBlobStateReference) {
-                    blob = ((VoxelBlobStateReference) cacheRef).getVoxelBlob();
-                } else if (cacheRef instanceof BlockState) {
+                if (cacheRef instanceof VoxelBlobStateReference reference) {
+                    blob = reference.getVoxelBlob();
+                } else if (cacheRef instanceof BlockState blockState) {
                     blob = new VoxelBlob();
-                    blob.fill(ModUtil.getStateId((BlockState) cacheRef));
+                    blob.fill(ModUtil.getStateId(blockState));
                 } else {
                     break fail;
                 }
 
-                final BitIterator it = new BitIterator();
-                while (it.hasNext()) {
-                    if (it.getNext(pattern) == 0) {
-                        it.setNext(blob, 0);
+                final BitIterator iterator = new BitIterator();
+                while (iterator.hasNext()) {
+                    if (iterator.getNext(pattern) == 0) {
+                        iterator.setNext(blob, 0);
                     }
                 }
             }
 
-            c.setBlob(blob);
+            converter.setBlob(blob);
 
-            final Block blk = Block.byItem(item.getItem());
-            final ItemStack is = c.getItemStack(false);
-
-            if (is == null || is.isEmpty()) {
+            final Block block = Block.byItem(item.getItem());
+            final ItemStack modelStack = converter.getItemStack(false);
+            if (modelStack == null || modelStack.isEmpty()) {
                 isVisible = false;
             } else {
-                baked = Minecraft.getInstance()
-                        .getItemRenderer()
-                        .getItemModelShaper()
-                        .getItemModel(is);
-                previousModel = baked = baked.getOverrides()
-                        .resolve(baked, is, (ClientLevel) player.getCommandSenderWorld(), player, 0);
-
-                if (refItem.getItem() instanceof IPatternItem) {
-                    isVisible = true;
-                } else {
-                    isVisible = true;
-                    // TODO: Figure out the hitvector here. Might need to pass that down stream.
+                previousModel = baked = SmartModelManager.getInstance()
+                        .resolveLegacyItemModel(modelStack, (ClientLevel) player.level(), player);
+                isVisible = true;
+                if (!(refItem.getItem() instanceof IPatternItem)) {
                     isUnplaceable = !ItemBlockChiseled.tryPlaceBlockAt(
-                            blk,
+                            block,
                             item,
                             player,
-                            player.getCommandSenderWorld(),
+                            player.level(),
                             blockPos,
                             side,
                             InteractionHand.MAIN_HAND,
@@ -1322,33 +1266,33 @@ public class ClientSide {
             }
         }
 
-        if (!isVisible) {
-            return;
+        if (!isVisible || baked == null) {
+            return null;
         }
 
-        matrixStack.pushPose();
-
+        Vec3 partialTranslation = null;
         if (partial != null) {
-            final BlockPos t = ModUtil.getPartialOffset(side, partial, modelBounds);
-            final double fullScale = 1.0 / VoxelBlob.dim;
-            matrixStack.translate(t.getX() * fullScale, t.getY() * fullScale, t.getZ() * fullScale);
+            final BlockPos offset = ModUtil.getPartialOffset(side, partial, modelBounds);
+            final double scale = 1.0 / VoxelBlob.dim;
+            partialTranslation = new Vec3(offset.getX() * scale, offset.getY() * scale, offset.getZ() * scale);
         }
-        final Vec3 camera = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
-        matrixStack.translate(
-                blockPos.getX() - camera.x - 0.000125,
-                blockPos.getY() - camera.y + 0.000125,
-                blockPos.getZ() - camera.z - 0.000125);
-        matrixStack.scale(1.001F, 1.001F, 1.001F);
-        RenderHelper.renderGhostModel(
-                matrixStack,
-                baked,
-                player.getCommandSenderWorld(),
-                blockPos,
-                isUnplaceable,
-                LevelRenderer.getLightColor(player.getCommandSenderWorld(), blockPos),
-                OverlayTexture.NO_OVERLAY);
 
-        matrixStack.popPose();
+        final int alpha = isUnplaceable ? 0x22000000 : 0xaa000000;
+        if (previousPreparedModel == null
+                || previousPreparedAlpha != alpha
+                || !samePos(previousPreparedPosition, blockPos)) {
+            previousPreparedModel = RenderHelper.prepareModel(baked, player.level(), blockPos, alpha);
+            previousPreparedAlpha = alpha;
+            previousPreparedPosition = blockPos;
+        }
+
+        return new GhostRenderState(
+                previousPreparedModel,
+                blockPos,
+                partialTranslation,
+                isUnplaceable,
+                LightCoordsUtil.getLightCoords(player.level(), blockPos),
+                alwaysOnTop);
     }
 
     private boolean samePos(final BlockPos lastPartial2, final BlockPos partial) {
@@ -1382,10 +1326,7 @@ public class ClientSide {
         final BlockPos pos = target.getBlockPos();
         final float boxOffset = 0.1F;
 
-        AABB bb = world.getBlockState(pos)
-                .getBlock()
-                .getShape(state, world, pos, CollisionContext.empty())
-                .bounds();
+        AABB bb = state.getShape(world, pos, CollisionContext.empty()).bounds();
 
         double x = RANDOM.nextDouble() * (bb.maxX - bb.minX - boxOffset * 2.0F) + boxOffset + bb.minX;
         double y = RANDOM.nextDouble() * (bb.maxY - bb.minY - boxOffset * 2.0F) + boxOffset + bb.minY;
@@ -1511,8 +1452,9 @@ public class ClientSide {
 
     public TextureAtlasSprite getMissingIcon() {
         return Minecraft.getInstance()
-                .getTextureAtlas(InventoryMenu.BLOCK_ATLAS)
-                .apply(new ResourceLocation("missingno"));
+                .getAtlasManager()
+                .getAtlasOrThrow(TextureAtlas.LOCATION_BLOCKS)
+                .missingSprite();
     }
 
     public String getModeKey() {
@@ -1526,7 +1468,7 @@ public class ClientSide {
     public boolean holdingShift() {
         return (!Minecraft.getInstance().options.keyShift.isUnbound()
                         && Minecraft.getInstance().options.keyShift.isDown())
-                || Screen.hasShiftDown();
+                || Minecraft.getInstance().hasShiftDown();
     }
 
     public String getKeyName(KeyMapping bind) {
@@ -1534,13 +1476,13 @@ public class ClientSide {
             return LocalStrings.noBind.getLocal();
         }
 
-        if (bind.key.getValue() == 0 && bind.getDefaultKey().getValue() != 0) {
+        if (bind.isUnbound() && bind.getDefaultKey().getValue() != 0) {
             // TODO: This previously changed the resulting string to something easier to understand. Not sure that is
             // still needed.
             return DeprecationHelper.translateToLocal(bind.saveString());
         }
 
-        if (bind.key.getValue() == 0) {
+        if (bind.isUnbound()) {
             return '"' + DeprecationHelper.translateToLocal(bind.getName());
         }
 

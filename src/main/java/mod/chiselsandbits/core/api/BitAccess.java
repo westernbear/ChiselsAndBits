@@ -25,7 +25,6 @@ import mod.chiselsandbits.registry.ModBlocks;
 import mod.chiselsandbits.registry.ModItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Rotation;
@@ -127,9 +126,6 @@ public class BitAccess implements IBitAccess {
         final NBTBlobConverter c = new NBTBlobConverter();
         c.setBlob(blob);
 
-        final CompoundTag nbttagcompound = new CompoundTag();
-        c.writeChisleData(nbttagcompound, crossWorld);
-
         final ItemStack stack;
 
         if (type == ItemType.CHISELED_BLOCK) {
@@ -142,7 +138,6 @@ public class BitAccess implements IBitAccess {
             ItemBlockChiseled item = ModItems.ITEM_CHISELED_BLOCK.get();
 
             stack = new ItemStack(item, 1);
-            stack.addTagElement(ModUtil.NBT_BLOCKENTITYTAG, nbttagcompound);
         } else {
             switch (type) {
                 case MIRROR_DESIGN:
@@ -157,9 +152,9 @@ public class BitAccess implements IBitAccess {
                 default:
                     return ModUtil.getEmptyStack();
             }
-
-            stack.setTag(nbttagcompound);
         }
+
+        c.writeToStack(stack, crossWorld);
 
         if (side != null) {
             ModUtil.setSide(stack, side);

@@ -16,15 +16,15 @@ public final class TransformationUtils {
             stack.pushPose();
         }
 
-        Vector3f trans = transformation.getTranslation();
+        var trans = transformation.translation();
         stack.translate(trans.x(), trans.y(), trans.z());
 
-        stack.mulPose(transformation.getLeftRotation());
+        stack.mulPose(transformation.leftRotation());
 
-        Vector3f scale = transformation.getScale();
+        var scale = transformation.scale();
         stack.scale(scale.x(), scale.y(), scale.z());
 
-        stack.mulPose(transformation.getRightRotation());
+        stack.mulPose(transformation.rightRotation());
     }
 
     public static Quaternionf quatFromXYZ(Vector3f xyz, boolean degrees) {

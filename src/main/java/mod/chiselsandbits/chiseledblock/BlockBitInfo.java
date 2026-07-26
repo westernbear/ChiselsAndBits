@@ -23,7 +23,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EntityBlock;
@@ -86,7 +85,7 @@ public class BlockBitInfo {
                 if (ModUtil.isEmpty(target)) {
                     out = 0xffffff;
                 } else {
-                    out = ModelUtil.getItemStackColor(target, tint);
+                    out = ModelUtil.getBlockStateColor(state, tint);
                 }
             }
 
@@ -237,7 +236,7 @@ public class BlockBitInfo {
             boolean isFullBlock = state.canOcclude() || blk instanceof TransparentBlock || blk instanceof LiquidBlock;
             final BlockBitInfo info = BlockBitInfo.createFromState(state);
 
-            final boolean tickingBehavior = blk.isRandomlyTicking(state)
+            final boolean tickingBehavior = state.isRandomlyTicking()
                     && ChiselsAndBits.getConfig()
                             .getServer()
                             .blackListRandomTickingBlocks
@@ -362,22 +361,10 @@ public class BlockBitInfo {
                     ClassUtils.getDeclaringClass(blkClass, reflectBlock.getLastInvokedThreadLocalMethodName());
             final boolean test_c = exploResistanceClz == Block.class || exploResistanceClz == BlockBehaviour.class;
 
-            reflectBlock.getExplosionResistance(null, null, null, null);
-            exploResistanceClz = ClassUtils.getDeclaringClass(
-                    blkClass,
-                    reflectBlock.getLastInvokedThreadLocalMethodName(),
-                    BlockState.class,
-                    BlockGetter.class,
-                    BlockPos.class,
-                    Explosion.class);
-            final boolean test_d = exploResistanceClz == Block.class
-                    || exploResistanceClz == BlockBehaviour.class
-                    || exploResistanceClz == null;
-
             final boolean isFluid = fluidStates.containsKey(ModUtil.getStateId(state));
 
             // is it perfect?
-            if (test_b && test_c && test_d && !isFluid) {
+            if (test_b && test_c && !isFluid) {
                 final float blockHardness =
                         state.getDestroySpeed(new SingleBlockBlockReader(state, state.getBlock()), BlockPos.ZERO);
                 final float resistance = blk.getExplosionResistance();

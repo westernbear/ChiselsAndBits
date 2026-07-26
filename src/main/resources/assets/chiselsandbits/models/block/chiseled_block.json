@@ -1,4 +1,7 @@
 {
   "parent": "item/generated",
-  "loader": "chiselsandbits:chiseled_block"
+  "loader": "chiselsandbits:chiseled_block",
+  "textures": {
+    "layer0": "chiselsandbits:block/missing"
+  }
 }

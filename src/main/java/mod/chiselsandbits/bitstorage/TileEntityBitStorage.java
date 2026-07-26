@@ -20,11 +20,11 @@ import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext;
 import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
@@ -33,6 +33,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FlowingFluid;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -146,37 +148,35 @@ public class TileEntityBitStorage extends BlockEntity implements SidedStorageBlo
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
-        return saveWithFullMetadata();
+    public CompoundTag getUpdateTag(final HolderLookup.Provider registries) {
+        return saveWithFullMetadata(registries);
     }
 
     @Override
     public ClientboundBlockEntityDataPacket getUpdatePacket() {
-        return new ClientboundBlockEntityDataPacket(
-                getBlockPos(), ModTileEntityTypes.BIT_STORAGE.get(), saveWithFullMetadata());
+        return ClientboundBlockEntityDataPacket.create(this);
     }
 
     @Override
-    public void load(final CompoundTag nbt) {
-        super.load(nbt);
+    protected void loadAdditional(final ValueInput input) {
+        super.loadAdditional(input);
         state = null;
         myFluid = null;
-        bits = Math.max(0, Math.min(MAX_CONTENTS, nbt.getInt("bits")));
+        bits = Math.max(0, Math.min(MAX_CONTENTS, input.getIntOr("bits", 0)));
         fluidAmount = 0;
         fluidStorage.variant = FluidVariant.blank();
         fluidStorage.amount = 0;
 
-        if (nbt.contains("fluid_storage", Tag.TAG_COMPOUND)) {
-            fluidStorage.readNbt(nbt.getCompound("fluid_storage"));
+        final var fluidStorageInput = input.child("fluid_storage");
+        if (fluidStorageInput.isPresent()) {
+            fluidStorage.readValue(fluidStorageInput.get());
         } else {
-            final String fluidId = nbt.getString("fluid");
+            final String fluidId = input.getStringOr("fluid", "");
             if (!fluidId.isEmpty()) {
-                final Fluid fluid = sourceFluid(BuiltInRegistries.FLUID.get(new ResourceLocation(fluidId)));
+                final Fluid fluid = sourceFluid(BuiltInRegistries.FLUID.getValue(Identifier.parse(fluidId)));
                 if (fluid != Fluids.EMPTY) {
                     fluidStorage.variant = FluidVariant.of(fluid);
-                    fluidStorage.amount = nbt.contains("fluid_amount", Tag.TAG_ANY_NUMERIC)
-                            ? nbt.getLong("fluid_amount")
-                            : bitsToDroplets(bits);
+                    fluidStorage.amount = input.getLongOr("fluid_amount", bitsToDroplets(bits));
                 }
             }
         }
@@ -189,23 +189,20 @@ public class TileEntityBitStorage extends BlockEntity implements SidedStorageBlo
         } else {
             fluidStorage.variant = FluidVariant.blank();
             fluidStorage.amount = 0;
-            final int rawState = nbt.getInt("blockstate");
+            final int rawState = input.getIntOr("blockstate", -1);
             state = rawState == -1 ? null : ModUtil.getStateById(rawState);
         }
     }
 
     @Override
-    protected void saveAdditional(final CompoundTag nbt) {
-        super.saveAdditional(nbt);
-        final ResourceLocation fluidId = myFluid == null ? null : BuiltInRegistries.FLUID.getKey(myFluid);
-        nbt.putString("fluid", fluidId == null ? "" : fluidId.toString());
-        nbt.putInt("blockstate", myFluid != null || state == null ? -1 : ModUtil.getStateId(state));
-        nbt.putInt("bits", bits);
-        nbt.putLong("fluid_amount", fluidAmount);
-
-        final CompoundTag fluidNbt = new CompoundTag();
-        fluidStorage.writeNbt(fluidNbt);
-        nbt.put("fluid_storage", fluidNbt);
+    protected void saveAdditional(final ValueOutput output) {
+        super.saveAdditional(output);
+        final Identifier fluidId = myFluid == null ? null : BuiltInRegistries.FLUID.getKey(myFluid);
+        output.putString("fluid", fluidId == null ? "" : fluidId.toString());
+        output.putInt("blockstate", myFluid != null || state == null ? -1 : ModUtil.getStateId(state));
+        output.putInt("bits", bits);
+        output.putLong("fluid_amount", fluidAmount);
+        fluidStorage.writeValue(output.child("fluid_storage"));
     }
 
     public ItemStack getStackInSlot(final int slot) {
@@ -450,7 +447,7 @@ public class TileEntityBitStorage extends BlockEntity implements SidedStorageBlo
     }
 
     public ItemStack extractItem(final int slot, final int amount, final boolean simulate) {
-        return extractBits(slot, Math.min(amount, ModItems.ITEM_BLOCK_BIT.get().getMaxStackSize()), simulate);
+        return extractBits(slot, Math.min(amount, ModItems.ITEM_BLOCK_BIT.get().getDefaultMaxStackSize()), simulate);
     }
 
     public int getLightValue() {
@@ -479,10 +476,10 @@ public class TileEntityBitStorage extends BlockEntity implements SidedStorageBlo
         }
 
         boolean changed = false;
-        for (int slot = 0; slot < playerIn.inventory.getContainerSize(); slot++) {
-            final ItemStack stack = playerIn.inventory.getItem(slot);
+        for (int slot = 0; slot < playerIn.getInventory().getContainerSize(); slot++) {
+            final ItemStack stack = playerIn.getInventory().getItem(slot);
             if (ChiselsAndBits.getApi().getItemType(stack) == ItemType.CHISELED_BIT) {
-                playerIn.inventory.setItem(slot, insertItem(0, stack, false));
+                playerIn.getInventory().setItem(slot, insertItem(0, stack, false));
                 changed = true;
             } else if (ChiselsAndBits.getApi().getItemType(stack) == ItemType.BIT_BAG) {
                 final IBitBag bag = ChiselsAndBits.getApi().getBitbag(stack);
@@ -498,7 +495,7 @@ public class TileEntityBitStorage extends BlockEntity implements SidedStorageBlo
         }
 
         if (changed) {
-            playerIn.inventory.setChanged();
+            playerIn.getInventory().setChanged();
         }
         return changed;
     }
@@ -509,8 +506,8 @@ public class TileEntityBitStorage extends BlockEntity implements SidedStorageBlo
                         || BlockBitInfo.canChisel(current))) {
             final ItemStack resultStack = insertItem(0, current, false);
             if (!playerIn.isCreative()) {
-                playerIn.inventory.setItem(playerIn.inventory.selected, resultStack);
-                playerIn.inventory.setChanged();
+                playerIn.getInventory().setItem(playerIn.getInventory().getSelectedSlot(), resultStack);
+                playerIn.getInventory().setChanged();
             }
             return true;
         }

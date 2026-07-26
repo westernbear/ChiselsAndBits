@@ -28,7 +28,7 @@ public class ActingPlayer {
         innerPlayer = player;
         this.hand = hand;
         this.realPlayer = realPlayer;
-        storage = realPlayer ? player.getInventory() : new PlayerCopiedInventory(player.inventory);
+        storage = realPlayer ? player.getInventory() : new PlayerCopiedInventory(player.getInventory());
     }
 
     @NotNull
@@ -46,7 +46,7 @@ public class ActingPlayer {
     }
 
     public int getCurrentItem() {
-        return innerPlayer.getInventory().selected;
+        return innerPlayer.getInventory().getSelectedSlot();
     }
 
     public boolean isCreative() {
@@ -68,10 +68,9 @@ public class ActingPlayer {
             lastPlacement = placement;
             lastPermissionBit = is;
 
-            if (innerPlayer.mayUseItemAt(pos, side, is)
-                    && innerPlayer.getCommandSenderWorld().mayInteract(innerPlayer, pos)) {
-                final EventBlockBitModification event = new EventBlockBitModification(
-                        innerPlayer.getCommandSenderWorld(), pos, innerPlayer, hand, is, placement);
+            if (innerPlayer.mayUseItemAt(pos, side, is) && innerPlayer.level().mayInteract(innerPlayer, pos)) {
+                final EventBlockBitModification event =
+                        new EventBlockBitModification(innerPlayer.level(), pos, innerPlayer, hand, is, placement);
                 ChiselsAndBitsEvents.BLOCK_BIT_MODIFICATION.invoker().handle(event);
                 permissionResult = !event.isCancelled();
             } else {
@@ -84,7 +83,7 @@ public class ActingPlayer {
 
     public void damageItem(final ItemStack stack, final int amount) {
         if (realPlayer) {
-            stack.hurtAndBreak(amount, innerPlayer, playerEntity -> {});
+            stack.hurtAndBreak(amount, innerPlayer, hand);
         } else {
             stack.setDamageValue(stack.getDamageValue() + amount);
         }
@@ -97,7 +96,7 @@ public class ActingPlayer {
     }
 
     public Level getWorld() {
-        return innerPlayer.getCommandSenderWorld();
+        return innerPlayer.level();
     }
 
     /**

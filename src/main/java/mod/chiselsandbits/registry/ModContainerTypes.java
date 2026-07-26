@@ -7,7 +7,7 @@ import mod.chiselsandbits.printer.ChiselPrinterContainer;
 import mod.chiselsandbits.utils.Constants;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.flag.FeatureFlagSet;
 import net.minecraft.world.inventory.MenuType;
 
@@ -18,10 +18,11 @@ public final class ModContainerTypes {
     }
 
     public static void onModConstruction() {
-        Registry.register(BuiltInRegistries.MENU, new ResourceLocation(Constants.MOD_ID, "bag"), BAG_CONTAINER.get());
+        Registry.register(
+                BuiltInRegistries.MENU, Identifier.fromNamespaceAndPath(Constants.MOD_ID, "bag"), BAG_CONTAINER.get());
         Registry.register(
                 BuiltInRegistries.MENU,
-                new ResourceLocation(Constants.MOD_ID, "chisel_station"),
+                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "chisel_station"),
                 CHISEL_STATION_CONTAINER.get());
     }
 

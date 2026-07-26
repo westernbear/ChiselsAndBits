@@ -1,5 +1,6 @@
 package mod.chiselsandbits.render.helpers;
 
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormatElement;
 import java.util.Arrays;
@@ -33,9 +34,9 @@ public class ModelUVReader extends BaseModelReader {
         final VertexFormat format = getVertexFormat();
         final VertexFormatElement ele = format.getElements().get(element);
 
-        if (ele.getUsage() == VertexFormatElement.Usage.UV && ele.getIndex() == 0) {
+        if (DefaultVertexFormat.UV0_SEMANTIC_NAME.equals(ele.name())) {
             uv = Arrays.copyOf(data, data.length);
-        } else if (ele.getUsage() == VertexFormatElement.Usage.POSITION) {
+        } else if (DefaultVertexFormat.POSITION_SEMANTIC_NAME.equals(ele.name())) {
             pos = Arrays.copyOf(data, data.length);
         }
 

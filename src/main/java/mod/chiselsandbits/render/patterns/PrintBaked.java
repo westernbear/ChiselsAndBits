@@ -1,14 +1,16 @@
 package mod.chiselsandbits.render.patterns;
 
 import mod.chiselsandbits.client.model.baked.BaseBakedItemModel;
+import mod.chiselsandbits.client.model.baked.LegacyBakedModel;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.interfaces.IPatternItem;
+import mod.chiselsandbits.render.NullBakedModel;
+import mod.chiselsandbits.render.chiseledblock.ChiseledBlockSmartModel;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 public class PrintBaked extends BaseBakedItemModel {
@@ -19,10 +21,8 @@ public class PrintBaked extends BaseBakedItemModel {
         itemName = itname;
 
         final ItemStack blockItem = item.getPatternedItem(stack, false);
-        BakedModel model =
-                Minecraft.getInstance().getItemRenderer().getItemModelShaper().getItemModel(blockItem);
-
-        model = model.getOverrides().resolve(model, blockItem, null, null, 0);
+        final LegacyBakedModel model =
+                new ChiseledBlockSmartModel().resolve(NullBakedModel.instance, blockItem, null, null);
 
         for (final Direction face : Direction.values()) {
             list.addAll(model.getQuads(null, face, RANDOM));
@@ -39,7 +39,8 @@ public class PrintBaked extends BaseBakedItemModel {
     @Override
     public TextureAtlasSprite getParticleIcon() {
         return Minecraft.getInstance()
-                .getTextureAtlas(InventoryMenu.BLOCK_ATLAS)
-                .apply(new ResourceLocation(ChiselsAndBits.MODID, "item/" + itemName));
+                .getAtlasManager()
+                .getAtlasOrThrow(TextureAtlas.LOCATION_BLOCKS)
+                .getSprite(Identifier.fromNamespaceAndPath(ChiselsAndBits.MODID, "item/" + itemName));
     }
 }

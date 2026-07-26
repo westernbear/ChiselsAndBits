@@ -15,6 +15,7 @@ import mod.chiselsandbits.api.VoxelStats;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlobStateReference;
 import mod.chiselsandbits.client.UndoTracker;
+import mod.chiselsandbits.client.model.baked.LegacyBakedModel;
 import mod.chiselsandbits.client.model.data.IModelData;
 import mod.chiselsandbits.client.model.data.ModelDataMap;
 import mod.chiselsandbits.client.model.data.ModelProperty;
@@ -27,19 +28,19 @@ import mod.chiselsandbits.registry.ModBlocks;
 import mod.chiselsandbits.registry.ModTileEntityTypes;
 import mod.chiselsandbits.render.chiseledblock.ChiselRenderType;
 import mod.chiselsandbits.render.chiseledblock.ChiseledBlockSmartModel;
-import mod.chiselsandbits.utils.SingleBlockBlockReader;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -48,6 +49,8 @@ import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -56,10 +59,9 @@ public class TileEntityBlockChiseled extends BlockEntity
         implements IChiseledBlockTileEntity, LegacyBlockEntityProperties {
     public static final ModelProperty<VoxelBlobStateReference> MP_VBSR = new ModelProperty<>();
     public static final ModelProperty<Integer> MP_PBSI = new ModelProperty<>();
-    public static final ModelProperty<Map<ChiselRenderType, BakedModel>> MODEL_PROP = new ModelProperty<>();
+    public static final ModelProperty<Map<ChiselRenderType, LegacyBakedModel>> MODEL_PROP = new ModelProperty<>();
     public static final ModelProperty<Boolean> MODEL_UPDATE = new ModelProperty<>();
     private static final ThreadLocal<Integer> LOCAL_LIGHT_LEVEL = new ThreadLocal<>();
-    private final BlockEntityType<?> blockEntityType;
     boolean isNormalCube = false;
     int sideState = 0;
     int lightLevel = -1;
@@ -79,7 +81,14 @@ public class TileEntityBlockChiseled extends BlockEntity
 
     public TileEntityBlockChiseled(final BlockEntityType<?> tileEntityTypeIn, BlockPos pos, BlockState state) {
         super(tileEntityTypeIn == null ? ModTileEntityTypes.CHISELED.get() : tileEntityTypeIn, pos, state);
-        blockEntityType = tileEntityTypeIn == null ? ModTileEntityTypes.CHISELED.get() : tileEntityTypeIn;
+    }
+
+    @Override
+    public void setLevel(final Level level) {
+        super.setLevel(level);
+        if (!level.isClientSide() && getBlockState().getBlock() instanceof BlockChiseled) {
+            level.scheduleTick(worldPosition, getBlockState().getBlock(), 1);
+        }
     }
 
     public static long getPositionRandom(final BlockPos pos) {
@@ -162,12 +171,12 @@ public class TileEntityBlockChiseled extends BlockEntity
             return null;
         }
 
-        return new ClientboundBlockEntityDataPacket(worldPosition, blockEntityType, compound);
+        return ClientboundBlockEntityDataPacket.create(this, (blockEntity, registryAccess) -> compound);
     }
 
     @NotNull
     @Override
-    public CompoundTag getUpdateTag() {
+    public CompoundTag getUpdateTag(final HolderLookup.Provider registries) {
         final CompoundTag compound = new CompoundTag();
 
         compound.putInt("x", worldPosition.getX());
@@ -189,16 +198,18 @@ public class TileEntityBlockChiseled extends BlockEntity
     }
 
     @Override
-    protected void saveAdditional(CompoundTag compoundTag) {
-        super.saveAdditional(compoundTag);
-        writeChiselData(compoundTag);
+    protected void saveAdditional(final ValueOutput output) {
+        super.saveAdditional(output);
+        new NBTBlobConverter(false, this).writeChisleData(output, false);
     }
 
     @Override
-    public void load(CompoundTag nbt) {
+    protected void loadAdditional(final ValueInput input) {
+        super.loadAdditional(input);
         final VoxelBlobStateReference current = getBlobStateReference();
         final int oldLight = lightLevel;
-        final boolean changed = readChiselData(nbt);
+        final boolean changed =
+                new NBTBlobConverter(false, this).readChisleData(input, VoxelBlob.VERSION_COMPACT_PALLETED);
 
         if (level != null && changed) {
             level.setBlocksDirty(worldPosition, level.getBlockState(worldPosition), Blocks.AIR.defaultBlockState());
@@ -219,7 +230,6 @@ public class TileEntityBlockChiseled extends BlockEntity
     @NotNull
     @Override
     public CompoundTag writeTileEntityToTag(@NotNull final CompoundTag tag, final boolean crossWorld) {
-        saveAdditional(tag);
         new NBTBlobConverter(false, this).writeChisleData(tag, crossWorld);
         tag.putBoolean("cw", crossWorld);
         return tag;
@@ -289,6 +299,7 @@ public class TileEntityBlockChiseled extends BlockEntity
                 new VoxelBlobStateReference(ModUtil.getStateId(blockType), getPositionRandom(worldPosition)));
 
         setChanged();
+        synchronizeBlockStateProperties();
     }
 
     @Override
@@ -340,19 +351,12 @@ public class TileEntityBlockChiseled extends BlockEntity
         setBlobStateReference(voxelRef);
         setState(getState(), voxelRef);
 
-        if (getLevel() != null && triggerUpdates) {
+        if (getLevel() != null) {
             if (oldLV != getLightValue() || oldNC != isNormalCube()) {
-                getLevel().getLightEngine().checkBlock(worldPosition);
-
-                // update block state to reflect lighting characteristics
-                final BlockState state = getLevel().getBlockState(worldPosition);
-                if (state.isRedstoneConductor(new SingleBlockBlockReader(state), BlockPos.ZERO) != isNormalCube
-                        && state.getBlock() instanceof BlockChiseled) {
-                    getLevel().setBlockAndUpdate(worldPosition, state.setValue(BlockChiseled.FULL_BLOCK, isNormalCube));
-                }
+                synchronizeBlockStateProperties();
             }
 
-            if (oldSides != sideState) {
+            if (triggerUpdates && oldSides != sideState) {
                 Objects.requireNonNull(level)
                         .updateNeighborsAt(
                                 worldPosition,
@@ -433,14 +437,43 @@ public class TileEntityBlockChiseled extends BlockEntity
         }
 
         if (olv != lv || oldNC != nc) {
-            Objects.requireNonNull(level).getLightEngine().checkBlock(worldPosition);
+            synchronizeBlockStateProperties();
+        }
+    }
 
-            // update block state to reflect lighting characteristics
-            final BlockState state = level.getBlockState(worldPosition);
-            if (state.isRedstoneConductor(new SingleBlockBlockReader(state), BlockPos.ZERO) != isNormalCube
-                    && state.getBlock() instanceof BlockChiseled) {
-                level.setBlockAndUpdate(worldPosition, state.setValue(BlockChiseled.FULL_BLOCK, isNormalCube));
-            }
+    public void synchronizeBlockStateProperties() {
+        final Level currentLevel = getLevel();
+        if (currentLevel == null) {
+            return;
+        }
+
+        if (currentLevel.isClientSide()) {
+            currentLevel.getLightEngine().checkBlock(worldPosition);
+            return;
+        }
+
+        final BlockState currentState = currentLevel.getBlockState(worldPosition);
+        if (!(currentState.getBlock() instanceof BlockChiseled chiseledBlock)
+                || currentLevel.getBlockEntity(worldPosition) != this) {
+            return;
+        }
+
+        final int effectiveLight =
+                Mth.clamp(chiseledBlock.getLightEmission(currentState, currentLevel, worldPosition), 0, 15);
+        final BlockState synchronizedState = currentState
+                .setValue(BlockChiseled.FULL_BLOCK, isNormalCube())
+                .setValue(BlockChiseled.LIGHT_LEVEL, effectiveLight);
+
+        final boolean fullBlockChanged = currentState.getValue(BlockChiseled.FULL_BLOCK) != isNormalCube();
+        final boolean lightChanged = currentState.getValue(BlockChiseled.LIGHT_LEVEL) != effectiveLight;
+
+        if (fullBlockChanged || lightChanged) {
+            currentLevel.setBlock(
+                    worldPosition, synchronizedState, fullBlockChanged ? Block.UPDATE_ALL : Block.UPDATE_CLIENTS);
+        }
+
+        if (lightChanged) {
+            currentLevel.getLightEngine().checkBlock(worldPosition);
         }
     }
 
@@ -506,7 +539,7 @@ public class TileEntityBlockChiseled extends BlockEntity
     }
 
     public boolean isSideOpaque(final Direction side) {
-        if (this.getLevel() != null && this.getLevel().isClientSide) {
+        if (this.getLevel() != null && this.getLevel().isClientSide()) {
             return isInnerSideOpaque(side);
         }
 

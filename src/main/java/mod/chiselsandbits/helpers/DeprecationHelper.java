@@ -1,10 +1,7 @@
 package mod.chiselsandbits.helpers;
 
-import com.communi.suggestu.saecularia.caudices.core.block.IBlockWithWorldlyProperties;
 import mod.chiselsandbits.utils.EnvExecutor;
 import mod.chiselsandbits.utils.LanguageHandler;
-import mod.chiselsandbits.utils.SingleBlockBlockReader;
-import net.minecraft.core.BlockPos;
 import net.minecraft.locale.Language;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
@@ -16,9 +13,6 @@ import net.minecraft.world.level.block.state.BlockState;
 public class DeprecationHelper {
 
     public static int getLightValue(final BlockState state) {
-        if (state.getBlock() instanceof IBlockWithWorldlyProperties prop) {
-            return prop.getLightEmission(state, new SingleBlockBlockReader(state, state.getBlock()), BlockPos.ZERO);
-        }
         return state.getLightEmission();
     }
 
@@ -48,10 +42,10 @@ public class DeprecationHelper {
     }
 
     public static SoundType getSoundType(BlockState block) {
-        return block.getBlock().soundType;
+        return block.getSoundType();
     }
 
     public static SoundType getSoundType(Block block) {
-        return block.soundType;
+        return block.defaultBlockState().getSoundType();
     }
 }

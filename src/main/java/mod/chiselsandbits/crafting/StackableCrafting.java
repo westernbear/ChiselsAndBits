@@ -3,14 +3,14 @@ package mod.chiselsandbits.crafting;
 import mod.chiselsandbits.chiseledblock.ItemBlockChiseled;
 import mod.chiselsandbits.chiseledblock.NBTBlobConverter;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
+import mod.chiselsandbits.components.ChiseledData;
 import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.registry.ModRecipeSerializers;
+import mod.chiselsandbits.utils.ItemStackUtils;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.CraftingBookCategory;
+import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
@@ -18,15 +18,15 @@ import org.jetbrains.annotations.NotNull;
 
 public class StackableCrafting extends CustomRecipe {
 
-    public StackableCrafting(CraftingBookCategory name) {
-        super(name);
+    public StackableCrafting() {
+        super();
     }
 
     @Override
-    public boolean matches(final CraftingContainer craftingInv, final Level worldIn) {
+    public boolean matches(final CraftingInput craftingInv, final Level worldIn) {
         ItemStack target = null;
 
-        for (int x = 0; x < craftingInv.getContainerSize(); x++) {
+        for (int x = 0; x < craftingInv.size(); x++) {
             final ItemStack f = craftingInv.getItem(x);
             if (ModUtil.isEmpty(f)) {
                 continue;
@@ -39,14 +39,14 @@ public class StackableCrafting extends CustomRecipe {
             }
         }
 
-        return target != null && target.hasTag() && target.getItem() instanceof ItemBlockChiseled;
+        return target != null && ModUtil.hasChiseledData(target) && target.getItem() instanceof ItemBlockChiseled;
     }
 
     @Override
-    public ItemStack assemble(CraftingContainer craftingInv, RegistryAccess registryAccess) {
+    public ItemStack assemble(final CraftingInput craftingInv) {
         ItemStack target = null;
 
-        for (int x = 0; x < craftingInv.getContainerSize(); x++) {
+        for (int x = 0; x < craftingInv.size(); x++) {
             final ItemStack f = craftingInv.getItem(x);
             if (ModUtil.isEmpty(f)) {
                 continue;
@@ -59,7 +59,7 @@ public class StackableCrafting extends CustomRecipe {
             }
         }
 
-        if (target == null || !target.hasTag() || !(target.getItem() instanceof ItemBlockChiseled)) {
+        if (target == null || !ModUtil.hasChiseledData(target) || !(target.getItem() instanceof ItemBlockChiseled)) {
             return ModUtil.getEmptyStack();
         }
 
@@ -68,7 +68,11 @@ public class StackableCrafting extends CustomRecipe {
 
     private ItemStack getSortedVersion(final @NotNull ItemStack stack) {
         final NBTBlobConverter tmp = new NBTBlobConverter();
-        tmp.readChisleData(ModUtil.getSubCompound(stack, ModUtil.NBT_BLOCKENTITYTAG, false), VoxelBlob.VERSION_ANY);
+        final ChiseledData data = NBTBlobConverter.getComponent(stack);
+        if (data == null) {
+            return ModUtil.getEmptyStack();
+        }
+        tmp.readChisleData(data, VoxelBlob.VERSION_ANY);
 
         VoxelBlob bestBlob = tmp.getBlob();
         byte[] bestValue = bestBlob.toLegacyByteArray();
@@ -111,31 +115,19 @@ public class StackableCrafting extends CustomRecipe {
     }
 
     @Override
-    public boolean canCraftInDimensions(final int width, final int height) {
-        return true;
-    }
-
-    @Override
-    public ItemStack getResultItem(RegistryAccess registryAccess) {
-        return ModUtil.getEmptyStack();
-    }
-
-    @Override
-    public NonNullList<ItemStack> getRemainingItems(final CraftingContainer inv) {
-        final NonNullList<ItemStack> aitemstack = NonNullList.withSize(inv.getContainerSize(), ItemStack.EMPTY);
+    public NonNullList<ItemStack> getRemainingItems(final CraftingInput inv) {
+        final NonNullList<ItemStack> aitemstack = NonNullList.withSize(inv.size(), ItemStack.EMPTY);
 
         for (int i = 0; i < aitemstack.size(); ++i) {
             final ItemStack itemstack = ModUtil.nonNull(inv.getItem(i));
-            if (itemstack.getItem().hasCraftingRemainingItem()) {
-                aitemstack.set(i, new ItemStack(itemstack.getItem().getCraftingRemainingItem()));
-            }
+            aitemstack.set(i, ItemStackUtils.getContainerItem(itemstack));
         }
 
         return aitemstack;
     }
 
     @Override
-    public RecipeSerializer<?> getSerializer() {
+    public RecipeSerializer<StackableCrafting> getSerializer() {
         return ModRecipeSerializers.STACKABLE_CRAFTING.get();
     }
 }

@@ -1,8 +1,13 @@
 package mod.chiselsandbits.bitstorage;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
+import mod.chiselsandbits.components.FluidStorageData;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.helpers.LocalStrings;
+import mod.chiselsandbits.helpers.ModUtil;
+import mod.chiselsandbits.registry.ModDataComponents;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.transfer.v1.context.ContainerItemContext;
@@ -15,14 +20,15 @@ import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleVariantItemStorage
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -44,24 +50,27 @@ public class ItemBlockBitStorage extends BlockItem {
     @Override
     public void appendHoverText(
             final ItemStack stack,
-            @Nullable final Level worldIn,
-            final List<Component> tooltip,
+            final TooltipContext context,
+            final TooltipDisplay display,
+            final Consumer<Component> tooltip,
             final TooltipFlag flagIn) {
-        super.appendHoverText(stack, worldIn, tooltip, flagIn);
+        super.appendHoverText(stack, context, display, tooltip, flagIn);
         final FluidVariant fluid = getFluidVariant(stack);
         final long amount = getFluidAmount(stack);
+        final List<Component> helpText = new ArrayList<>();
 
         if (fluid.isBlank() || amount <= 0) {
-            ChiselsAndBits.getConfig().getCommon().helpText(LocalStrings.HelpBitTankEmpty, tooltip);
+            ChiselsAndBits.getConfig().getCommon().helpText(LocalStrings.HelpBitTankEmpty, helpText);
         } else {
             ChiselsAndBits.getConfig()
                     .getCommon()
                     .helpText(
                             LocalStrings.HelpBitTankFilled,
-                            tooltip,
+                            helpText,
                             FluidVariantAttributes.getName(fluid).getString(),
                             String.valueOf(TileEntityBitStorage.dropletsToBits(amount)));
         }
+        helpText.forEach(tooltip);
     }
 
     @Override
@@ -72,7 +81,7 @@ public class ItemBlockBitStorage extends BlockItem {
             final ItemStack stack,
             final BlockState state) {
         super.updateCustomBlockEntityTag(pos, worldIn, player, stack, state);
-        if (worldIn.isClientSide) {
+        if (worldIn.isClientSide()) {
             return false;
         }
 
@@ -86,50 +95,58 @@ public class ItemBlockBitStorage extends BlockItem {
     }
 
     public static FluidVariant getFluidVariant(final ItemStack stack) {
-        final CompoundTag fluidNbt = getFluidNbt(stack);
-        if (fluidNbt.contains("Variant", Tag.TAG_COMPOUND)) {
-            return FluidVariant.fromNbt(fluidNbt.getCompound("Variant"));
-        }
-        if (fluidNbt.contains("FluidName", Tag.TAG_STRING)) {
-            final Fluid fluid = BuiltInRegistries.FLUID.get(new ResourceLocation(fluidNbt.getString("FluidName")));
-            if (fluid == Fluids.EMPTY) {
-                return FluidVariant.blank();
-            }
-            return fluidNbt.contains("Tag", Tag.TAG_COMPOUND)
-                    ? FluidVariant.of(fluid, fluidNbt.getCompound("Tag"))
-                    : FluidVariant.of(fluid);
-        }
-        return FluidVariant.blank();
+        return getFluidStorageData(stack).variant();
     }
 
     public static long getFluidAmount(final ItemStack stack) {
-        final CompoundTag fluidNbt = getFluidNbt(stack);
-        final long amount = fluidNbt.getLong("Amount");
-        return fluidNbt.contains("FluidName", Tag.TAG_STRING) ? amount * 81L : amount;
+        return getFluidStorageData(stack).amount();
+    }
+
+    private static FluidStorageData getFluidStorageData(final ItemStack stack) {
+        final FluidStorageData component = stack.get(ModDataComponents.FLUID_STORAGE);
+        if (component != null) {
+            return component;
+        }
+
+        final CompoundTag root = ModUtil.getTagCompound(stack);
+        final CompoundTag fluidNbt = root.getCompoundOrEmpty(FLUID_NBT_KEY);
+        FluidVariant variant = FluidVariant.blank();
+        if (fluidNbt.contains("Variant")) {
+            variant = FluidVariant.CODEC
+                    .parse(NbtOps.INSTANCE, fluidNbt.get("Variant"))
+                    .result()
+                    .orElse(FluidVariant.blank());
+        } else if (fluidNbt.contains("FluidName")) {
+            final Fluid fluid = BuiltInRegistries.FLUID.getValue(
+                    Identifier.parse(fluidNbt.getStringOr("FluidName", "minecraft:empty")));
+            if (fluid != Fluids.EMPTY) {
+                variant = FluidVariant.of(fluid);
+            }
+        }
+        final long rawAmount = fluidNbt.getLongOr("Amount", 0L);
+        final long amount = fluidNbt.contains("FluidName") ? rawAmount * 81L : rawAmount;
+        final FluidStorageData migrated = new FluidStorageData(variant, amount);
+        if (!variant.isBlank() && amount > 0) {
+            stack.set(ModDataComponents.FLUID_STORAGE, migrated);
+            root.remove(FLUID_NBT_KEY);
+            ModUtil.setTagCompound(stack, root);
+        }
+        return migrated;
     }
 
     public static void setFluid(final ItemStack stack, final FluidVariant fluid, final long amount) {
         final long clamped = Math.max(0, Math.min(FluidConstants.BUCKET, amount));
+        final CompoundTag root = ModUtil.getTagCompound(stack);
         if (fluid.isBlank() || clamped == 0) {
-            final CompoundTag root = stack.getTag();
-            if (root != null) {
-                root.remove(FLUID_NBT_KEY);
-                if (root.isEmpty()) {
-                    stack.setTag(null);
-                }
-            }
+            stack.remove(ModDataComponents.FLUID_STORAGE);
+            root.remove(FLUID_NBT_KEY);
+            ModUtil.setTagCompound(stack, root);
             return;
         }
 
-        final CompoundTag fluidNbt = new CompoundTag();
-        fluidNbt.put("Variant", fluid.toNbt());
-        fluidNbt.putLong("Amount", clamped);
-        stack.getOrCreateTag().put(FLUID_NBT_KEY, fluidNbt);
-    }
-
-    private static CompoundTag getFluidNbt(final ItemStack stack) {
-        final CompoundTag root = stack.getTag();
-        return root == null ? new CompoundTag() : root.getCompound(FLUID_NBT_KEY);
+        stack.set(ModDataComponents.FLUID_STORAGE, new FluidStorageData(fluid, clamped));
+        root.remove(FLUID_NBT_KEY);
+        ModUtil.setTagCompound(stack, root);
     }
 
     private static final class TankItemFluidStorage extends SingleVariantItemStorage<FluidVariant> {

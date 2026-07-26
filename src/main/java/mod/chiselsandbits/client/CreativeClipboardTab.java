@@ -10,13 +10,12 @@ import mod.chiselsandbits.api.IBitAccess;
 import mod.chiselsandbits.api.ItemType;
 import mod.chiselsandbits.chiseledblock.NBTBlobConverter;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
+import mod.chiselsandbits.components.ChiseledData;
 import mod.chiselsandbits.core.ChiselsAndBits;
-import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.interfaces.ICacheClearable;
 import mod.chiselsandbits.registry.ModItemGroups;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +24,7 @@ public class CreativeClipboardTab implements ICacheClearable {
     private static final List<ItemStack> myWorldItems = new ArrayList<ItemStack>();
     private static final Logger log = LoggerFactory.getLogger(CreativeClipboardTab.class);
     static boolean renewMappings = true;
-    private static List<CompoundTag> myCrossItems = new ArrayList<CompoundTag>();
+    private static List<ChiseledData> myCrossItems = new ArrayList<>();
     private static ClipboardStorage clipStorage = null;
 
     private static CreativeClipboardTab instance;
@@ -67,15 +66,15 @@ public class CreativeClipboardTab implements ICacheClearable {
             }
 
             // remove duplicates if they exist...
-            for (final CompoundTag isa : myCrossItems) {
-                if (isa.equals(is.getTag())) {
-                    myCrossItems.remove(isa);
-                    break;
-                }
+            final ChiseledData itemData = NBTBlobConverter.getComponent(is);
+            if (itemData == null) {
+                return;
             }
 
+            myCrossItems.remove(itemData);
+
             // add item to front...
-            myCrossItems.add(0, is.getTag());
+            myCrossItems.add(0, itemData);
 
             // remove extra items from back..
             while (myCrossItems.size()
@@ -105,9 +104,9 @@ public class CreativeClipboardTab implements ICacheClearable {
             myWorldItems.clear();
             renewMappings = false;
 
-            for (final CompoundTag nbt : myCrossItems) {
+            for (final ChiseledData data : myCrossItems) {
                 final NBTBlobConverter c = new NBTBlobConverter();
-                c.readChisleData(nbt.getCompound(ModUtil.NBT_BLOCKENTITYTAG), VoxelBlob.VERSION_ANY);
+                c.readChisleData(data, VoxelBlob.VERSION_ANY);
 
                 // recalculate.
                 c.updateFromBlob();

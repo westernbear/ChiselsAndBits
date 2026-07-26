@@ -1,6 +1,8 @@
 package mod.chiselsandbits.items;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.core.ClientSide;
 import mod.chiselsandbits.extensions.BlockExtension;
@@ -17,6 +19,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Rotation;
@@ -31,14 +34,20 @@ public class ItemWrench extends Item {
     @Override
     @Environment(EnvType.CLIENT)
     public void appendHoverText(
-            final ItemStack stack, final Level worldIn, final List<Component> tooltip, final TooltipFlag advanced) {
-        super.appendHoverText(stack, worldIn, tooltip, advanced);
+            final ItemStack stack,
+            final TooltipContext context,
+            final TooltipDisplay display,
+            final Consumer<Component> tooltip,
+            final TooltipFlag advanced) {
+        super.appendHoverText(stack, context, display, tooltip, advanced);
+        final List<Component> helpText = new ArrayList<>();
         ChiselsAndBits.getConfig()
                 .getCommon()
                 .helpText(
                         LocalStrings.HelpWrench,
-                        tooltip,
+                        helpText,
                         ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse));
+        helpText.forEach(tooltip);
     }
 
     @Override
@@ -66,9 +75,7 @@ public class ItemWrench extends Item {
 
             if (nb != b) {
                 world.setBlockAndUpdate(pos, nb);
-                stack.hurtAndBreak(1, player, playerEntity -> {
-                    playerEntity.broadcastBreakEvent(hand);
-                });
+                stack.hurtAndBreak(1, player, hand);
                 world.updateNeighborsAt(pos, b.getBlock());
                 player.swing(hand);
                 return InteractionResult.SUCCESS;

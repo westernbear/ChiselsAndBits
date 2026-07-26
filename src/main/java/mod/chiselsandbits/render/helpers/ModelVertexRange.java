@@ -1,5 +1,6 @@
 package mod.chiselsandbits.render.helpers;
 
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormatElement;
 
 public class ModelVertexRange extends BaseModelReader {
@@ -25,7 +26,7 @@ public class ModelVertexRange extends BaseModelReader {
     @Override
     public void put(final int vertexIndex, final int element, final float... data) {
         final VertexFormatElement e = getVertexFormat().getElements().get(element);
-        if (e.getUsage() == VertexFormatElement.Usage.POSITION) {
+        if (DefaultVertexFormat.POSITION_SEMANTIC_NAME.equals(e.name())) {
             if (vertCount == 0) {
                 minSumX = data[0];
                 minSumY = data[1];

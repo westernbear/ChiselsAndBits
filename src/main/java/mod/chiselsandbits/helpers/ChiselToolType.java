@@ -5,11 +5,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import mod.chiselsandbits.chiseledblock.ItemBlockChiseled;
+import mod.chiselsandbits.items.ItemChisel;
 import mod.chiselsandbits.modes.ChiselMode;
 import mod.chiselsandbits.modes.IToolMode;
 import mod.chiselsandbits.modes.PositivePatternMode;
 import mod.chiselsandbits.modes.TapeMeasureModes;
+import mod.chiselsandbits.registry.ModItems;
 import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 
 public enum ChiselToolType {
     CHISEL(true, true),
@@ -28,6 +32,48 @@ public enum ChiselToolType {
     ChiselToolType(final boolean menu, final boolean itemSettings) {
         hasMenu = menu;
         hasItemSettings = itemSettings;
+    }
+
+    /**
+     * Resolves the C&B tool contract shared by client interactions and server-authoritative pick-block handling.
+     */
+    public static @Nullable ChiselToolType fromItemStack(final ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return null;
+        }
+
+        if (stack.getItem() instanceof ItemChisel) {
+            return CHISEL;
+        }
+
+        if (stack.getItem() == ModItems.ITEM_BLOCK_BIT.get()) {
+            return BIT;
+        }
+
+        if (stack.getItem() instanceof ItemBlockChiseled) {
+            return CHISELED_BLOCK;
+        }
+
+        if (stack.getItem() == ModItems.ITEM_TAPE_MEASURE.get()) {
+            return TAPEMEASURE;
+        }
+
+        if (stack.getItem() == ModItems.ITEM_POSITIVE_PRINT.get()
+                || stack.getItem() == ModItems.ITEM_POSITIVE_PRINT_WRITTEN.get()) {
+            return POSITIVEPATTERN;
+        }
+
+        if (stack.getItem() == ModItems.ITEM_NEGATIVE_PRINT.get()
+                || stack.getItem() == ModItems.ITEM_NEGATIVE_PRINT_WRITTEN.get()) {
+            return NEGATIVEPATTERN;
+        }
+
+        if (stack.getItem() == ModItems.ITEM_MIRROR_PRINT.get()
+                || stack.getItem() == ModItems.ITEM_MIRROR_PRINT_WRITTEN.get()) {
+            return MIRRORPATTERN;
+        }
+
+        return null;
     }
 
     public IToolMode getMode(final ItemStack ei) {

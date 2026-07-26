@@ -8,17 +8,21 @@ import mod.chiselsandbits.modes.PositivePatternMode;
 import mod.chiselsandbits.modes.TapeMeasureModes;
 import mod.chiselsandbits.network.ModPacket;
 import mod.chiselsandbits.utils.Constants;
-import net.fabricmc.fabric.api.networking.v1.PacketType;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
 public class PacketSetChiselMode extends ModPacket {
 
-    public static final PacketType<PacketSetChiselMode> PACKET_TYPE = PacketType.create(
-            new ResourceLocation(Constants.MOD_ID, "packet_set_chisel_mode"), PacketSetChiselMode::new);
+    public static final CustomPacketPayload.Type<PacketSetChiselMode> PACKET_TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "packet_set_chisel_mode"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketSetChiselMode> STREAM_CODEC =
+            CustomPacketPayload.codec(PacketSetChiselMode::getPayload, PacketSetChiselMode::new);
 
     private IToolMode mode = ChiselMode.SINGLE;
     private ChiselToolType type = ChiselToolType.CHISEL;
@@ -89,7 +93,7 @@ public class PacketSetChiselMode extends ModPacket {
     }
 
     @Override
-    public PacketType<?> getType() {
+    public CustomPacketPayload.Type<? extends CustomPacketPayload> type() {
         return PACKET_TYPE;
     }
 

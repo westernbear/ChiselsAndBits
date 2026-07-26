@@ -3,7 +3,7 @@ package mod.chiselsandbits.utils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import mod.chiselsandbits.core.ChiselsAndBits;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public final class Constants {
 
@@ -21,10 +21,10 @@ public final class Constants {
                 new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
         public static final String EN_US_LANG = "assets/" + Constants.MOD_ID + "/lang/en_us.json";
         public static final String ITEM_MODEL_DIR = "assets/" + Constants.MOD_ID + "/models/item/";
-        public static final ResourceLocation CHISELED_BLOCK_MODEL =
-                new ResourceLocation(ChiselsAndBits.MODID, "block/chiseled_block");
-        public static final ResourceLocation CHISEL_PRINTER_MODEL =
-                new ResourceLocation(ChiselsAndBits.MODID, "block/chisel_printer");
+        public static final Identifier CHISELED_BLOCK_MODEL =
+                Identifier.fromNamespaceAndPath(ChiselsAndBits.MODID, "block/chiseled_block");
+        public static final Identifier CHISEL_PRINTER_MODEL =
+                Identifier.fromNamespaceAndPath(ChiselsAndBits.MODID, "block/chisel_printer");
         private static final String DATAPACK_DIR = "data/" + MOD_ID + "/";
         public static final String RECIPES_DIR = DATAPACK_DIR + "recipes/";
         public static final String TAGS_DIR = DATAPACK_DIR + "tags/";

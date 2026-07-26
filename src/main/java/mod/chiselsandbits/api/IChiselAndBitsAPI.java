@@ -3,10 +3,10 @@ package mod.chiselsandbits.api;
 import com.mojang.blaze3d.vertex.PoseStack;
 import mod.chiselsandbits.api.APIExceptions.CannotBeChiseled;
 import mod.chiselsandbits.api.APIExceptions.InvalidBitItem;
+import mod.chiselsandbits.client.model.baked.LegacyBakedModel;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.player.Player;
@@ -201,7 +201,7 @@ public interface IChiselAndBitsAPI {
     @Environment(EnvType.CLIENT)
     void renderModel(
             final PoseStack stack,
-            final BakedModel model,
+            final LegacyBakedModel model,
             final Level world,
             final BlockPos pos,
             final int alpha,
@@ -220,7 +220,7 @@ public interface IChiselAndBitsAPI {
     @Environment(EnvType.CLIENT)
     void renderGhostModel(
             final PoseStack stack,
-            final BakedModel model,
+            final LegacyBakedModel model,
             final Level world,
             final BlockPos pos,
             final boolean isUnplaceable,

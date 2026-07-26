@@ -5,7 +5,7 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 @Environment(EnvType.CLIENT)
 public interface OverlayRenderCallback {
@@ -19,7 +19,7 @@ public interface OverlayRenderCallback {
                 return false;
             });
 
-    boolean onOverlayRender(GuiGraphics guiGraphics, float partialTicks, Window window, Types type);
+    boolean onOverlayRender(GuiGraphicsExtractor guiGraphics, float partialTicks, Window window, Types type);
 
     enum Types {
         AIR,

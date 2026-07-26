@@ -2,17 +2,17 @@ package mod.chiselsandbits.client;
 
 import mod.chiselsandbits.chiseledblock.data.VoxelBlobStateReference;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public class UndoStep {
-    public final ResourceLocation dimensionId;
+    public final Identifier dimensionId;
     public final BlockPos pos;
     public VoxelBlobStateReference before;
     public VoxelBlobStateReference after;
     public UndoStep next = null; // groups form a linked chain.
 
     public UndoStep(
-            final ResourceLocation dimensionId,
+            final Identifier dimensionId,
             final BlockPos pos,
             final VoxelBlobStateReference before,
             final VoxelBlobStateReference after) {

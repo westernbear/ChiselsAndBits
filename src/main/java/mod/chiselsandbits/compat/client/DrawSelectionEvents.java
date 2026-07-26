@@ -1,56 +1,60 @@
 package mod.chiselsandbits.compat.client;
 
-import com.mojang.blaze3d.vertex.PoseStack;
+import java.util.concurrent.atomic.AtomicBoolean;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
-import net.minecraft.client.Camera;
-import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.world.phys.HitResult;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.state.level.BlockOutlineRenderState;
 
 /**
- * Events called when rendering outlines. For both, return true to cancel further processing.
+ * C&B outline compatibility events.
+ *
+ * <p>The callback contract remains the same as before: return {@code true} to
+ * cancel vanilla's outline. Minecraft/Fabric 26.2 moved block outline drawing
+ * into {@link LevelRenderEvents#BEFORE_BLOCK_OUTLINE}, so the bridge reverses
+ * that value for Fabric's "return true to keep rendering" contract.
  */
 public interface DrawSelectionEvents {
-    Event<Block> BLOCK = EventFactory.createArrayBacked(
-            Block.class, callbacks -> (context, info, target, partialTicks, matrix, buffers) -> {
-                for (Block e : callbacks) {
-                    if (e.onHighlightBlock(context, info, target, partialTicks, matrix, buffers)) {
-                        return true;
-                    }
-                }
-                return false;
-            });
+    AtomicBoolean FABRIC_BRIDGE_REGISTERED = new AtomicBoolean();
 
-    Event<Entity> ENTITY = EventFactory.createArrayBacked(
-            Entity.class, callbacks -> (context, info, target, partialTicks, matrix, buffers) -> {
-                for (Entity e : callbacks) {
-                    if (e.onHighlightEntity(context, info, target, partialTicks, matrix, buffers)) {
-                        return true;
-                    }
-                }
-                return false;
-            });
+    Event<Block> BLOCK = EventFactory.createArrayBacked(Block.class, callbacks -> (context, outline) -> {
+        for (final Block callback : callbacks) {
+            if (callback.onHighlightBlock(context, outline)) {
+                return true;
+            }
+        }
+        return false;
+    });
+
+    Event<Entity> ENTITY = EventFactory.createArrayBacked(Entity.class, callbacks -> (context, state) -> {
+        for (final Entity callback : callbacks) {
+            if (callback.onHighlightEntity(context, state)) {
+                return true;
+            }
+        }
+        return false;
+    });
+
+    static void registerFabricBridge() {
+        if (FABRIC_BRIDGE_REGISTERED.compareAndSet(false, true)) {
+            LevelRenderEvents.BEFORE_BLOCK_OUTLINE.register(
+                    (context, outline) -> !BLOCK.invoker().onHighlightBlock(context, outline));
+        }
+    }
+
+    static boolean fireEntity(final LevelRenderContext context, final EntityRenderState state) {
+        return ENTITY.invoker().onHighlightEntity(context, state);
+    }
 
     @FunctionalInterface
     interface Block {
-        boolean onHighlightBlock(
-                LevelRenderer context,
-                Camera info,
-                HitResult target,
-                float partialTicks,
-                PoseStack matrix,
-                MultiBufferSource buffers);
+        boolean onHighlightBlock(LevelRenderContext context, BlockOutlineRenderState outline);
     }
 
     @FunctionalInterface
     interface Entity {
-        boolean onHighlightEntity(
-                LevelRenderer context,
-                Camera info,
-                HitResult target,
-                float partialTicks,
-                PoseStack matrix,
-                MultiBufferSource buffers);
+        boolean onHighlightEntity(LevelRenderContext context, EntityRenderState state);
     }
 }

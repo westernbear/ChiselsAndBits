@@ -11,7 +11,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Tier;
 import org.jetbrains.annotations.NotNull;
 
 public class ContinousChisels implements IContinuousInventory {
@@ -49,8 +48,8 @@ public class ContinousChisels implements IContinuousInventory {
                 }
 
                 if (ModUtil.notEmpty(is) && is.getItem() instanceof ItemChisel) {
-                    final Tier newMat = ((ItemChisel) is.getItem()).getTier();
-                    discovered.put(newMat.getLevel(), new ItemStackSlot(inv, x, is, who, canEdit));
+                    final int materialLevel = ((ItemChisel) is.getItem()).getMaterialLevel();
+                    discovered.put(materialLevel, new ItemStackSlot(inv, x, is, who, canEdit));
                 }
             }
 

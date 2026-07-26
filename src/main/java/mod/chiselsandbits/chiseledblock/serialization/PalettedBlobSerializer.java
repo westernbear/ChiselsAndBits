@@ -17,7 +17,6 @@ import net.minecraft.world.level.chunk.PaletteResize;
 
 public class PalettedBlobSerializer extends BlobSerializer implements PaletteResize<BlockState> {
     private final IdMapper<BlockState> registry = Block.BLOCK_STATE_REGISTRY;
-    private final Palette<BlockState> registryPalette = new GlobalPalette<>(Block.BLOCK_STATE_REGISTRY);
     private Palette<BlockState> palette = new GlobalPalette<>(Block.BLOCK_STATE_REGISTRY);
     private int bits = 0;
 
@@ -28,7 +27,7 @@ public class PalettedBlobSerializer extends BlobSerializer implements PaletteRes
         // Setup the palette ids.
         final Map<Integer, Integer> entries = toDeflate.getBlockSums();
         for (final Map.Entry<Integer, Integer> o : entries.entrySet()) {
-            this.palette.idFor(ModUtil.getStateById(o.getKey()));
+            this.palette.idFor(ModUtil.getStateById(o.getKey()), this);
         }
     }
 
@@ -38,7 +37,7 @@ public class PalettedBlobSerializer extends BlobSerializer implements PaletteRes
 
         // Setup the palette ids.
         this.setBits(toInflate.readVarInt());
-        PaletteUtils.read(this.palette, toInflate);
+        this.palette.read(toInflate, registry);
     }
 
     private void setBits(int bitsIn) {
@@ -64,15 +63,15 @@ public class PalettedBlobSerializer extends BlobSerializer implements PaletteRes
             //                if (forceBits)
             //                    this.bits = bitsIn;
             //            }
-            this.palette = new HashMapPalette<>(this.registry, this.bits, this);
-            this.palette.idFor(Blocks.AIR.defaultBlockState());
+            this.palette = new HashMapPalette<>(this.bits);
+            this.palette.idFor(Blocks.AIR.defaultBlockState(), this);
         }
     }
 
     @Override
     public void write(final FriendlyByteBuf to) {
         to.writeVarInt(this.bits);
-        this.palette.write(to);
+        this.palette.write(to, registry);
     }
 
     @Override
@@ -88,7 +87,7 @@ public class PalettedBlobSerializer extends BlobSerializer implements PaletteRes
 
     @Override
     protected int getIndex(final int stateID) {
-        return this.palette.idFor(ModUtil.getStateById(stateID));
+        return this.palette.idFor(ModUtil.getStateById(stateID), this);
     }
 
     @Override
@@ -107,8 +106,8 @@ public class PalettedBlobSerializer extends BlobSerializer implements PaletteRes
         this.setBits(newBitSize);
 
         final List<BlockState> ids = PaletteUtils.getOrderedListInPalette(currentPalette);
-        ids.forEach(this.palette::idFor);
+        ids.forEach(state -> this.palette.idFor(state, this));
 
-        return this.palette.idFor(violatingBlockState);
+        return this.palette.idFor(violatingBlockState, this);
     }
 }

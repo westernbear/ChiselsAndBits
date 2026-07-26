@@ -15,12 +15,10 @@ public class ModelLightMapReader extends BaseModelReader {
     public void setVertexFormat(VertexFormat format) {
         hasLightMap = false;
 
-        int eCount = format.getVertexSize();
+        int eCount = format.getElements().size();
         for (int x = 0; x < eCount; x++) {
             VertexFormatElement e = format.getElements().get(x);
-            if (e.getUsage() == VertexFormatElement.Usage.UV
-                    && e.getIndex() == 1
-                    && e.getType() == VertexFormatElement.Type.SHORT) {
+            if (DefaultVertexFormat.UV2_SEMANTIC_NAME.equals(e.name())) {
                 hasLightMap = true;
             }
         }
@@ -32,11 +30,7 @@ public class ModelLightMapReader extends BaseModelReader {
     public void put(final int vertexIndex, final int element, final float... data) {
         final VertexFormatElement e = getVertexFormat().getElements().get(element);
 
-        if (e.getUsage() == VertexFormatElement.Usage.UV
-                && e.getIndex() == 1
-                && e.getType() == VertexFormatElement.Type.SHORT
-                && data.length >= 2
-                && hasLightMap) {
+        if (DefaultVertexFormat.UV2_SEMANTIC_NAME.equals(e.name()) && data.length >= 2 && hasLightMap) {
             final int lvFromData_sky = (int) (data[0] / maxLightmap) & 0xf;
             final int lvFromData_block = (int) (data[1] / maxLightmap) & 0xf;
 

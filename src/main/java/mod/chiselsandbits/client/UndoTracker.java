@@ -48,7 +48,7 @@ public class UndoTracker implements ICacheClearable {
             final VoxelBlobStateReference before,
             final VoxelBlobStateReference after) {
         // servers don't track undo's
-        if (pos != null && world != null && world.isClientSide && recording) {
+        if (pos != null && world != null && world.isClientSide() && recording) {
             if (undoLevels.size() > level && !undoLevels.isEmpty()) {
                 final int end = Math.max(-1, level);
                 for (int x = undoLevels.size() - 1; x > end; --x) {
@@ -153,7 +153,7 @@ public class UndoTracker implements ICacheClearable {
     }
 
     private boolean correctWorld(final Player player, final UndoStep step) {
-        return player.getCommandSenderWorld().dimension().registry().equals(step.dimensionId);
+        return player.level().dimension().registry().equals(step.dimensionId);
     }
 
     private boolean replaySingleAction(
@@ -177,7 +177,7 @@ public class UndoTracker implements ICacheClearable {
     }
 
     public boolean ignorePlayer(final Player player) {
-        return player.getCommandSenderWorld() == null || !player.getCommandSenderWorld().isClientSide;
+        return !player.level().isClientSide();
     }
 
     public void beginGroup(final Player player) {
@@ -223,7 +223,7 @@ public class UndoTracker implements ICacheClearable {
 
     public void addError(final ActingPlayer player, final String string) {
         // servers don't care about this...
-        if (!player.isReal() && player.getWorld().isClientSide) {
+        if (!player.isReal() && player.getWorld().isClientSide()) {
             errors.add(string);
         }
     }

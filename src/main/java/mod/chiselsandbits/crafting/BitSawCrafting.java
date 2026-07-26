@@ -18,12 +18,10 @@ import mod.chiselsandbits.registry.ModRecipeSerializers;
 import mod.chiselsandbits.utils.ItemStackUtils;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.util.Mth;
-import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.CraftingBookCategory;
+import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
@@ -31,16 +29,16 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class BitSawCrafting extends CustomRecipe {
 
-    public BitSawCrafting(CraftingBookCategory name) {
-        super(name);
+    public BitSawCrafting() {
+        super();
     }
 
-    private SawCraft getSawCraft(final CraftingContainer inv) {
+    private SawCraft getSawCraft(final CraftingInput inv) {
         final SawCraft r = new SawCraft();
 
-        for (int x = 0; x < inv.getWidth(); ++x) {
-            for (int y = 0; y < inv.getHeight(); ++y) {
-                final ItemStack is = inv.getItem(x + y * inv.getWidth());
+        for (int x = 0; x < inv.width(); ++x) {
+            for (int y = 0; y < inv.height(); ++y) {
+                final ItemStack is = inv.getItem(x + y * inv.width());
 
                 if (!ModUtil.isEmpty(is)) {
                     if (is.getItem() instanceof ItemBitSaw) {
@@ -94,12 +92,12 @@ public class BitSawCrafting extends CustomRecipe {
     }
 
     @Override
-    public boolean matches(final CraftingContainer inv, final Level worldIn) {
+    public boolean matches(final CraftingInput inv, final Level worldIn) {
         return getSawCraft(inv) != null;
     }
 
     @Override
-    public ItemStack assemble(CraftingContainer inv, RegistryAccess registryAccess) {
+    public ItemStack assemble(final CraftingInput inv) {
         final SawCraft sc = getSawCraft(inv);
 
         if (sc == null) {
@@ -220,19 +218,9 @@ public class BitSawCrafting extends CustomRecipe {
     }
 
     @Override
-    public boolean canCraftInDimensions(final int width, final int height) {
-        return false;
-    }
+    public NonNullList<ItemStack> getRemainingItems(final CraftingInput inv) {
 
-    @Override
-    public ItemStack getResultItem(RegistryAccess registryAccess) {
-        return ModUtil.getEmptyStack();
-    }
-
-    @Override
-    public NonNullList<ItemStack> getRemainingItems(final CraftingContainer inv) {
-
-        final NonNullList<ItemStack> aitemstack = NonNullList.withSize(inv.getContainerSize(), ItemStack.EMPTY);
+        final NonNullList<ItemStack> aitemstack = NonNullList.withSize(inv.size(), ItemStack.EMPTY);
 
         for (int i = 0; i < aitemstack.size(); ++i) {
             final ItemStack itemstack = inv.getItem(i);
@@ -244,7 +232,7 @@ public class BitSawCrafting extends CustomRecipe {
     }
 
     @Override
-    public RecipeSerializer<?> getSerializer() {
+    public RecipeSerializer<BitSawCrafting> getSerializer() {
         return ModRecipeSerializers.BIT_SAW_CRAFTING.get();
     }
 

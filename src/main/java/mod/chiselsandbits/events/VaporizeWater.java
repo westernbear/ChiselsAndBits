@@ -5,6 +5,7 @@ import mod.chiselsandbits.api.EventFullBlockRestoration;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.block.Blocks;
 
 public class VaporizeWater {
@@ -15,7 +16,7 @@ public class VaporizeWater {
 
     private static void handle(final EventFullBlockRestoration e) {
         if (e.getState().getBlock() == Blocks.WATER
-                && e.getWorld().dimensionType().ultraWarm()) {
+                && e.getWorld().environmentAttributes().getValue(EnvironmentAttributes.WATER_EVAPORATES, e.getPos())) {
             double i = e.getPos().getX();
             double j = e.getPos().getY();
             double k = e.getPos().getZ();
@@ -28,8 +29,8 @@ public class VaporizeWater {
                             SoundSource.BLOCKS,
                             0.5F,
                             2.6F
-                                    + (e.getWorld().random.nextFloat()
-                                                    - e.getWorld().random.nextFloat())
+                                    + (e.getWorld().getRandom().nextFloat()
+                                                    - e.getWorld().getRandom().nextFloat())
                                             * 0.8F,
                             true);
 

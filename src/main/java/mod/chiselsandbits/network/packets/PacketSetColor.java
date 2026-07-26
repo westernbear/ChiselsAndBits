@@ -4,20 +4,24 @@ import mod.chiselsandbits.helpers.ChiselToolType;
 import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.interfaces.IChiselModeItem;
 import mod.chiselsandbits.network.ModPacket;
+import mod.chiselsandbits.registry.ModDataComponents;
 import mod.chiselsandbits.utils.Constants;
-import net.fabricmc.fabric.api.networking.v1.PacketType;
-import net.minecraft.nbt.StringTag;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 
 public class PacketSetColor extends ModPacket {
 
-    public static final PacketType<PacketSetColor> PACKET_TYPE =
-            PacketType.create(new ResourceLocation(Constants.MOD_ID, "packet_set_color"), PacketSetColor::new);
+    public static final CustomPacketPayload.Type<PacketSetColor> PACKET_TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "packet_set_color"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketSetColor> STREAM_CODEC =
+            CustomPacketPayload.codec(PacketSetColor::getPayload, PacketSetColor::new);
 
     private DyeColor newColor = DyeColor.WHITE;
     private ChiselToolType type = ChiselToolType.TAPEMEASURE;
@@ -48,14 +52,21 @@ public class PacketSetColor extends ModPacket {
 
     private void setColor(final ItemStack ei, final DyeColor newColor2) {
         if (ei != null) {
-            ei.addTagElement("color", StringTag.valueOf(newColor2.name()));
+            ei.set(ModDataComponents.COLOR, newColor2);
         }
     }
 
     private DyeColor getColor(final ItemStack ei) {
         try {
-            if (ei != null && ei.hasTag()) {
-                return DyeColor.valueOf(ModUtil.getTagCompound(ei).getString("color"));
+            if (ei != null) {
+                final DyeColor component = ei.get(ModDataComponents.COLOR);
+                if (component != null) {
+                    return component;
+                }
+                final DyeColor legacy =
+                        DyeColor.valueOf(ModUtil.getTagCompound(ei).getStringOr("color", DyeColor.WHITE.name()));
+                ei.set(ModDataComponents.COLOR, legacy);
+                return legacy;
             }
         } catch (final IllegalArgumentException e) {
             // nope!
@@ -79,7 +90,7 @@ public class PacketSetColor extends ModPacket {
     }
 
     @Override
-    public PacketType<?> getType() {
+    public CustomPacketPayload.Type<? extends CustomPacketPayload> type() {
         return PACKET_TYPE;
     }
 }

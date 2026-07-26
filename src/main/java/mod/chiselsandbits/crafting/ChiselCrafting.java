@@ -6,18 +6,16 @@ import mod.chiselsandbits.items.ItemChiseledBit;
 import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.registry.ModRecipeSerializers;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.CraftingBookCategory;
+import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
 
 public class ChiselCrafting extends CustomRecipe {
 
-    public ChiselCrafting(CraftingBookCategory name) {
-        super(name);
+    public ChiselCrafting() {
+        super();
     }
 
     /**
@@ -26,10 +24,10 @@ public class ChiselCrafting extends CustomRecipe {
      * @param inv
      * @return
      */
-    private ChiselCraftingRequirements getCraftingReqs(final CraftingContainer inv, final boolean copy) {
+    private ChiselCraftingRequirements getCraftingReqs(final CraftingInput inv, final boolean copy) {
         ItemStack pattern = null;
 
-        for (int x = 0; x < inv.getContainerSize(); x++) {
+        for (int x = 0; x < inv.size(); x++) {
             final ItemStack is = inv.getItem(x);
 
             if (is == null) {
@@ -47,7 +45,7 @@ public class ChiselCrafting extends CustomRecipe {
             }
         }
 
-        if (pattern == null || !pattern.hasTag()) {
+        if (pattern == null || !ModUtil.hasChiseledData(pattern)) {
             return null;
         }
 
@@ -60,12 +58,12 @@ public class ChiselCrafting extends CustomRecipe {
     }
 
     @Override
-    public boolean matches(final CraftingContainer inv, final Level worldIn) {
-        return getCraftingReqs(inv, true) != null;
+    public boolean matches(final CraftingInput inv, final Level worldIn) {
+        return inv.width() * inv.height() > 3 && getCraftingReqs(inv, true) != null;
     }
 
     @Override
-    public ItemStack assemble(CraftingContainer inv, RegistryAccess registryAccess) {
+    public ItemStack assemble(final CraftingInput inv) {
         final ChiselCraftingRequirements req = getCraftingReqs(inv, true);
 
         if (req != null) {
@@ -76,23 +74,13 @@ public class ChiselCrafting extends CustomRecipe {
     }
 
     @Override
-    public boolean canCraftInDimensions(final int width, final int height) {
-        return width * height > 3;
-    }
-
-    @Override
-    public ItemStack getResultItem(RegistryAccess registryAccess) {
-        return ModUtil.getEmptyStack();
-    }
-
-    @Override
-    public NonNullList<ItemStack> getRemainingItems(final CraftingContainer inv) {
-        final NonNullList<ItemStack> out = NonNullList.withSize(inv.getContainerSize(), ItemStack.EMPTY);
+    public NonNullList<ItemStack> getRemainingItems(final CraftingInput inv) {
+        final NonNullList<ItemStack> out = NonNullList.withSize(inv.size(), ItemStack.EMPTY);
 
         // just getting this will alter the stacks..
         final ChiselCraftingRequirements r = getCraftingReqs(inv, false);
 
-        if (inv.getContainerSize() != r.pile.length) {
+        if (inv.size() != r.pile.length) {
             throw new RuntimeException("Inventory Changed Size!");
         }
 
@@ -107,7 +95,7 @@ public class ChiselCrafting extends CustomRecipe {
     }
 
     @Override
-    public RecipeSerializer<?> getSerializer() {
+    public RecipeSerializer<ChiselCrafting> getSerializer() {
         return ModRecipeSerializers.CHISEL_CRAFTING.get();
     }
 }

@@ -1,10 +1,10 @@
 package mod.chiselsandbits.network;
 
-import net.fabricmc.fabric.api.networking.v1.FabricPacket;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 
-public abstract class ModPacket implements FabricPacket {
+public abstract class ModPacket implements CustomPacketPayload {
 
     public ModPacket() {}
 
@@ -23,9 +23,4 @@ public abstract class ModPacket implements FabricPacket {
     public abstract void getPayload(FriendlyByteBuf buffer);
 
     public abstract void readPayload(FriendlyByteBuf buffer);
-
-    @Override
-    public void write(FriendlyByteBuf buf) {
-        getPayload(buf);
-    }
 }

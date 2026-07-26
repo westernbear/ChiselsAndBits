@@ -5,21 +5,21 @@ import mod.chiselsandbits.bitstorage.TileEntityBitStorage;
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
 import mod.chiselsandbits.chiseledblock.NBTBlobConverter;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
+import mod.chiselsandbits.components.ChiseledData;
 import mod.chiselsandbits.helpers.LocalStrings;
 import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.interfaces.IPatternItem;
 import mod.chiselsandbits.items.ItemChisel;
 import mod.chiselsandbits.registry.ModBlocks;
 import mod.chiselsandbits.registry.ModTileEntityTypes;
-import net.fabricmc.fabric.api.transfer.v1.item.InventoryStorage;
+import net.fabricmc.fabric.api.transfer.v1.item.ContainerStorage;
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant;
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage;
 import net.fabricmc.fabric.api.transfer.v1.storage.base.SidedStorageBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.Container;
 import net.minecraft.world.MenuProvider;
@@ -33,6 +33,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -75,48 +77,39 @@ public class ChiselPrinterTileEntity extends BlockEntity
 
     @Override
     public Storage<ItemVariant> getItemStorage(@Nullable final Direction side) {
-        return InventoryStorage.of(this, side);
+        return ContainerStorage.of(this, side);
     }
 
     @Override
-    public void load(CompoundTag compoundTag) {
-        super.load(compoundTag);
-        loadSlot(compoundTag, "pattern", PATTERN_SLOT);
-        loadSlot(compoundTag, "tool", TOOL_SLOT);
-        loadSlot(compoundTag, "result", RESULT_SLOT);
-        progress = compoundTag.getInt("progress");
+    protected void loadAdditional(final ValueInput input) {
+        super.loadAdditional(input);
+        loadSlot(input, "pattern", PATTERN_SLOT);
+        loadSlot(input, "tool", TOOL_SLOT);
+        loadSlot(input, "result", RESULT_SLOT);
+        progress = input.getIntOr("progress", 0);
         currentRealisedWorkingStack.setValue(ItemStack.EMPTY);
     }
 
     @Override
-    protected void saveAdditional(CompoundTag compoundTag) {
-        super.saveAdditional(compoundTag);
-        saveSlot(compoundTag, "pattern", PATTERN_SLOT);
-        saveSlot(compoundTag, "tool", TOOL_SLOT);
-        saveSlot(compoundTag, "result", RESULT_SLOT);
-        compoundTag.putInt("progress", progress);
+    protected void saveAdditional(final ValueOutput output) {
+        super.saveAdditional(output);
+        saveSlot(output, "pattern", PATTERN_SLOT);
+        saveSlot(output, "tool", TOOL_SLOT);
+        saveSlot(output, "result", RESULT_SLOT);
+        output.putInt("progress", progress);
     }
 
-    private void loadSlot(final CompoundTag compoundTag, final String key, final int slot) {
-        final ListTag items = compoundTag.getCompound(key).getList("Items", Tag.TAG_COMPOUND);
-        inventory.setItem(slot, items.isEmpty() ? ItemStack.EMPTY : ItemStack.of(items.getCompound(0)));
+    private void loadSlot(final ValueInput input, final String key, final int slot) {
+        inventory.setItem(slot, input.read(key, ItemStack.OPTIONAL_CODEC).orElse(ItemStack.EMPTY));
     }
 
-    private void saveSlot(final CompoundTag compoundTag, final String key, final int slot) {
-        final CompoundTag handler = new CompoundTag();
-        handler.putInt("Size", 1);
-        final ListTag items = new ListTag();
-        final ItemStack stack = inventory.getItem(slot);
-        if (!stack.isEmpty()) {
-            items.add(stack.save(new CompoundTag()));
-        }
-        handler.put("Items", items);
-        compoundTag.put(key, handler);
+    private void saveSlot(final ValueOutput output, final String key, final int slot) {
+        output.store(key, ItemStack.OPTIONAL_CODEC, inventory.getItem(slot));
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
-        return saveWithFullMetadata();
+    public CompoundTag getUpdateTag(final HolderLookup.Provider registries) {
+        return saveWithFullMetadata(registries);
     }
 
     public boolean hasPatternStack() {
@@ -146,7 +139,7 @@ public class ChiselPrinterTileEntity extends BlockEntity
 
         final ItemStack output = getOutputStack();
         final ItemStack realised = getRealisedStack();
-        return ItemStack.isSameItemSameTags(output, realised)
+        return ItemStack.isSameItemSameComponents(output, realised)
                 && output.getCount() + realised.getCount() <= output.getMaxStackSize();
     }
 
@@ -227,9 +220,11 @@ public class ChiselPrinterTileEntity extends BlockEntity
         }
 
         final NBTBlobConverter c = new NBTBlobConverter();
-        final CompoundTag tag = ModUtil.getSubCompound(realisedPattern, ModUtil.NBT_BLOCKENTITYTAG, false)
-                .copy();
-        c.readChisleData(tag, VoxelBlob.VERSION_ANY);
+        final ChiseledData data = NBTBlobConverter.getComponent(realisedPattern);
+        if (data == null) {
+            return ItemStack.EMPTY;
+        }
+        c.readChisleData(data, VoxelBlob.VERSION_ANY);
         VoxelBlob blob = c.getBlob();
 
         final VoxelBlob.PartialFillResult fillResult = blob.clearAllBut(
@@ -256,15 +251,14 @@ public class ChiselPrinterTileEntity extends BlockEntity
         c.setBlob(blob);
 
         final ItemStack itemstack = new ItemStack(ModBlocks.getChiseledBlock(), 1);
-        c.writeChisleData(tag, false);
-
-        itemstack.addTagElement(ModUtil.NBT_BLOCKENTITYTAG, tag);
+        c.writeToStack(itemstack, false);
+        ModUtil.setSide(itemstack, ModUtil.getSide(realisedPattern));
         return itemstack;
     }
 
     void damageChisel() {
         if (getLevel() != null && !getLevel().isClientSide()) {
-            getToolStack().hurt(1, getLevel().getRandom(), null);
+            ModUtil.damageItem(getToolStack(), getLevel().getRandom());
         }
     }
 

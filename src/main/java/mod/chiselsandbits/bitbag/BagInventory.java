@@ -15,6 +15,7 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.Container;
+import net.minecraft.world.entity.ContainerUser;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
@@ -143,10 +144,10 @@ public class BagInventory implements Container {
     }
 
     @Override
-    public void startOpen(final Player player) {}
+    public void startOpen(final ContainerUser player) {}
 
     @Override
-    public void stopOpen(final Player player) {}
+    public void stopOpen(final ContainerUser player) {}
 
     @Override
     public boolean canPlaceItem(final int index, final ItemStack stack) {
@@ -245,7 +246,7 @@ public class BagInventory implements Container {
             return true;
         }
 
-        return cmpStack.getItem() == invStack.getItem() && ItemStack.isSameItemSameTags(cmpStack, invStack);
+        return cmpStack.getItem() == invStack.getItem() && ItemStack.isSameItemSameComponents(cmpStack, invStack);
     }
 
     public ItemStack restockItem(final ItemStack target, final ItemStack targetType) {

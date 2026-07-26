@@ -6,16 +6,20 @@ import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.items.ItemChiseledBit;
 import mod.chiselsandbits.network.ModPacket;
 import mod.chiselsandbits.utils.Constants;
-import net.fabricmc.fabric.api.networking.v1.PacketType;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 
 public class PacketBagGuiStack extends ModPacket {
 
-    public static final PacketType<PacketBagGuiStack> PACKET_TYPE =
-            PacketType.create(new ResourceLocation(Constants.MOD_ID, "packet_bag_gui_stack"), PacketBagGuiStack::new);
+    public static final CustomPacketPayload.Type<PacketBagGuiStack> PACKET_TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "packet_bag_gui_stack"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketBagGuiStack> STREAM_CODEC =
+            CustomPacketPayload.codec(PacketBagGuiStack::getPayload, PacketBagGuiStack::new);
 
     private int index = -1;
     private ItemStack is;
@@ -63,7 +67,7 @@ public class PacketBagGuiStack extends ModPacket {
     }
 
     @Override
-    public PacketType<?> getType() {
+    public CustomPacketPayload.Type<? extends CustomPacketPayload> type() {
         return PACKET_TYPE;
     }
 }

@@ -4,12 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Consumer;
 import mod.chiselsandbits.bitbag.BagInventory;
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
 import mod.chiselsandbits.chiseledblock.BlockChiseled;
 import mod.chiselsandbits.chiseledblock.ItemBlockChiseled;
 import mod.chiselsandbits.chiseledblock.NBTBlobConverter;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
+import mod.chiselsandbits.components.ChiseledData;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.core.ClientSide;
 import mod.chiselsandbits.helpers.ActingPlayer;
@@ -29,7 +31,6 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -38,6 +39,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
@@ -58,33 +60,39 @@ public class ItemPositivePrint extends ItemNegativePrint implements IChiselModeI
     @Override
     @Environment(EnvType.CLIENT)
     public void appendHoverText(
-            final ItemStack stack, final Level worldIn, final List<Component> tooltip, final TooltipFlag advanced) {
-        defaultAddInfo(stack, worldIn, tooltip, advanced);
+            final ItemStack stack,
+            final TooltipContext context,
+            final TooltipDisplay display,
+            final Consumer<Component> tooltip,
+            final TooltipFlag advanced) {
+        defaultAddInfo(stack, context, display, tooltip, advanced);
+        final List<Component> tooltipLines = new ArrayList<>();
         ChiselsAndBits.getConfig()
                 .getCommon()
                 .helpText(
                         LocalStrings.HelpPositivePrint,
-                        tooltip,
+                        tooltipLines,
                         ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse),
                         ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse),
                         ClientSide.instance.getModeKey());
 
-        if (stack.hasTag()) {
+        if (ModUtil.hasChiseledData(stack)) {
             if (ClientSide.instance.holdingShift()) {
                 if (toolTipCache.needsUpdate(stack)) {
                     final VoxelBlob blob = ModUtil.getBlobFromStack(stack, null);
                     toolTipCache.updateCachedValue(blob.listContents(new ArrayList<Component>()));
                 }
 
-                tooltip.addAll(toolTipCache.getCached());
+                tooltipLines.addAll(toolTipCache.getCached());
             } else {
-                tooltip.add(Component.literal(LocalStrings.ShiftDetails.getLocal()));
+                tooltipLines.add(Component.literal(LocalStrings.ShiftDetails.getLocal()));
             }
         }
+        tooltipLines.forEach(tooltip);
     }
 
     @Override
-    protected CompoundTag getCompoundFromBlock(final Level world, final BlockPos pos, final Player player) {
+    protected ChiseledData getChiseledDataFromBlock(final Level world, final BlockPos pos, final Player player) {
         final BlockState state = world.getBlockState(pos);
         final Block blkObj = state.getBlock();
 
@@ -92,14 +100,10 @@ public class ItemPositivePrint extends ItemNegativePrint implements IChiselModeI
             final NBTBlobConverter tmp = new NBTBlobConverter();
 
             tmp.fillWith(state);
-            final CompoundTag comp = new CompoundTag();
-            tmp.writeChisleData(comp, false);
-
-            comp.putByte(ModUtil.NBT_SIDE, (byte) ModUtil.getPlaceFace(player).ordinal());
-            return comp;
+            return tmp.toComponent(false);
         }
 
-        return super.getCompoundFromBlock(world, pos, player);
+        return super.getChiseledDataFromBlock(world, pos, player);
     }
 
     @Override
@@ -124,7 +128,7 @@ public class ItemPositivePrint extends ItemNegativePrint implements IChiselModeI
         boolean offgrid = false;
 
         if (PositivePatternMode.getMode(stack) == PositivePatternMode.PLACEMENT) {
-            if (!world.isClientSide) {
+            if (!world.isClientSide()) {
                 // Say it "worked", Don't do anything we'll get a better
                 // packet.
                 return InteractionResult.SUCCESS;

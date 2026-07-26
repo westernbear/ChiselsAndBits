@@ -1,5 +1,5 @@
 plugins {
-	id 'fabric-loom' version "${loom_version}"
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 	id 'com.diffplug.spotless' version "${spotless_version}"
 }
 
@@ -19,16 +19,6 @@ repositories {
 	maven {
 		name = "Fuzs Mod Resources"
 		url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/"
-	}
-	maven {
-		url = "https://maven.jamieswhiteshirt.com/libs-release"
-		content {
-			includeGroup "com.jamieswhiteshirt"
-		}
-	}
-	maven {
-		name = 'LDTTeam - Modding'
-		url = 'https://ldtteam.jfrog.io/ldtteam/modding/'
 	}
 }
 
@@ -59,14 +49,10 @@ loom {
 
 dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings loom.officialMojangMappings()
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-
-	modApi("fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${config_api_version}")
-	include(modImplementation("com.jamieswhiteshirt:reach-entity-attributes:${reach_distance_api_version}"))
-	include(modImplementation("com.communi-suggestu.saecularia-caudices:saecularia-caudices-fabric:${saeculariaCaudicesVersion}"))
+	implementation "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${config_api_version}"
 }
 
 processResources {
@@ -77,13 +63,17 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 17
+	it.options.release = 25
 }
 
 def faceRegionMergeCheck = tasks.register("faceRegionMergeCheck", JavaExec) {
 	dependsOn testClasses
 	classpath = sourceSets.test.runtimeClasspath
 	mainClass = "mod.chiselsandbits.render.chiseledblock.FaceRegionMergeCheck"
+}
+
+tasks.named("test") {
+	failOnNoDiscoveredTests.set(false)
 }
 
 tasks.named("check") {
@@ -97,8 +87,8 @@ javadoc{
 java {
 	withSourcesJar()
 	withJavadocJar()
-	sourceCompatibility = JavaVersion.VERSION_17
-	targetCompatibility = JavaVersion.VERSION_17
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
 }
 
 jar {

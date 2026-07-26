@@ -29,7 +29,7 @@ public class BitInventoryFeeder {
     }
 
     private static void spawnItem(Level world, ItemEntity ei) {
-        if (world.isClientSide) // no spawning items on the client.
+        if (world.isClientSide()) // no spawning items on the client.
         {
             return;
         }
@@ -40,9 +40,9 @@ public class BitInventoryFeeder {
     public void addItem(final ItemEntity ei) {
         ItemStack is = ModUtil.nonNull(ei.getItem());
 
-        final List<BagPos> bags = ItemBitBag.getBags(player.inventory);
+        final List<BagPos> bags = ItemBitBag.getBags(player.getInventory());
 
-        if (!ModUtil.containsAtLeastOneOf(player.inventory, is)) {
+        if (!ModUtil.containsAtLeastOneOf(player.getInventory(), is)) {
             final ItemStack minSize = is.copy();
 
             if (ModUtil.getStackSize(minSize) > minSize.getMaxStackSize()) {
@@ -50,7 +50,7 @@ public class BitInventoryFeeder {
             }
 
             ModUtil.adjustStackSize(is, -ModUtil.getStackSize(minSize));
-            player.inventory.add(minSize);
+            player.getInventory().add(minSize);
             ModUtil.adjustStackSize(is, ModUtil.getStackSize(minSize));
         }
 
@@ -71,7 +71,7 @@ public class BitInventoryFeeder {
 
             is = ei.getItem();
 
-            if (is != null && !player.inventory.add(is)) {
+            if (is != null && !player.getInventory().add(is)) {
                 ei.setItem(is);
                 // Never spawn the items for dropped excess items if setting is enabled.
                 if (!ChiselsAndBits.getConfig().getServer().voidExcessBits.get()) {
@@ -79,19 +79,20 @@ public class BitInventoryFeeder {
                 }
             } else {
                 if (!ei.isSilent()) {
-                    ei.level.playSound(
-                            null,
-                            ei.getX(),
-                            ei.getY(),
-                            ei.getZ(),
-                            SoundEvents.ITEM_PICKUP,
-                            SoundSource.PLAYERS,
-                            0.2F,
-                            ((itemRand.nextFloat() - itemRand.nextFloat()) * 0.7F + 1.0F) * 2.0F);
+                    ei.level()
+                            .playSound(
+                                    null,
+                                    ei.getX(),
+                                    ei.getY(),
+                                    ei.getZ(),
+                                    SoundEvents.ITEM_PICKUP,
+                                    SoundSource.PLAYERS,
+                                    0.2F,
+                                    ((itemRand.nextFloat() - itemRand.nextFloat()) * 0.7F + 1.0F) * 2.0F);
                 }
             }
 
-            player.inventory.setChanged();
+            player.getInventory().setChanged();
 
             if (player.inventoryMenu != null) {
                 player.inventoryMenu.broadcastChanges();

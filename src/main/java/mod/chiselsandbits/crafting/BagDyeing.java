@@ -4,26 +4,23 @@ import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.items.ItemBitBag;
 import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.registry.ModRecipeSerializers;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.world.inventory.CraftingContainer;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.DyeColor;
-import net.minecraft.world.item.DyeItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.crafting.CraftingBookCategory;
+import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
 
 public class BagDyeing extends CustomRecipe {
 
-    public BagDyeing(CraftingBookCategory name) {
-
-        super(name);
+    public BagDyeing() {
+        super();
     }
 
     @Override
-    public ItemStack assemble(CraftingContainer inv, RegistryAccess registryAccess) {
+    public ItemStack assemble(final CraftingInput inv) {
         dyed_output output = getOutput(inv);
 
         if (output != null) {
@@ -34,11 +31,11 @@ public class BagDyeing extends CustomRecipe {
         return ModUtil.getEmptyStack();
     }
 
-    private dyed_output getOutput(CraftingContainer inv) {
+    private dyed_output getOutput(final CraftingInput inv) {
         ItemStack bag = null;
         ItemStack dye = null;
 
-        for (int x = 0; x < inv.getContainerSize(); ++x) {
+        for (int x = 0; x < inv.size(); ++x) {
             ItemStack is = inv.getItem(x);
             if (is != null && !ModUtil.isEmpty(is)) {
                 if (is.getItem() == Items.WATER_BUCKET || getDye(is) != null) {
@@ -67,25 +64,16 @@ public class BagDyeing extends CustomRecipe {
     }
 
     private DyeColor getDye(ItemStack is) {
-        if (is.getItem() instanceof DyeItem item) {
-            return item.getDyeColor();
-        }
-
-        return null;
+        return is.get(DataComponents.DYE);
     }
 
     @Override
-    public boolean matches(final CraftingContainer inv, final Level worldIn) {
+    public boolean matches(final CraftingInput inv, final Level worldIn) {
         return getOutput(inv) != null;
     }
 
     @Override
-    public boolean canCraftInDimensions(final int width, final int height) {
-        return width * height >= 2;
-    }
-
-    @Override
-    public RecipeSerializer<?> getSerializer() {
+    public RecipeSerializer<BagDyeing> getSerializer() {
         return ModRecipeSerializers.BAG_DYEING.get();
     }
 

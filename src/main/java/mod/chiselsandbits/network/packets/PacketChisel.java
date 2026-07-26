@@ -25,11 +25,13 @@ import mod.chiselsandbits.modes.ChiselMode;
 import mod.chiselsandbits.network.ModPacket;
 import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.utils.Constants;
-import net.fabricmc.fabric.api.networking.v1.PacketType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -47,8 +49,10 @@ import net.minecraft.world.phys.Vec3;
 
 public class PacketChisel extends ModPacket {
 
-    public static final PacketType<PacketChisel> PACKET_TYPE =
-            PacketType.create(new ResourceLocation(Constants.MOD_ID, "packet_chisel"), PacketChisel::new);
+    public static final CustomPacketPayload.Type<PacketChisel> PACKET_TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "packet_chisel"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketChisel> STREAM_CODEC =
+            CustomPacketPayload.codec(PacketChisel::getPayload, PacketChisel::new);
 
     BitLocation from;
     BitLocation to;
@@ -96,7 +100,7 @@ public class PacketChisel extends ModPacket {
     }
 
     public int doAction(final Player who) {
-        final Level world = who.getCommandSenderWorld();
+        final Level world = who.level();
         final ActingPlayer player = ActingPlayer.actingAs(who, hand);
 
         final int minX = Math.min(from.blockPos.getX(), to.blockPos.getX());
@@ -282,7 +286,7 @@ public class PacketChisel extends ModPacket {
     }
 
     @Override
-    public PacketType<?> getType() {
+    public CustomPacketPayload.Type<? extends CustomPacketPayload> type() {
         return PACKET_TYPE;
     }
 }

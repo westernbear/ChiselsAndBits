@@ -1,12 +1,6 @@
 package mod.chiselsandbits.client.gui;
 
 import com.google.common.base.Stopwatch;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 import mod.chiselsandbits.api.ReplacementStateHandler;
@@ -15,18 +9,15 @@ import mod.chiselsandbits.helpers.ChiselToolType;
 import mod.chiselsandbits.helpers.DeprecationHelper;
 import mod.chiselsandbits.helpers.LocalStrings;
 import mod.chiselsandbits.modes.IToolMode;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.item.DyeColor;
-import org.lwjgl.opengl.GL11;
 
 public class ChiselsAndBitsMenu extends Screen {
 
@@ -81,40 +72,18 @@ public class ChiselsAndBitsMenu extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int i, int j, float f) {
-        this.render(guiGraphics, guiGraphics.pose(), i, j, f);
-    }
-
-    public void render(
-            GuiGraphics graphics,
-            final PoseStack matrixStack,
-            final int mouseX,
-            final int mouseY,
-            final float partialTicks) {
+    public void extractRenderState(
+            final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float partialTicks) {
         final ChiselToolType tool = ClientSide.instance.getHeldToolType(InteractionHand.MAIN_HAND);
 
         if (tool == null) {
             return;
         }
 
-        matrixStack.pushPose();
-        // matrixStack.translate( 0.0F, 0.0F, 200.0F );
-
         final int start = (int) (visibility * 98) << 24;
         final int end = (int) (visibility * 128) << 24;
 
         graphics.fillGradient(0, 0, width, height, start, end);
-
-        //        RenderSystem.disableTexture();
-        RenderSystem.enableBlend();
-
-        //        RenderSystem.disableAlphaTest();
-        RenderSystem.blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
-        //        RenderSystem.shadeModel(GL11.GL_SMOOTH);
-        final Tesselator tessellator = Tesselator.getInstance();
-        BufferBuilder buffer = tessellator.getBuilder();
-
-        buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
         final double vecX = mouseX - width / 2;
         final double vecY = (mouseY - height / 2);
@@ -249,9 +218,6 @@ public class ChiselsAndBitsMenu extends Screen {
                 final double y1m2 = Math.sin(begin_rad + fragment2) * ring_outer_edge;
                 final double y2m2 = Math.sin(end_rad - fragment2) * ring_outer_edge;
 
-                final float a = 0.5f;
-                float f = 0f;
-
                 final boolean quad = inTriangle(
                                 x1m1, y1m1,
                                 x2m2, y2m2,
@@ -264,60 +230,42 @@ public class ChiselsAndBitsMenu extends Screen {
                                 vecX, vecY);
 
                 if (begin_rad <= radians && radians <= end_rad && quad) {
-                    f = 1;
                     mnuRgn.highlighted = true;
                     switchTo = mnuRgn.mode;
                 }
 
-                buffer.vertex(middle_x + x1m1, middle_y + y1m1, 0)
-                        .color(f, f, f, a)
-                        .endVertex();
-                buffer.vertex(middle_x + x2m1, middle_y + y2m1, 0)
-                        .color(f, f, f, a)
-                        .endVertex();
-                buffer.vertex(middle_x + x2m2, middle_y + y2m2, 0)
-                        .color(f, f, f, a)
-                        .endVertex();
-                buffer.vertex(middle_x + x1m2, middle_y + y1m2, 0)
-                        .color(f, f, f, a)
-                        .endVertex();
+                fillQuad(
+                        graphics,
+                        mnuRgn.highlighted ? 0x80ffffff : 0x80000000,
+                        middle_x + x1m1,
+                        middle_y + y1m1,
+                        middle_x + x2m1,
+                        middle_y + y2m1,
+                        middle_x + x2m2,
+                        middle_y + y2m2,
+                        middle_x + x1m2,
+                        middle_y + y1m2);
 
                 currentMode++;
             }
         }
 
         for (final MenuButton btn : btns) {
-            final float a = 0.5f;
-            float f = 0f;
-
             if (btn.x1 <= vecX && btn.x2 >= vecX && btn.y1 <= vecY && btn.y2 >= vecY) {
-                f = 1;
                 btn.highlighted = true;
                 doAction = btn.action;
             }
 
-            buffer.vertex(middle_x + btn.x1, middle_y + btn.y1, 0)
-                    .color(f, f, f, a)
-                    .endVertex();
-            buffer.vertex(middle_x + btn.x1, middle_y + btn.y2, 0)
-                    .color(f, f, f, a)
-                    .endVertex();
-            buffer.vertex(middle_x + btn.x2, middle_y + btn.y2, 0)
-                    .color(f, f, f, a)
-                    .endVertex();
-            buffer.vertex(middle_x + btn.x2, middle_y + btn.y1, 0)
-                    .color(f, f, f, a)
-                    .endVertex();
+            graphics.fill(
+                    RenderPipelines.GUI,
+                    (int) (middle_x + btn.x1),
+                    (int) (middle_y + btn.y1),
+                    (int) (middle_x + btn.x2),
+                    (int) (middle_y + btn.y2),
+                    btn.highlighted ? 0x80ffffff : 0x80000000);
         }
 
-        tessellator.end();
-
-        graphics.setColor(1, 1, 1, 1);
-        RenderSystem.disableBlend();
-        RenderSystem.bindTexture(Minecraft.getInstance()
-                .getTextureManager()
-                .getTexture(InventoryMenu.BLOCK_ATLAS)
-                .getId());
+        graphics.nextStratum();
 
         for (final MenuRegion mnuRgn : modes) {
 
@@ -333,49 +281,31 @@ public class ChiselsAndBitsMenu extends Screen {
             final double y1 = y - scaley;
             final double y2 = y + scaley;
 
-            final TextureAtlasSprite sprite = sip.sprite;
-            final ResourceLocation iconId =
-                    sprite.contents().name().withPrefix("textures/icons/").withSuffix(".png");
-            RenderSystem.setShader(GameRenderer::getPositionColorTexShader);
-            RenderSystem.setShaderTexture(0, iconId);
-            graphics.blit(
-                    iconId,
+            graphics.blitSprite(
+                    RenderPipelines.GUI_TEXTURED,
+                    sip.sprite,
                     (int) (middle_x + x1),
                     (int) (middle_y + y1),
                     (int) (x2 - x1),
-                    (int) (y2 - y1),
-                    0,
-                    0,
-                    18,
-                    18,
-                    18,
-                    18);
+                    (int) (y2 - y1));
         }
 
         for (final MenuButton btn : btns) {
             final TextureAtlasSprite sprite = btn.icon == null ? ClientSide.white : btn.icon;
-            ResourceLocation iconId =
-                    sprite.contents().name().withPrefix("textures/icons/").withSuffix(".png");
-            RenderSystem.setShader(GameRenderer::getPositionColorTexShader);
-            RenderSystem.setShaderTexture(0, iconId);
 
             final double btnx1 = btn.x1 + 1;
             final double btnx2 = btn.x2 - 1;
             final double btny1 = btn.y1 + 1;
             final double btny2 = btn.y2 - 1;
 
-            graphics.blit(
-                    iconId,
+            graphics.blitSprite(
+                    RenderPipelines.GUI_TEXTURED,
+                    sprite,
                     (int) (middle_x + btnx1),
                     (int) (middle_y + btny1),
                     (int) (btnx2 - btnx1),
                     (int) (btny2 - btny1),
-                    0,
-                    0,
-                    18,
-                    18,
-                    18,
-                    18);
+                    btn.icon == null ? 0xff000000 | btn.color : 0xffffffff);
         }
 
         for (final MenuRegion mnuRgn : modes) {
@@ -392,7 +322,7 @@ public class ChiselsAndBitsMenu extends Screen {
                 } else if (-0.2 <= x && x <= 0.2) {
                     fixed_x -= font.width(text) / 2;
                 }
-                graphics.drawString(font, text, (int) middle_x + fixed_x, (int) middle_y + fixed_y, 0xffffffff);
+                graphics.text(font, text, (int) middle_x + fixed_x, (int) middle_y + fixed_y, 0xffffffff);
             }
         }
 
@@ -401,24 +331,23 @@ public class ChiselsAndBitsMenu extends Screen {
                 final String text = DeprecationHelper.translateToLocal(btn.name);
 
                 if (btn.textSide == Direction.WEST) {
-                    graphics.drawString(
+                    graphics.text(
                             font,
                             text,
                             (int) (middle_x + btn.x1 - 8) - font.width(text),
                             (int) (middle_y + btn.y1 + 6),
                             0xffffffff);
                 } else if (btn.textSide == Direction.EAST) {
-                    graphics.drawString(
-                            font, text, (int) (middle_x + btn.x2 + 8), (int) (middle_y + btn.y1 + 6), 0xffffffff);
+                    graphics.text(font, text, (int) (middle_x + btn.x2 + 8), (int) (middle_y + btn.y1 + 6), 0xffffffff);
                 } else if (btn.textSide == Direction.UP) {
-                    graphics.drawString(
+                    graphics.text(
                             font,
                             text,
                             (int) (middle_x + (btn.x1 + btn.x2) * 0.5 - font.width(text) * 0.5),
                             (int) (middle_y + btn.y1 - 14),
                             0xffffffff);
                 } else if (btn.textSide == Direction.DOWN) {
-                    graphics.drawString(
+                    graphics.text(
                             font,
                             text,
                             (int) (middle_x + (btn.x1 + btn.x2) * 0.5 - font.width(text) * 0.5),
@@ -427,8 +356,47 @@ public class ChiselsAndBitsMenu extends Screen {
                 }
             }
         }
+    }
 
-        matrixStack.popPose();
+    private void fillQuad(
+            final GuiGraphicsExtractor graphics,
+            final int color,
+            final double x0,
+            final double y0,
+            final double x1,
+            final double y1,
+            final double x2,
+            final double y2,
+            final double x3,
+            final double y3) {
+        final double[] xs = {x0, x1, x2, x3};
+        final double[] ys = {y0, y1, y2, y3};
+        final double[] intersections = new double[4];
+        final int minY = (int) Math.floor(Math.min(Math.min(y0, y1), Math.min(y2, y3)));
+        final int maxY = (int) Math.ceil(Math.max(Math.max(y0, y1), Math.max(y2, y3)));
+
+        for (int y = minY; y < maxY; y++) {
+            final double scanY = y + 0.5;
+            int count = 0;
+            for (int edge = 0; edge < 4; edge++) {
+                final int next = (edge + 1) & 3;
+                if ((ys[edge] <= scanY && scanY < ys[next]) || (ys[next] <= scanY && scanY < ys[edge])) {
+                    intersections[count++] =
+                            xs[edge] + (scanY - ys[edge]) * (xs[next] - xs[edge]) / (ys[next] - ys[edge]);
+                }
+            }
+
+            if (count >= 2) {
+                double minX = intersections[0];
+                double maxX = intersections[0];
+                for (int index = 1; index < count; index++) {
+                    minX = Math.min(minX, intersections[index]);
+                    maxX = Math.max(maxX, intersections[index]);
+                }
+                graphics.fill(
+                        RenderPipelines.GUI, (int) Math.ceil(minX - 0.5), y, (int) Math.ceil(maxX - 0.5), y + 1, color);
+            }
+        }
     }
 
     private boolean inTriangle(
@@ -451,16 +419,10 @@ public class ChiselsAndBitsMenu extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(final double mouseX, final double mouseY, final int button) {
+    public boolean mouseClicked(final MouseButtonEvent event, final boolean doubleClick) {
         this.visibility = 0f;
         canRaise = false;
-        this.minecraft.setScreen(null);
-
-        if (this.minecraft.screen == null) {
-            this.minecraft.setWindowActive(true);
-            this.minecraft.getSoundManager().resume();
-            this.minecraft.mouseHandler.grabMouse();
-        }
+        this.onClose();
         return true;
     }
 

@@ -2,6 +2,7 @@ package mod.chiselsandbits.items;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import mod.chiselsandbits.bitbag.BagInventory;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.core.ClientSide;
@@ -12,21 +13,21 @@ import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.render.helpers.SimpleInstanceCache;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.Container;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.DyedItemColor;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public class ItemBitBag extends Item {
 
@@ -43,7 +44,7 @@ public class ItemBitBag extends Item {
     public static void cleanupInventory(final Player player, final ItemStack is) {
         if (is != null && is.getItem() instanceof ItemChiseledBit) {
             // time to clean up your inventory...
-            final Container inv = player.inventory;
+            final Container inv = player.getInventory();
             final List<ItemBitBag.BagPos> bags = ItemBitBag.getBags(inv);
 
             int firstSeen = -1;
@@ -54,7 +55,7 @@ public class ItemBitBag extends Item {
                 if (which != null
                         && which.getItem() == is.getItem()
                         && (ItemChiseledBit.sameBit(which, ItemChiseledBit.getStackState(is)))) {
-                    if (actingSlot == player.inventory.selected) {
+                    if (actingSlot == player.getInventory().getSelectedSlot()) {
                         if (firstSeen != -1) {
                             actingSlot = firstSeen;
                         } else {
@@ -92,25 +93,19 @@ public class ItemBitBag extends Item {
     }
 
     public static ItemStack dyeBag(ItemStack bag, DyeColor color) {
-        ItemStack copy = bag.copy();
-
-        if (!copy.hasTag()) {
-            copy.setTag(new CompoundTag());
-        }
+        final ItemStack copy = bag.copy();
 
         if (color == null && bag.getItem() == ModItems.ITEM_BIT_BAG_DYED.get()) {
-            final ItemStack unColoredStack = new ItemStack(ModItems.ITEM_BIT_BAG_DEFAULT.get());
-            unColoredStack.setTag(copy.getTag());
-            unColoredStack.getTag().remove("color");
+            final ItemStack unColoredStack = copy.transmuteCopy(ModItems.ITEM_BIT_BAG_DEFAULT.get());
+            unColoredStack.remove(DataComponents.DYED_COLOR);
             return unColoredStack;
         } else if (color != null) {
             ItemStack coloredStack = copy;
             if (coloredStack.getItem() == ModItems.ITEM_BIT_BAG_DEFAULT.get()) {
-                coloredStack = new ItemStack(ModItems.ITEM_BIT_BAG_DYED.get());
-                coloredStack.setTag(copy.getTag());
+                coloredStack = copy.transmuteCopy(ModItems.ITEM_BIT_BAG_DYED.get());
             }
 
-            coloredStack.getTag().putString("color", color.getName());
+            coloredStack.set(DataComponents.DYED_COLOR, new DyedItemColor(color.getTextureDiffuseColor()));
             return coloredStack;
         }
 
@@ -122,10 +117,10 @@ public class ItemBitBag extends Item {
             return null;
         }
 
-        if (stack.getOrCreateTag().contains("color")) {
-            String name = stack.getTag().getString("color");
-            for (DyeColor color : DyeColor.values()) {
-                if (name.equals(color.getSerializedName())) {
+        final DyedItemColor dyedColor = stack.get(DataComponents.DYED_COLOR);
+        if (dyedColor != null) {
+            for (final DyeColor color : DyeColor.values()) {
+                if (dyedColor.rgb() == color.getTextureDiffuseColor()) {
                     return color;
                 }
             }
@@ -151,11 +146,14 @@ public class ItemBitBag extends Item {
     @Override
     public void appendHoverText(
             final ItemStack stack,
-            @Nullable final Level worldIn,
-            final List<Component> tooltip,
+            final TooltipContext context,
+            final TooltipDisplay display,
+            final Consumer<Component> tooltip,
             final TooltipFlag flagIn) {
-        super.appendHoverText(stack, worldIn, tooltip, flagIn);
-        ChiselsAndBits.getConfig().getCommon().helpText(LocalStrings.HelpBitBag, tooltip);
+        super.appendHoverText(stack, context, display, tooltip, flagIn);
+        final List<Component> helpText = new ArrayList<>();
+        ChiselsAndBits.getConfig().getCommon().helpText(LocalStrings.HelpBitBag, helpText);
+        helpText.forEach(tooltip);
 
         if (tooltipCache.needsUpdate(stack)) {
             final BagInventory bi = new BagInventory(stack);
@@ -164,22 +162,19 @@ public class ItemBitBag extends Item {
 
         final List<Component> details = tooltipCache.getCached();
         if (details.size() <= 2 || ClientSide.instance.holdingShift()) {
-            tooltip.addAll(details);
+            details.forEach(tooltip);
         } else {
-            tooltip.add(Component.literal(LocalStrings.ShiftDetails.getLocal()));
+            tooltip.accept(Component.literal(LocalStrings.ShiftDetails.getLocal()));
         }
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(
-            final Level worldIn, final Player playerIn, final InteractionHand hand) {
-        final ItemStack itemStackIn = playerIn.getItemInHand(hand);
-
-        if (worldIn.isClientSide) {
+    public InteractionResult use(final Level worldIn, final Player playerIn, final InteractionHand hand) {
+        if (worldIn.isClientSide()) {
             ChiselsAndBits.getNetworkChannel().sendToServer(new PacketOpenBagGui());
         }
 
-        return new InteractionResultHolder<ItemStack>(InteractionResult.SUCCESS, itemStackIn);
+        return InteractionResult.SUCCESS;
     }
 
     public static class BagPos {

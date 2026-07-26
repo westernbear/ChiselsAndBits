@@ -2,15 +2,18 @@ package mod.chiselsandbits.items;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import mod.chiselsandbits.chiseledblock.NBTBlobConverter;
 import mod.chiselsandbits.chiseledblock.TileEntityBlockChiseled;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
+import mod.chiselsandbits.components.ChiseledData;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.core.ClientSide;
 import mod.chiselsandbits.helpers.LocalStrings;
 import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.interfaces.IPatternItem;
 import mod.chiselsandbits.registry.ModBlocks;
+import mod.chiselsandbits.registry.ModDataComponents;
 import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.render.helpers.SimpleInstanceCache;
 import net.fabricmc.api.EnvType;
@@ -18,7 +21,6 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -26,9 +28,9 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
 
 public class ItemMirrorPrint extends Item implements IPatternItem {
 
@@ -41,13 +43,18 @@ public class ItemMirrorPrint extends Item implements IPatternItem {
     @Override
     @Environment(EnvType.CLIENT)
     public void appendHoverText(
-            final ItemStack stack, final Level worldIn, final List<Component> tooltip, final TooltipFlag advanced) {
-        super.appendHoverText(stack, worldIn, tooltip, advanced);
+            final ItemStack stack,
+            final TooltipContext context,
+            final TooltipDisplay display,
+            final Consumer<Component> tooltip,
+            final TooltipFlag advanced) {
+        super.appendHoverText(stack, context, display, tooltip, advanced);
+        final List<Component> tooltipLines = new ArrayList<>();
         ChiselsAndBits.getConfig()
                 .getCommon()
                 .helpText(
                         LocalStrings.HelpMirrorPrint,
-                        tooltip,
+                        tooltipLines,
                         ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse));
 
         if (isWritten(stack)) {
@@ -57,16 +64,18 @@ public class ItemMirrorPrint extends Item implements IPatternItem {
                     toolTipCache.updateCachedValue(blob.listContents(new ArrayList<>()));
                 }
 
-                tooltip.addAll(toolTipCache.getCached());
+                tooltipLines.addAll(toolTipCache.getCached());
             } else {
-                tooltip.add(Component.literal(LocalStrings.ShiftDetails.getLocal()));
+                tooltipLines.add(Component.literal(LocalStrings.ShiftDetails.getLocal()));
             }
         }
+        tooltipLines.forEach(tooltip);
     }
 
-    @Override
+    /** Compatibility overload for callers that previously supplied a stack. */
+    @Deprecated
     public String getDescriptionId(final ItemStack stack) {
-        return super.getDescriptionId(stack);
+        return super.getDescriptionId();
     }
 
     @Override
@@ -78,13 +87,14 @@ public class ItemMirrorPrint extends Item implements IPatternItem {
         }
 
         if (!isWritten(stack)) {
-            final CompoundTag comp = getCompoundFromBlock(
+            final ChiseledData data = getChiseledDataFromBlock(
                     context.getLevel(), context.getClickedPos(), context.getPlayer(), context.getClickedFace());
-            if (comp != null) {
+            if (data != null) {
                 stack.shrink(1);
 
                 final ItemStack newStack = new ItemStack(ModItems.ITEM_MIRROR_PRINT_WRITTEN.get(), 1);
-                newStack.setTag(comp);
+                newStack.set(ModDataComponents.CHISELED_DATA, data);
+                ModUtil.setSide(newStack, ModUtil.getPlaceFace(context.getPlayer()));
 
                 final ItemEntity entity = context.getPlayer().drop(newStack, true);
                 entity.setPickUpDelay(0);
@@ -99,23 +109,14 @@ public class ItemMirrorPrint extends Item implements IPatternItem {
         return InteractionResult.FAIL;
     }
 
-    protected CompoundTag getCompoundFromBlock(
+    protected ChiseledData getChiseledDataFromBlock(
             final Level world, final BlockPos pos, final Player player, final Direction face) {
         final TileEntityBlockChiseled te = ModUtil.getChiseledTileEntity(world, pos, false);
 
         if (te != null) {
-            final CompoundTag comp = new CompoundTag();
-            te.writeChiselData(comp);
-
-            final TileEntityBlockChiseled tmp = new TileEntityBlockChiseled(pos, world.getBlockState(pos));
-            tmp.readChiselData(comp);
-
-            final VoxelBlob bestBlob = tmp.getBlob();
-            tmp.setBlob(bestBlob.mirror(face.getAxis()));
-            tmp.writeChiselData(comp);
-
-            comp.putByte(ModUtil.NBT_SIDE, (byte) ModUtil.getPlaceFace(player).ordinal());
-            return comp;
+            final NBTBlobConverter converter = new NBTBlobConverter();
+            converter.setBlob(te.getBlob().mirror(face.getAxis()));
+            return converter.toComponent(false);
         }
 
         return null;
@@ -127,21 +128,23 @@ public class ItemMirrorPrint extends Item implements IPatternItem {
             return null;
         }
 
-        final CompoundTag tag = ModUtil.getTagCompound(stack);
+        final ChiseledData data = NBTBlobConverter.getComponent(stack);
+        if (data == null) {
+            return null;
+        }
 
         // Detect and provide full blocks if pattern solid full and solid.
         final NBTBlobConverter conv = new NBTBlobConverter();
-        conv.readChisleData(tag, VoxelBlob.VERSION_ANY);
+        conv.readChisleData(data, VoxelBlob.VERSION_ANY);
 
-        final BlockState blk = conv.getPrimaryBlockState();
         final ItemStack itemstack = new ItemStack(ModBlocks.getChiseledBlock(), 1);
-
-        itemstack.addTagElement(ModUtil.NBT_BLOCKENTITYTAG, tag);
+        itemstack.set(ModDataComponents.CHISELED_DATA, data);
+        ModUtil.setSide(itemstack, ModUtil.getSide(stack));
         return itemstack;
     }
 
     @Override
     public boolean isWritten(final ItemStack stack) {
-        return stack.getItem() == ModItems.ITEM_MIRROR_PRINT_WRITTEN.get() && stack.hasTag();
+        return stack.getItem() == ModItems.ITEM_MIRROR_PRINT_WRITTEN.get() && ModUtil.hasChiseledData(stack);
     }
 }

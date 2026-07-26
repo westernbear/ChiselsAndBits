@@ -16,7 +16,7 @@ import mod.chiselsandbits.utils.Constants;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
@@ -77,7 +77,7 @@ public final class ModItemGroups {
                     BlockState blockState = block.defaultBlockState();
 
                     if (block instanceof LiquidBlock liquidBlock) {
-                        Fluid fluid = liquidBlock.getFluidState(blockState).getType();
+                        Fluid fluid = blockState.getFluidState().getType();
                         if (fluid instanceof FlowingFluid flowingFluid) {
                             blockState =
                                     flowingFluid.getSource().defaultFluidState().createLegacyBlock();
@@ -111,15 +111,15 @@ public final class ModItemGroups {
     public static void onModConstruction() {
         Registry.register(
                 BuiltInRegistries.CREATIVE_MODE_TAB,
-                new ResourceLocation(Constants.MOD_ID, "main_tab"),
+                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "main_tab"),
                 MAIN_TAB.get());
         Registry.register(
                 BuiltInRegistries.CREATIVE_MODE_TAB,
-                new ResourceLocation(Constants.MOD_ID, "block_bits"),
+                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "block_bits"),
                 BLOCK_BITS.get());
         Registry.register(
                 BuiltInRegistries.CREATIVE_MODE_TAB,
-                new ResourceLocation(Constants.MOD_ID, "clipboard"),
+                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "clipboard"),
                 CLIPBOARD.get());
     }
 }

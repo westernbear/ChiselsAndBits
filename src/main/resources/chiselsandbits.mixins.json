@@ -1,19 +1,25 @@
 {
   "required": true,
   "package": "mod.chiselsandbits.mixin",
-  "compatibilityLevel": "JAVA_17",
+  "compatibilityLevel": "JAVA_25",
   "mixins": [
+    "AbstractBoatMixin",
+    "AbstractHorseMixin",
+    "BlockItemMixin",
+    "EntityMixin",
+    "ExperienceOrbMixin",
     "ItemEntityMixin",
+    "LeashableMixin",
+    "LivingEntityMixin",
+    "ServerPlayerGameModeMixin",
+    "SnifferMixin",
     "StructurePieceMixin",
     "StructureTemplateMixin"
   ],
   "client": [
-    "ItemRendererMixin",
-    "PaintingTextureManagerMixin",
-    "SectionRenderDispatcherMixin",
     "compat.client.GuiMixin",
-    "compat.client.LevelRendererMixin",
     "compat.client.MouseHandlerMixin",
+    "compat.client.MultiPlayerGameModeMixin",
     "compat.client.TextureAtlasMixin"
   ],
   "injectors": {
