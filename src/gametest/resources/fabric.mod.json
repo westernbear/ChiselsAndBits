@@ -6,7 +6,8 @@
   "environment": "*",
   "entrypoints": {
     "fabric-gametest": [
-      "mod.chiselsandbits.gametest.LegacyCompatibilityGameTests"
+      "mod.chiselsandbits.gametest.LegacyCompatibilityGameTests",
+      "mod.chiselsandbits.gametest.ApiServerGameTests"
     ],
     "fabric-client-gametest": [
       "mod.chiselsandbits.gametest.ChiselsAndBitsClientGameTest"

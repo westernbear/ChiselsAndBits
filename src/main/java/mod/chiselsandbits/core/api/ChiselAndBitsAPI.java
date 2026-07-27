@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import mod.chiselsandbits.api.APIExceptions.CannotBeChiseled;
 import mod.chiselsandbits.api.APIExceptions.InvalidBitItem;
@@ -17,6 +18,7 @@ import mod.chiselsandbits.api.ItemStackHandler;
 import mod.chiselsandbits.api.ItemType;
 import mod.chiselsandbits.api.ModKeyBinding;
 import mod.chiselsandbits.api.ParameterType;
+import mod.chiselsandbits.api.ParameterType.BooleanParam;
 import mod.chiselsandbits.api.ParameterType.DoubleParam;
 import mod.chiselsandbits.api.ParameterType.FloatParam;
 import mod.chiselsandbits.api.ParameterType.IntegerParam;
@@ -62,7 +64,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import org.apache.commons.lang3.Validate;
 import org.jetbrains.annotations.NotNull;
 
 public class ChiselAndBitsAPI implements IChiselAndBitsAPI {
@@ -76,7 +77,7 @@ public class ChiselAndBitsAPI implements IChiselAndBitsAPI {
 
     @Override
     public void registerBlockProvider(BlockProvider provider) {
-        Validate.notNull(provider, "BlockProvider cannot be null");
+        Objects.requireNonNull(provider, "BlockProvider cannot be null");
         this.stateProviders.add(provider);
     }
 
@@ -86,7 +87,21 @@ public class ChiselAndBitsAPI implements IChiselAndBitsAPI {
 
     @Override
     public void registerItemStackHandler(Block block, @NotNull ItemStackHandler provider) {
-        itemStackHandlers.put(block, provider);
+        itemStackHandlers.put(
+                Objects.requireNonNull(block, "Block cannot be null"),
+                Objects.requireNonNull(provider, "ItemStackHandler cannot be null"));
+    }
+
+    @Override
+    public ItemStack getItemStackForState(final BlockState state) {
+        final ItemStack stack = IChiselAndBitsAPI.super.getItemStackForState(state);
+        if (state != null && !stack.isEmpty()) {
+            final ItemStackHandler handler = itemStackHandlers.get(state.getBlock());
+            if (handler != null) {
+                handler.apply(state, stack);
+            }
+        }
+        return stack;
     }
 
     @Override
@@ -163,12 +178,18 @@ public class ChiselAndBitsAPI implements IChiselAndBitsAPI {
             final Direction side,
             final BlockPos pos,
             final boolean placement) {
+        Objects.requireNonNull(side, "Direction cannot be null");
+        Objects.requireNonNull(pos, "BlockPos cannot be null");
         final BlockHitResult mop = new BlockHitResult(new Vec3(hitX, hitY, hitZ), side, pos, false);
         return new BitLocation(mop, placement ? BitOperation.PLACE : BitOperation.CHISEL);
     }
 
     @Override
     public ItemType getItemType(final ItemStack stack) {
+        if (ModUtil.isEmpty(stack)) {
+            return null;
+        }
+
         if (stack.getItem() instanceof ItemChiseledBit) {
             return ItemType.CHISELED_BIT;
         }
@@ -244,7 +265,7 @@ public class ChiselAndBitsAPI implements IChiselAndBitsAPI {
 
     @Override
     public ItemStack getBitItem(final BlockState state) throws InvalidBitItem {
-        if (!BlockBitInfo.canChisel(state)) {
+        if (state == null || !BlockBitInfo.canChisel(state)) {
             throw new InvalidBitItem();
         }
 
@@ -256,6 +277,8 @@ public class ChiselAndBitsAPI implements IChiselAndBitsAPI {
         if (ModUtil.isEmpty(stack)) {
             return;
         }
+
+        Objects.requireNonNull(player, "Player cannot be null");
 
         if (spawnPos == null) {
             spawnPos = new Vec3(player.getX(), player.getY(), player.getZ());
@@ -283,17 +306,18 @@ public class ChiselAndBitsAPI implements IChiselAndBitsAPI {
 
     @Override
     public void beginUndoGroup(final Player player) {
-        UndoTracker.getInstance().beginGroup(player);
+        UndoTracker.getInstance().beginGroup(Objects.requireNonNull(player, "Player cannot be null"));
     }
 
     @Override
     public void endUndoGroup(final Player player) {
-        UndoTracker.getInstance().endGroup(player);
+        UndoTracker.getInstance().endGroup(Objects.requireNonNull(player, "Player cannot be null"));
     }
 
     @Override
     @Environment(EnvType.CLIENT)
     public KeyMapping getKeyBinding(ModKeyBinding modKeyBinding) {
+        Objects.requireNonNull(modKeyBinding, "ModKeyBinding cannot be null");
         switch (modKeyBinding) {
             case SINGLE:
                 return (KeyMapping) ChiselMode.SINGLE.binding;
@@ -340,57 +364,31 @@ public class ChiselAndBitsAPI implements IChiselAndBitsAPI {
         }
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings("unchecked")
     @Override
-    public Object getParameter(ParameterType which) {
-        switch (which.getType()) {
-            case BOOLEAN:
-                switch ((ParameterType.BooleanParam) which) {
-                    case ENABLE_DAMAGE_TOOLS:
-                        return ChiselsAndBits.getConfig()
-                                .getServer()
-                                .damageTools
-                                .get();
-                    case ENABLE_BIT_LIGHT_SOURCE:
-                        return ChiselsAndBits.getConfig()
-                                .getServer()
-                                .enableBitLightSource
-                                .get();
-                }
-                break;
+    public <T> T getParameter(final ParameterType<T> which) {
+        Objects.requireNonNull(which, "ParameterType cannot be null");
 
-            case DOUBLE:
-                switch ((DoubleParam) which) {
-                    case BIT_MAX_DRAWN_REGION_SIZE:
-                        return ChiselsAndBits.getConfig()
-                                .getClient()
-                                .maxDrawnRegionSize
-                                .get();
-                }
-                break;
-
-            case FLOAT:
-                switch ((FloatParam) which) {
-                    case BLOCK_FULL_LIGHT_PERCENTAGE:
-                        return ChiselsAndBits.getConfig()
-                                .getServer()
-                                .bitLightPercentage
-                                .get();
-                }
-                break;
-
-            case INTEGER:
-                switch ((IntegerParam) which) {
-                    case BIT_BAG_MAX_STACK_SIZE:
-                        return ChiselsAndBits.getConfig()
-                                .getServer()
-                                .bagStackSize
-                                .get();
-                }
-                break;
+        final Object value;
+        if (which == BooleanParam.ENABLE_DAMAGE_TOOLS) {
+            value = ChiselsAndBits.getConfig().getServer().damageTools.get();
+        } else if (which == BooleanParam.ENABLE_BIT_LIGHT_SOURCE) {
+            value = ChiselsAndBits.getConfig().getServer().enableBitLightSource.get();
+        } else if (which == DoubleParam.BIT_MAX_DRAWN_REGION_SIZE) {
+            value = ChiselsAndBits.getConfig().getClient().maxDrawnRegionSize.get();
+        } else if (which == FloatParam.BLOCK_FULL_LIGHT_PERCENTAGE) {
+            value = ChiselsAndBits.getConfig()
+                    .getServer()
+                    .bitLightPercentage
+                    .get()
+                    .floatValue();
+        } else if (which == IntegerParam.BIT_BAG_MAX_STACK_SIZE) {
+            value = ChiselsAndBits.getConfig().getServer().bagStackSize.get();
+        } else {
+            throw new IllegalArgumentException("Unsupported parameter: " + which);
         }
 
-        return null;
+        return (T) value;
     }
 
     @Environment(EnvType.CLIENT)
@@ -403,7 +401,8 @@ public class ChiselAndBitsAPI implements IChiselAndBitsAPI {
             final int alpha,
             final int combinedLight,
             final int combinedOverlay) {
-        RenderHelper.renderModel(stack, model, world, pos, alpha << 24, combinedLight, combinedOverlay);
+        final int clampedAlpha = Math.max(0, Math.min(alpha, 255));
+        RenderHelper.renderModel(stack, model, world, pos, clampedAlpha << 24, combinedLight, combinedOverlay);
     }
 
     @Override

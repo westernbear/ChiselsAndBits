@@ -1,8 +1,11 @@
 package mod.chiselsandbits.gametest;
 
+import mod.chiselsandbits.api.IChiselAndBitsAPI;
+import mod.chiselsandbits.api.ModKeyBinding;
 import mod.chiselsandbits.bitbag.BagGui;
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
 import mod.chiselsandbits.chiseledblock.TileEntityBlockChiseled;
+import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.printer.ChiselPrinterScreen;
 import mod.chiselsandbits.registry.ModBlocks;
 import mod.chiselsandbits.registry.ModItems;
@@ -20,6 +23,20 @@ public class ChiselsAndBitsClientGameTest implements FabricClientGameTest {
 
     @Override
     public void runTest(final ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            final IChiselAndBitsAPI api = IChiselAndBitsAPI.getInstance();
+            if (api != ChiselsAndBits.getApi()) {
+                throw new AssertionError("API singleton accessor returned another instance");
+            }
+            for (final ModKeyBinding binding : ModKeyBinding.values()) {
+                if (api.getKeyBinding(binding) == null) {
+                    throw new AssertionError("missing key binding: " + binding);
+                }
+            }
+            ChiselsAndBits.getConfig().getClient().onUpdateClient();
+            ChiselsAndBits.getConfig().getServer().onSyncClient();
+        });
+
         final BlockPos target;
         final TestWorldSave worldSave;
         try (TestSingleplayerContext singleplayer = context.worldBuilder()

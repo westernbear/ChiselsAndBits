@@ -29,8 +29,8 @@ repositories {
 		url = 'https://maven.fabricmc.net/'
 	}
 	maven {
-		name = "Fuzs Mod Resources"
-		url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/"
+		name = 'Fzzy Config'
+		url = 'https://maven.fzzyhmstrs.me/'
 	}
 }
 
@@ -93,7 +93,10 @@ dependencies {
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-	implementation "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${config_api_version}"
+	implementation("me.fzzyhmstrs:fzzy_config:${fzzy_config_version}") {
+		exclude group: 'com.terraformersmc', module: 'modmenu'
+	}
+	compileOnly "net.peanuuutz.tomlkt:tomlkt-jvm:0.3.7" // Bundled by Fzzy Config at runtime.
 }
 
 processResources {
@@ -119,6 +122,12 @@ def legacyBlobCompatibilityCheck = tasks.register("legacyBlobCompatibilityCheck"
 	mainClass = "mod.chiselsandbits.mixin.LegacyBlobCompatibilityCheck"
 }
 
+def legacyConfigurationMigrationCheck = tasks.register("legacyConfigurationMigrationCheck", JavaExec) {
+	dependsOn testClasses
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = "mod.chiselsandbits.config.LegacyConfigurationMigrationCheck"
+}
+
 tasks.named("test") {
 	failOnNoDiscoveredTests.set(false)
 }
@@ -126,6 +135,8 @@ tasks.named("test") {
 tasks.named("check") {
 	dependsOn faceRegionMergeCheck
 	dependsOn legacyBlobCompatibilityCheck
+	dependsOn legacyConfigurationMigrationCheck
+	dependsOn tasks.named("runGametest")
 }
 
 javadoc{

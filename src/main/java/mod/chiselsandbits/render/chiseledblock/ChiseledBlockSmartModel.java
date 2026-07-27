@@ -34,7 +34,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.fml.config.ModConfig;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
@@ -135,7 +134,7 @@ public class ChiseledBlockSmartModel extends BaseSmartModel implements ICacheCle
         return out;
     }
 
-    public static void onConfigurationReload(ModConfig modConfig) {
+    public static void onConfigurationReload() {
         MODEL_CACHE.changeMaxSize(
                 ChiselsAndBits.getConfig().getClient().modelCacheSize.get());
     }

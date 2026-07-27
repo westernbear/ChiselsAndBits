@@ -1,27 +1,37 @@
 package mod.chiselsandbits.config;
 
 import java.util.List;
+import me.fzzyhmstrs.fzzy_config.annotations.NonSync;
+import me.fzzyhmstrs.fzzy_config.config.Config;
+import me.fzzyhmstrs.fzzy_config.event.api.ServerUpdateContext;
+import me.fzzyhmstrs.fzzy_config.validation.misc.ValidatedBoolean;
+import me.fzzyhmstrs.fzzy_config.validation.number.ValidatedLong;
+import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.helpers.LocalStrings;
+import mod.chiselsandbits.utils.Constants;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.minecraft.resources.Identifier;
 
-public class CommonConfiguration extends AbstractConfiguration {
+public class CommonConfiguration extends Config {
 
-    public ForgeConfigSpec.BooleanValue enableHelp;
-    public ForgeConfigSpec.LongValue collisionBoxCacheSize;
+    @NonSync
+    public ValidatedBoolean enableHelp = new ValidatedBoolean(true);
 
-    public CommonConfiguration(ForgeConfigSpec.Builder builder) {
-        createCategory(builder, "common.help");
+    @NonSync
+    public ValidatedLong collisionBoxCacheSize = new ValidatedLong(10000L, Long.MAX_VALUE, 0L);
 
-        enableHelp = defineBoolean(builder, "common.help.enabled", true);
+    public CommonConfiguration() {
+        super(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "common"));
+    }
 
-        finishCategory(builder);
+    @Override
+    public void onUpdateClient() {
+        ChiselsAndBits.onClientConfigurationChanged();
+    }
 
-        createCategory(builder, "common.performance");
-
-        collisionBoxCacheSize = defineLong(builder, "common.performance.collisions.cache.size", 10000L);
-
-        finishCategory(builder);
+    @Override
+    public void onUpdateServer(final ServerUpdateContext context) {
+        ChiselsAndBits.onServerConfigurationChanged();
     }
 
     public void helpText(final LocalStrings string, final List<Component> tooltip, final String... variables) {

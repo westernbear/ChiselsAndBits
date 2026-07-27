@@ -1,62 +1,41 @@
 package mod.chiselsandbits.config;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import me.fzzyhmstrs.fzzy_config.config.Config;
+import me.fzzyhmstrs.fzzy_config.validation.misc.ValidatedBoolean;
+import me.fzzyhmstrs.fzzy_config.validation.number.ValidatedDouble;
+import me.fzzyhmstrs.fzzy_config.validation.number.ValidatedInt;
+import me.fzzyhmstrs.fzzy_config.validation.number.ValidatedLong;
+import mod.chiselsandbits.core.ChiselsAndBits;
+import mod.chiselsandbits.utils.Constants;
+import net.minecraft.resources.Identifier;
 
-/**
- * Mod client configuration.
- * Loaded clientside, not synced.
- */
-public class ClientConfiguration extends AbstractConfiguration {
-    public ForgeConfigSpec.BooleanValue enableRightClickModeChange;
-    public ForgeConfigSpec.BooleanValue invertBitBagFullness;
-    public ForgeConfigSpec.BooleanValue enableToolbarIcons;
-    public ForgeConfigSpec.BooleanValue perChiselMode;
-    public ForgeConfigSpec.BooleanValue chatModeNotification;
-    public ForgeConfigSpec.BooleanValue itemNameModeDisplay;
-    public ForgeConfigSpec.BooleanValue addBrokenBlocksToCreativeClipboard;
-    public ForgeConfigSpec.IntValue maxUndoLevel;
-    public ForgeConfigSpec.IntValue maxTapeMeasures;
-    public ForgeConfigSpec.BooleanValue displayMeasuringTapeInChat;
-    public ForgeConfigSpec.DoubleValue radialMenuVolume;
-    public ForgeConfigSpec.LongValue bitStorageContentCacheSize;
-    public ForgeConfigSpec.DoubleValue maxDrawnRegionSize;
-    public ForgeConfigSpec.BooleanValue enableFaceLightmapExtraction;
-    public ForgeConfigSpec.BooleanValue useGetLightValue;
-    public ForgeConfigSpec.BooleanValue disableCustomVertexFormats;
-    public ForgeConfigSpec.BooleanValue persistCreativeClipboard;
-    public ForgeConfigSpec.LongValue modelCacheSize;
+/** Mod client configuration. Loaded clientside, not synced. */
+public class ClientConfiguration extends Config {
+    public ValidatedBoolean enableRightClickModeChange = new ValidatedBoolean(false);
+    public ValidatedBoolean invertBitBagFullness = new ValidatedBoolean(false);
+    public ValidatedBoolean enableToolbarIcons = new ValidatedBoolean(true);
+    public ValidatedBoolean perChiselMode = new ValidatedBoolean(true);
+    public ValidatedBoolean chatModeNotification = new ValidatedBoolean(true);
+    public ValidatedBoolean itemNameModeDisplay = new ValidatedBoolean(true);
+    public ValidatedBoolean addBrokenBlocksToCreativeClipboard = new ValidatedBoolean(false);
+    public ValidatedInt maxUndoLevel = new ValidatedInt(32);
+    public ValidatedInt maxTapeMeasures = new ValidatedInt(10);
+    public ValidatedBoolean displayMeasuringTapeInChat = new ValidatedBoolean(true);
+    public ValidatedDouble radialMenuVolume = new ValidatedDouble(0.1, Double.MAX_VALUE, Double.MIN_VALUE);
+    public ValidatedLong bitStorageContentCacheSize = new ValidatedLong(100L, Long.MAX_VALUE, 0L);
+    public ValidatedDouble maxDrawnRegionSize = new ValidatedDouble(4.0, Double.MAX_VALUE, Double.MIN_VALUE);
+    public ValidatedBoolean enableFaceLightmapExtraction = new ValidatedBoolean(true);
+    public ValidatedBoolean useGetLightValue = new ValidatedBoolean(true);
+    public ValidatedBoolean disableCustomVertexFormats = new ValidatedBoolean(true);
+    public ValidatedBoolean persistCreativeClipboard = new ValidatedBoolean(true);
+    public ValidatedLong modelCacheSize = new ValidatedLong(1000L, 2000L, 0L);
 
-    /**
-     * Builds client configuration.
-     *
-     * @param builder config builder
-     */
-    protected ClientConfiguration(final ForgeConfigSpec.Builder builder) {
-        createCategory(builder, "client.settings");
+    public ClientConfiguration() {
+        super(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "client"));
+    }
 
-        enableRightClickModeChange = defineBoolean(builder, "enable-right-click-mode-change", false);
-        invertBitBagFullness = defineBoolean(builder, "invert-bit-bag-fullness", false);
-        enableToolbarIcons = defineBoolean(builder, "enable.toolbar.icons", true);
-        perChiselMode = defineBoolean(builder, "per-chisel-mode", true);
-        chatModeNotification = defineBoolean(builder, "chat-mode-notification", true);
-        itemNameModeDisplay = defineBoolean(builder, "item-name-mode-display", true);
-        addBrokenBlocksToCreativeClipboard = defineBoolean(builder, "clipboard.add-broken-blocks", false);
-        maxUndoLevel = defineInteger(builder, "undo.max-count", 32);
-        maxTapeMeasures = defineInteger(builder, "tape-measure.max-count", 10);
-        displayMeasuringTapeInChat = defineBoolean(builder, "tape-measure.display-in-chat", true);
-        radialMenuVolume = defineDouble(builder, "radial.menu.volume", 0.1f);
-        persistCreativeClipboard = defineBoolean(builder, "persist-creative-clipboard", true);
-
-        finishCategory(builder);
-        createCategory(builder, "client.performance");
-
-        bitStorageContentCacheSize = defineLong(builder, "bit-storage.contents.cache.size", 100, 0, Long.MAX_VALUE);
-        maxDrawnRegionSize = defineDouble(builder, "max-drawn-region.size", 4);
-        enableFaceLightmapExtraction = defineBoolean(builder, "lighting.face-lightmap-extraction", true);
-        useGetLightValue = defineBoolean(builder, "lighting.use-value", true);
-        disableCustomVertexFormats = defineBoolean(builder, "vertexformats.custom.disabled", true);
-        modelCacheSize = defineLong(builder, "models.cache.size", 1000, 0, 2000);
-
-        finishCategory(builder);
+    @Override
+    public void onUpdateClient() {
+        ChiselsAndBits.onClientConfigurationChanged();
     }
 }

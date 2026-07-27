@@ -12,15 +12,16 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public final class VoxelShapeCache {
 
     private static final VoxelShapeCache INSTANCE = new VoxelShapeCache();
-    private final Cache<CacheKey, VoxelShape> cache = CacheBuilder.newBuilder()
-            .maximumSize(
-                    ChiselsAndBits.getConfig().getCommon().collisionBoxCacheSize.get())
-            .build();
+    private volatile Cache<CacheKey, VoxelShape> cache = createCache();
 
     private VoxelShapeCache() {}
 
     public static VoxelShapeCache getInstance() {
         return INSTANCE;
+    }
+
+    public static void onConfigurationReload() {
+        INSTANCE.cache = createCache();
     }
 
     public VoxelShape get(VoxelBlob blob, BoxType type) {
@@ -34,6 +35,15 @@ public final class VoxelShapeCache {
 
     private VoxelShape calculateNewVoxelShape(final VoxelBlob data, final BoxType type) {
         return VoxelShapeCalculator.calculate(data, type).optimize();
+    }
+
+    private static Cache<CacheKey, VoxelShape> createCache() {
+        return CacheBuilder.newBuilder()
+                .maximumSize(ChiselsAndBits.getConfig()
+                        .getCommon()
+                        .collisionBoxCacheSize
+                        .get())
+                .build();
     }
 
     private static final class CacheKey {

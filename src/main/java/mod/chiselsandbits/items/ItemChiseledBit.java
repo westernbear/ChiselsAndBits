@@ -102,11 +102,7 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
                     return Component.translatable(FluidUtil.getTranslationKey(f));
                 }
             } else {
-                try {
-                    target = state.getCloneItemStack(null, null, false);
-                } catch (Exception ex) {
-                    target = new ItemStack(() -> Item.byBlock(state.getBlock()), 1);
-                }
+                target = ChiselsAndBits.getApi().getItemStackForState(state);
             }
         } catch (final IllegalArgumentException e) {
             Log.logError("Unable to get Item Details for Bit.", e);

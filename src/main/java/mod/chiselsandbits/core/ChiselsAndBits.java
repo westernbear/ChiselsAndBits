@@ -1,12 +1,12 @@
 package mod.chiselsandbits.core;
 
-import fuzs.forgeconfigapiport.fabric.api.v5.ModConfigEvents;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import mod.chiselsandbits.api.IChiselAndBitsAPI;
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
+import mod.chiselsandbits.chiseledblock.data.VoxelShapeCache;
 import mod.chiselsandbits.client.CreativeClipboardTab;
 import mod.chiselsandbits.client.UndoTracker;
 import mod.chiselsandbits.config.Configuration;
@@ -51,8 +51,6 @@ public class ChiselsAndBits {
             });
         });
 
-        EnvExecutor.runWhenOn(
-                EnvType.CLIENT, () -> () -> ClientLifecycleEvents.CLIENT_STARTED.register(this::clientSetup));
         VaporizeWater.register();
         EventPlayerInteract.register();
         PickBlockHandler.register();
@@ -66,8 +64,6 @@ public class ChiselsAndBits {
         networkChannel.registerCommonMessages();
         EnvExecutor.runWhenOn(EnvType.CLIENT, () -> () -> {
             setupClipboard(new File(Minecraft.getInstance().gameDirectory, MODID + "_clipboard"));
-            ModConfigEvents.loading(Constants.MOD_ID).register(c -> handleIdMapping(Minecraft.getInstance()));
-            ModConfigEvents.reloading(Constants.MOD_ID).register(c -> handleIdMapping(Minecraft.getInstance()));
         });
     }
 
@@ -91,21 +87,22 @@ public class ChiselsAndBits {
         return instance.networkChannel;
     }
 
+    public static void onServerConfigurationChanged() {
+        BlockBitInfo.recalculate();
+        VoxelBlob.clearServerCache();
+        VoxelShapeCache.onConfigurationReload();
+    }
+
+    public static void onClientConfigurationChanged() {
+        BlockBitInfo.recalculate();
+        instance.clearCache();
+        VoxelShapeCache.onConfigurationReload();
+        ChiseledBlockSmartModel.onConfigurationReload();
+    }
+
     private void setupClipboard(File file) {
         CreativeClipboardTab.getInstance()
                 .load(file.toPath().resolve(MODID + "_clipboard.bin").toFile());
-    }
-
-    public void clientSetup(Minecraft inst) {
-        EnvExecutor.runWhenOn(
-                EnvType.CLIENT,
-                () -> () -> ModConfigEvents.reloading(ChiselsAndBits.MODID)
-                        .register(ChiseledBlockSmartModel::onConfigurationReload));
-    }
-
-    public void handleIdMapping(Minecraft inst) {
-        BlockBitInfo.recalculate();
-        clearCache();
     }
 
     public void clearCache() {

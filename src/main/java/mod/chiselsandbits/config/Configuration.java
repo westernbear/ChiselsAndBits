@@ -1,42 +1,36 @@
 package mod.chiselsandbits.config;
 
-import fuzs.forgeconfigapiport.fabric.api.v5.ConfigRegistry;
-import mod.chiselsandbits.core.ChiselsAndBits;
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.neoforged.fml.config.ModConfig;
-import org.apache.commons.lang3.tuple.Pair;
+import java.nio.file.Path;
+import me.fzzyhmstrs.fzzy_config.api.ConfigApiJava;
+import me.fzzyhmstrs.fzzy_config.api.RegisterType;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.loader.api.FabricLoader;
 
-/**
- * Mod root configuration.
- */
+/** Mod root configuration. */
 public class Configuration {
     private final ClientConfiguration clientConfig;
     private final ServerConfiguration serverConfig;
     private final CommonConfiguration commonConfig;
 
-    private final ForgeConfigSpec clientConfigSpec;
-    private final ForgeConfigSpec commonConfigSpec;
-    private final ForgeConfigSpec serverConfigSpec;
-
     public Configuration() {
-        final Pair<ClientConfiguration, ForgeConfigSpec> cli =
-                new ForgeConfigSpec.Builder().configure(ClientConfiguration::new);
-        final Pair<ServerConfiguration, ForgeConfigSpec> ser =
-                new ForgeConfigSpec.Builder().configure(ServerConfiguration::new);
-        final Pair<CommonConfiguration, ForgeConfigSpec> com =
-                new ForgeConfigSpec.Builder().configure(CommonConfiguration::new);
+        final FabricLoader loader = FabricLoader.getInstance();
+        final Path configDir = loader.getConfigDir();
 
-        clientConfig = cli.getLeft();
-        serverConfig = ser.getLeft();
-        commonConfig = com.getLeft();
+        if (loader.getEnvironmentType() == EnvType.CLIENT) {
+            final boolean existed = LegacyConfigurationMigrator.destinationExists(configDir, "client");
+            clientConfig = ConfigApiJava.registerAndLoadConfig(ClientConfiguration::new, RegisterType.CLIENT);
+            LegacyConfigurationMigrator.migrateClient(configDir, existed, clientConfig);
+        } else {
+            clientConfig = new ClientConfiguration();
+        }
 
-        clientConfigSpec = cli.getRight();
-        serverConfigSpec = ser.getRight();
-        commonConfigSpec = com.getRight();
+        final boolean commonExisted = LegacyConfigurationMigrator.destinationExists(configDir, "common");
+        commonConfig = ConfigApiJava.registerAndLoadConfig(CommonConfiguration::new, RegisterType.BOTH);
+        LegacyConfigurationMigrator.migrateCommon(configDir, commonExisted, commonConfig);
 
-        ConfigRegistry.INSTANCE.register(ChiselsAndBits.MODID, ModConfig.Type.COMMON, commonConfigSpec);
-        ConfigRegistry.INSTANCE.register(ChiselsAndBits.MODID, ModConfig.Type.CLIENT, clientConfigSpec);
-        ConfigRegistry.INSTANCE.register(ChiselsAndBits.MODID, ModConfig.Type.SERVER, serverConfigSpec);
+        final boolean serverExisted = LegacyConfigurationMigrator.destinationExists(configDir, "server");
+        serverConfig = ConfigApiJava.registerAndLoadNoGuiConfig(ServerConfiguration::new, RegisterType.BOTH);
+        LegacyConfigurationMigrator.migrateServer(configDir, serverExisted, serverConfig);
     }
 
     public ClientConfiguration getClient() {
@@ -49,17 +43,5 @@ public class Configuration {
 
     public CommonConfiguration getCommon() {
         return commonConfig;
-    }
-
-    public ForgeConfigSpec getClientConfigSpec() {
-        return clientConfigSpec;
-    }
-
-    public ForgeConfigSpec getCommonConfigSpec() {
-        return commonConfigSpec;
-    }
-
-    public ForgeConfigSpec getServerConfigSpec() {
-        return serverConfigSpec;
     }
 }

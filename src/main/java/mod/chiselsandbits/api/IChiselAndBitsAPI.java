@@ -4,12 +4,14 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import mod.chiselsandbits.api.APIExceptions.CannotBeChiseled;
 import mod.chiselsandbits.api.APIExceptions.InvalidBitItem;
 import mod.chiselsandbits.client.model.baked.LegacyBakedModel;
+import mod.chiselsandbits.core.ChiselsAndBits;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -21,9 +23,33 @@ import org.jetbrains.annotations.Nullable;
 /** Public Chisels & Bits API. */
 public interface IChiselAndBitsAPI {
 
-    void registerBlockProvider(BlockProvider provider);
+    static IChiselAndBitsAPI getInstance() {
+        return ChiselsAndBits.getApi();
+    }
 
-    void registerItemStackHandler(Block block, @NotNull ItemStackHandler provider);
+    void registerBlockProvider(@NotNull BlockProvider provider);
+
+    void registerItemStackHandler(@NotNull Block block, @NotNull ItemStackHandler provider);
+
+    /**
+     * Gets the representative item stack for a block state. Registered
+     * {@link ItemStackHandler}s are applied by the live API implementation.
+     *
+     * @param state block state, or null for an empty stack
+     * @return representative stack, possibly empty
+     */
+    @NotNull
+    default ItemStack getItemStackForState(@Nullable final BlockState state) {
+        if (state == null || state.isAir()) {
+            return ItemStack.EMPTY;
+        }
+
+        try {
+            return state.getCloneItemStack(null, null, false);
+        } catch (final RuntimeException ignored) {
+            return new ItemStack(Item.byBlock(state.getBlock()));
+        }
+    }
 
     /**
      * Determine the Item Type of the item in an ItemStack and return it.
@@ -32,7 +58,7 @@ public interface IChiselAndBitsAPI {
      * @return ItemType of the item, or null if it is not any of them.
      */
     @Nullable
-    ItemType getItemType(ItemStack stack);
+    ItemType getItemType(@Nullable ItemStack stack);
 
     /**
      * Check if a block can support {@link IBitAccess}
@@ -116,7 +142,7 @@ public interface IChiselAndBitsAPI {
      * @param defaultState
      * @return the bit.
      */
-    ItemStack getBitItem(BlockState defaultState) throws InvalidBitItem;
+    ItemStack getBitItem(@Nullable BlockState defaultState) throws InvalidBitItem;
 
     /**
      * Give a bit to a player, it will end up in their inventory, a bag, or if

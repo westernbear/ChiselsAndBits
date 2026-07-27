@@ -21,6 +21,8 @@ jobs:
           distribution: 'temurin'
       - name: build
         run: ./gradlew build
+      - name: client gametest
+        run: xvfb-run -a ./gradlew runClientGametest
       - name: capture build artifacts
         uses: actions/upload-artifact@v4
         with:

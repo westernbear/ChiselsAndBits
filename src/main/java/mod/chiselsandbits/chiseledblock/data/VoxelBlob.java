@@ -94,6 +94,14 @@ public final class VoxelBlob implements IVoxelSrc {
     }
 
     public static synchronized void clearCache() {
+        clearServerCache();
+        EnvExecutor.runWhenOn(EnvType.CLIENT, () -> () -> {
+            updateCacheClient();
+            ModUtil.cacheFastStates();
+        });
+    }
+
+    public static synchronized void clearServerCache() {
         fluidFilterState.clear();
 
         final var blockReg = BuiltInRegistries.BLOCK;
@@ -106,10 +114,6 @@ public final class VoxelBlob implements IVoxelSrc {
                 }
             });
         }
-        EnvExecutor.runWhenOn(EnvType.CLIENT, () -> () -> {
-            updateCacheClient();
-            ModUtil.cacheFastStates();
-        });
     }
 
     @Environment(EnvType.CLIENT)
