@@ -98,6 +98,28 @@ public class FaceRegion {
         return ((long) blockStateID << 32) | ((long) min << 16) | max;
     }
 
+    boolean extendRow(final int centerX, final int centerY, final int centerZ, final int state) {
+        if (state != blockStateID) {
+            return false;
+        }
+
+        switch (face) {
+            case EAST:
+            case WEST:
+                if (maxY != centerY - 2 || minX != centerX || maxX != centerX || minZ != centerZ || maxZ != centerZ) {
+                    return false;
+                }
+                maxY = centerY;
+                return true;
+            default:
+                if (maxX != centerX - 2 || minY != centerY || maxY != centerY || minZ != centerZ || maxZ != centerZ) {
+                    return false;
+                }
+                maxX = centerX;
+                return true;
+        }
+    }
+
     public boolean extend(final FaceRegion currentFace) {
         if (currentFace.blockStateID != blockStateID) {
             return false;

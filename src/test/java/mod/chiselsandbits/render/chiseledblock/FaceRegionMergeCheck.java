@@ -1,15 +1,25 @@
 package mod.chiselsandbits.render.chiseledblock;
 
 import java.util.ArrayList;
+import java.util.Random;
+import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
+import mod.chiselsandbits.chiseledblock.data.VoxelBlob.VisibleFace;
+import mod.chiselsandbits.client.culling.ICullTest;
 import net.minecraft.core.Direction;
 
 public final class FaceRegionMergeCheck {
+    private static final Direction[] FACE_ORDER = {
+        Direction.EAST, Direction.WEST, Direction.UP, Direction.DOWN, Direction.SOUTH, Direction.NORTH
+    };
+
     private FaceRegionMergeCheck() {}
 
     public static void main(final String[] args) {
         checkFullPlane();
         checkEastPlane();
         checkStripedPlane();
+        checkExtractionMatchesReference();
+        checkCullWorkReduced();
     }
 
     private static void checkFullPlane() {
@@ -69,6 +79,172 @@ public final class FaceRegionMergeCheck {
         require(CountingFaceRegion.comparisons <= 128, "merge must stay linear");
     }
 
+    private static void checkExtractionMatchesReference() {
+        assertExtraction(new VoxelBlob(), "empty");
+
+        final VoxelBlob full = new VoxelBlob();
+        full.fill(1);
+        assertExtraction(full, "full");
+
+        final VoxelBlob singleton = new VoxelBlob();
+        singleton.set(7, 8, 9, 2);
+        assertExtraction(singleton, "singleton");
+
+        final VoxelBlob checkerboard = new VoxelBlob();
+        for (int z = 0; z < VoxelBlob.dim; z++) {
+            for (int y = 0; y < VoxelBlob.dim; y++) {
+                for (int x = 0; x < VoxelBlob.dim; x++) {
+                    checkerboard.set(x, y, z, (x + y + z & 1) + 1);
+                }
+            }
+        }
+        assertExtraction(checkerboard, "checkerboard");
+
+        final VoxelBlob randomBlob = new VoxelBlob();
+        final Random random = new Random(0x5eed);
+        for (int z = 0; z < VoxelBlob.dim; z++) {
+            for (int y = 0; y < VoxelBlob.dim; y++) {
+                for (int x = 0; x < VoxelBlob.dim; x++) {
+                    randomBlob.set(x, y, z, random.nextInt(4));
+                }
+            }
+        }
+        assertExtraction(randomBlob, "random");
+    }
+
+    private static void checkCullWorkReduced() {
+        final VoxelBlob full = new VoxelBlob();
+        full.fill(1);
+        final OrderedCullTest referenceTest = new OrderedCullTest();
+        final OrderedCullTest optimizedTest = new OrderedCullTest();
+
+        reference(full, referenceTest);
+        FaceRegionExtractor.extract(full, optimizedTest);
+
+        require(referenceTest.calls == 6 * 15 * 16 * 16, "reference scan must test every interior directed face");
+        require(optimizedTest.calls == 0, "equal-state transitions must skip cull calls");
+    }
+
+    private static void assertExtraction(final VoxelBlob blob, final String label) {
+        final ArrayList<ArrayList<FaceRegion>> expected = reference(blob, new OrderedCullTest());
+        final ArrayList<ArrayList<FaceRegion>> actual = FaceRegionExtractor.extract(blob, new OrderedCullTest());
+
+        assertRegionsEqual(expected, actual, label + " row runs");
+        mergeAll(expected);
+        mergeAll(actual);
+        assertRegionsEqual(expected, actual, label + " merged regions");
+    }
+
+    private static ArrayList<ArrayList<FaceRegion>> reference(final VoxelBlob blob, final ICullTest test) {
+        final ArrayList<ArrayList<FaceRegion>> result = new ArrayList<>();
+        final VisibleFace visible = new VisibleFace();
+
+        for (final Direction face : FACE_ORDER) {
+            for (int plane = 0; plane < blob.detail; plane++) {
+                final ArrayList<FaceRegion> regions = new ArrayList<>(16);
+
+                for (int outer = 0; outer < blob.detail; outer++) {
+                    FaceRegion current = null;
+
+                    for (int run = 0; run < blob.detail; run++) {
+                        final int x;
+                        final int y;
+                        final int z;
+
+                        switch (face.getAxis()) {
+                            case X:
+                                x = plane;
+                                y = run;
+                                z = outer;
+                                break;
+                            case Y:
+                                x = run;
+                                y = plane;
+                                z = outer;
+                                break;
+                            case Z:
+                                x = run;
+                                y = outer;
+                                z = plane;
+                                break;
+                            default:
+                                throw new AssertionError(face);
+                        }
+
+                        blob.visibleFace(face, x, y, z, visible, test);
+                        if (!visible.visibleFace) {
+                            current = null;
+                            continue;
+                        }
+
+                        final FaceRegion region = new FaceRegion(
+                                face,
+                                x * 2 + 1 + face.getStepX(),
+                                y * 2 + 1 + face.getStepY(),
+                                z * 2 + 1 + face.getStepZ(),
+                                visible.state,
+                                visible.isEdge);
+                        if (current == null || !current.extend(region)) {
+                            current = region;
+                            regions.add(region);
+                        }
+                    }
+                }
+
+                if (!regions.isEmpty()) {
+                    result.add(regions);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private static void mergeAll(final ArrayList<ArrayList<FaceRegion>> regions) {
+        for (final ArrayList<FaceRegion> plane : regions) {
+            FaceRegion.merge(plane);
+        }
+    }
+
+    private static void assertRegionsEqual(
+            final ArrayList<ArrayList<FaceRegion>> expected,
+            final ArrayList<ArrayList<FaceRegion>> actual,
+            final String label) {
+        require(expected.size() == actual.size(), label + " plane count differs");
+
+        for (int plane = 0; plane < expected.size(); plane++) {
+            final ArrayList<FaceRegion> expectedPlane = expected.get(plane);
+            final ArrayList<FaceRegion> actualPlane = actual.get(plane);
+            require(expectedPlane.size() == actualPlane.size(), label + " face count differs at plane " + plane);
+
+            for (int face = 0; face < expectedPlane.size(); face++) {
+                require(
+                        signature(expectedPlane.get(face)).equals(signature(actualPlane.get(face))),
+                        label + " differs at plane " + plane + ", face " + face);
+            }
+        }
+    }
+
+    private static String signature(final FaceRegion face) {
+        return face.face
+                + ":"
+                + face.blockStateID
+                + ":"
+                + face.isEdge
+                + ":"
+                + face.getMinX()
+                + ":"
+                + face.getMinY()
+                + ":"
+                + face.getMinZ()
+                + ":"
+                + face.getMaxX()
+                + ":"
+                + face.getMaxY()
+                + ":"
+                + face.getMaxZ();
+    }
+
     private static FaceRegion face(final int x, final int z) {
         return new FaceRegion(Direction.UP, x * 2 + 1, 2, z * 2 + 1, 1, true);
     }
@@ -95,6 +271,16 @@ public final class FaceRegionMergeCheck {
     private static void require(final boolean condition, final String message) {
         if (!condition) {
             throw new AssertionError(message);
+        }
+    }
+
+    private static final class OrderedCullTest implements ICullTest {
+        private int calls;
+
+        @Override
+        public boolean isVisible(final int state, final int neighbor) {
+            calls++;
+            return state != 0 && state != neighbor && (neighbor == 0 || state < neighbor);
         }
     }
 

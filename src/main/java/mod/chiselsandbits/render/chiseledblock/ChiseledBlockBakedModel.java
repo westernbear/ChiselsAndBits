@@ -10,8 +10,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
-import mod.chiselsandbits.chiseledblock.data.VoxelBlob.VisibleFace;
-import mod.chiselsandbits.client.culling.ICullTest;
 import mod.chiselsandbits.client.model.baked.BaseBakedBlockModel;
 import mod.chiselsandbits.client.model.data.IModelData;
 import mod.chiselsandbits.core.ClientSide;
@@ -31,7 +29,6 @@ import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.Vec3i;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
@@ -46,10 +43,6 @@ public class ChiseledBlockBakedModel extends BaseBakedBlockModel {
     private static final RandomSource RANDOM = RandomSource.create();
     private static final int[][] faceVertMap = new int[6][4];
     private static final float[][][] quadMapping = new float[6][4][6];
-
-    private static final Direction[] X_Faces = new Direction[] {Direction.EAST, Direction.WEST};
-    private static final Direction[] Y_Faces = new Direction[] {Direction.UP, Direction.DOWN};
-    private static final Direction[] Z_Faces = new Direction[] {Direction.SOUTH, Direction.NORTH};
 
     // Analyze FaceBakery / makeBakedQuad and prepare static data for face gen.
     static {
@@ -283,13 +276,7 @@ public class ChiseledBlockBakedModel extends BaseBakedBlockModel {
     }
 
     private void generateFaces(final ChiseledModelBuilder builder, final VoxelBlob blob, final RandomSource weight) {
-        final ArrayList<ArrayList<FaceRegion>> rset = new ArrayList<>();
-        final VisibleFace visFace = new VisibleFace();
-
-        processXFaces(blob, visFace, rset);
-        processYFaces(blob, visFace, rset);
-        processZFaces(blob, visFace, rset);
-
+        final ArrayList<ArrayList<FaceRegion>> rset = FaceRegionExtractor.extract(blob, myLayer.getTest());
         // re-usable float[]'s to minimize garbage cleanup.
         final int[] to = new int[3];
         final int[] from = new int[3];
@@ -397,155 +384,6 @@ public class ChiseledBlockBakedModel extends BaseBakedBlockModel {
         return (i & 0xff) / 255.0f;
     }
 
-    private void processXFaces(
-            final VoxelBlob blob, final VisibleFace visFace, final ArrayList<ArrayList<FaceRegion>> rset) {
-        ArrayList<FaceRegion> regions = null;
-        final ICullTest test = myLayer.getTest();
-
-        for (final Direction myFace : X_Faces) {
-            for (int x = 0; x < blob.detail; x++) {
-                if (regions == null) {
-                    regions = new ArrayList<FaceRegion>(16);
-                }
-
-                for (int z = 0; z < blob.detail; z++) {
-                    FaceRegion currentFace = null;
-
-                    for (int y = 0; y < blob.detail; y++) {
-                        final FaceRegion region = getRegion(blob, myFace, x, y, z, visFace, test);
-
-                        if (region == null) {
-                            currentFace = null;
-                            continue;
-                        }
-
-                        if (currentFace != null) {
-                            if (currentFace.extend(region)) {
-                                continue;
-                            }
-                        }
-
-                        currentFace = region;
-                        regions.add(region);
-                    }
-                }
-
-                if (!regions.isEmpty()) {
-                    rset.add(regions);
-                    regions = null;
-                }
-            }
-        }
-    }
-
-    private void processYFaces(
-            final VoxelBlob blob, final VisibleFace visFace, final ArrayList<ArrayList<FaceRegion>> rset) {
-        ArrayList<FaceRegion> regions = null;
-        final ICullTest test = myLayer.getTest();
-
-        for (final Direction myFace : Y_Faces) {
-            for (int y = 0; y < blob.detail; y++) {
-                if (regions == null) {
-                    regions = new ArrayList<FaceRegion>(16);
-                }
-
-                for (int z = 0; z < blob.detail; z++) {
-                    FaceRegion currentFace = null;
-
-                    for (int x = 0; x < blob.detail; x++) {
-                        final FaceRegion region = getRegion(blob, myFace, x, y, z, visFace, test);
-
-                        if (region == null) {
-                            currentFace = null;
-                            continue;
-                        }
-
-                        if (currentFace != null) {
-                            if (currentFace.extend(region)) {
-                                continue;
-                            }
-                        }
-
-                        currentFace = region;
-                        regions.add(region);
-                    }
-                }
-
-                if (!regions.isEmpty()) {
-                    rset.add(regions);
-                    regions = null;
-                }
-            }
-        }
-    }
-
-    private void processZFaces(
-            final VoxelBlob blob, final VisibleFace visFace, final ArrayList<ArrayList<FaceRegion>> rset) {
-        ArrayList<FaceRegion> regions = null;
-        final ICullTest test = myLayer.getTest();
-
-        for (final Direction myFace : Z_Faces) {
-            for (int z = 0; z < blob.detail; z++) {
-                if (regions == null) {
-                    regions = new ArrayList<FaceRegion>(16);
-                }
-
-                for (int y = 0; y < blob.detail; y++) {
-                    FaceRegion currentFace = null;
-
-                    for (int x = 0; x < blob.detail; x++) {
-                        final FaceRegion region = getRegion(blob, myFace, x, y, z, visFace, test);
-
-                        if (region == null) {
-                            currentFace = null;
-                            continue;
-                        }
-
-                        if (currentFace != null) {
-                            if (currentFace.extend(region)) {
-                                continue;
-                            }
-                        }
-
-                        currentFace = region;
-                        regions.add(region);
-                    }
-                }
-
-                if (!regions.isEmpty()) {
-                    rset.add(regions);
-                    regions = null;
-                }
-            }
-        }
-    }
-
-    private FaceRegion getRegion(
-            final VoxelBlob blob,
-            final Direction myFace,
-            final int x,
-            final int y,
-            final int z,
-            final VisibleFace visFace,
-            final ICullTest test) {
-        blob.visibleFace(myFace, x, y, z, visFace, test);
-
-        if (visFace.visibleFace) {
-            final Vec3i off = myFace.getUnitVec3i();
-
-            return new FaceRegion(
-                    myFace,
-                    x * 2 + 1 + off.getX(),
-                    y * 2 + 1 + off.getY(),
-                    z * 2 + 1 + off.getZ(),
-                    visFace.state,
-                    visFace.isEdge);
-        }
-
-        return null;
-    }
-
-    // generate final pos from static data.
     private void getVertexPos(
             final float[] pos, final Direction side, final int vertNum, final int[] to, final int[] from) {
         final float[] interpos = quadMapping[side.ordinal()][vertNum];

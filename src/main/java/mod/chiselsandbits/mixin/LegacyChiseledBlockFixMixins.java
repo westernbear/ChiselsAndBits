@@ -4,6 +4,7 @@ import com.mojang.serialization.Dynamic;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import mod.chiselsandbits.legacy.LegacyChiseledBlockFix;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.util.filefix.FileFixerUpper;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -12,6 +13,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -49,6 +51,23 @@ public final class LegacyChiseledBlockFixMixins {
         @Inject(method = "saveLevelData(Lnet/minecraft/nbt/CompoundTag;)V", at = @At("HEAD"))
         private void chiselsandbits$preserveForgeRegistry(final CompoundTag root, final CallbackInfo callback) {
             LegacyChiseledBlockFix.preserveForgeRegistry(root, chiselsandbits$legacyFml);
+        }
+    }
+
+    @Mixin(FileFixerUpper.class)
+    public static class FileFixerUpperMixin {
+
+        @ModifyArg(
+                method = "writeUpdatedLevelData(Ljava/nio/file/Path;I)V",
+                at =
+                        @At(
+                                value = "INVOKE",
+                                target =
+                                        "Lnet/minecraft/nbt/NbtIo;writeCompressed(Lnet/minecraft/nbt/CompoundTag;Ljava/nio/file/Path;)V"),
+                index = 0)
+        private CompoundTag chiselsandbits$preserveForgeRegistry(final CompoundTag root) {
+            LegacyChiseledBlockFix.preserveForgeRegistry(root);
+            return root;
         }
     }
 
