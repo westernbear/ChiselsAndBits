@@ -13,6 +13,8 @@
     "LegacyChiseledBlockFixMixins$ItemStackNamesMixin",
     "LegacyChiseledBlockFixMixins$LevelDataMixin",
     "LegacyChiseledBlockFixMixins$LevelDataSaveMixin",
+    "LegacyChiseledBlockFixMixins$SerializableChunkDataMixin",
+    "LegacyChiseledBlockFixMixins$SimpleRegionStorageMixin",
     "LegacyChiseledBlockFixMixins$UpgradeChunkMixin",
     "LeashableMixin",
     "LivingEntityMixin",

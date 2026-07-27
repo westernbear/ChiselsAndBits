@@ -25,9 +25,11 @@ import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.SimpleBitStorage;
 import net.minecraft.util.datafix.fixes.BlockStateData;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,6 +102,20 @@ public final class LegacyChiseledBlockFix {
     public static void preserveForgeRegistry(final CompoundTag root, final CompoundTag fml) {
         if (fml != null) {
             root.put("FML", fml.copy());
+        }
+    }
+
+    public static void sanitizeLegacyData(final CompoundTag root) {
+        final int removedEntityEntries =
+                sanitizeEntities(root.getListOrEmpty("entities")) + sanitizeEntities(root.getListOrEmpty("Entities"));
+        if (removedEntityEntries > 0) {
+            LOGGER.warn("Discarded {} invalid legacy entity attributes or equipment entries", removedEntityEntries);
+        }
+
+        for (final Tag value : root.getListOrEmpty("sections")) {
+            if (value instanceof CompoundTag section) {
+                compactBlockPalette(section);
+            }
         }
     }
 
@@ -333,6 +349,130 @@ public final class LegacyChiseledBlockFix {
             LOGGER.warn("Legacy block {} is not installed; affected bits will become air", oldName);
         }
         return 0;
+    }
+
+    private static int sanitizeEntities(final ListTag entities) {
+        int removed = 0;
+        for (final Tag value : entities) {
+            if (value instanceof CompoundTag entity) {
+                removed += sanitizeEntity(entity);
+            }
+        }
+        return removed;
+    }
+
+    private static int sanitizeEntity(final CompoundTag entity) {
+        int removed = sanitizeAttributes(entity, "attributes") + sanitizeAttributes(entity, "Attributes");
+        final Tag equipmentValue = entity.get("equipment");
+        if (equipmentValue != null && !(equipmentValue instanceof CompoundTag)) {
+            entity.remove("equipment");
+            removed++;
+        } else if (equipmentValue instanceof CompoundTag equipment) {
+            for (final String slot : Set.copyOf(equipment.keySet())) {
+                final Tag stackValue = equipment.get(slot);
+                if (!(stackValue instanceof CompoundTag stack) || !isInstalledItem(stack)) {
+                    equipment.remove(slot);
+                    removed++;
+                }
+            }
+        }
+
+        removed += sanitizeEntities(entity.getListOrEmpty("Passengers"));
+        removed += sanitizeEntities(entity.getListOrEmpty("passengers"));
+        return removed;
+    }
+
+    private static int sanitizeAttributes(final CompoundTag entity, final String key) {
+        final Tag value = entity.get(key);
+        if (value == null) {
+            return 0;
+        }
+        if (!(value instanceof ListTag attributes)) {
+            entity.remove(key);
+            return 1;
+        }
+
+        int removed = 0;
+        for (int i = attributes.size() - 1; i >= 0; i--) {
+            final CompoundTag attribute = attributes.getCompound(i).orElse(null);
+            final Identifier id = attribute == null ? null : Identifier.tryParse(attribute.getStringOr("id", ""));
+            if (id == null || !BuiltInRegistries.ATTRIBUTE.containsKey(id)) {
+                attributes.remove(i);
+                removed++;
+            }
+        }
+        return removed;
+    }
+
+    private static boolean isInstalledItem(final CompoundTag stack) {
+        final Identifier id = Identifier.tryParse(stack.getStringOr("id", ""));
+        return id != null && BuiltInRegistries.ITEM.containsKey(id);
+    }
+
+    private static void compactBlockPalette(final CompoundTag section) {
+        final CompoundTag blockStates = section.getCompound("block_states").orElse(null);
+        if (blockStates == null) {
+            return;
+        }
+
+        final ListTag palette = blockStates.getList("palette").orElse(null);
+        // Linear palettes preserve duplicate slots; hash and global palettes collapse them.
+        if (palette == null || palette.size() <= 16) {
+            return;
+        }
+
+        final Map<BlockState, Integer> stateIds = new HashMap<>();
+        final ListTag compactPalette = new ListTag();
+        final int[] remap = new int[palette.size()];
+        for (int i = 0; i < palette.size(); i++) {
+            final BlockState state = NbtUtils.readBlockState(BuiltInRegistries.BLOCK, palette.getCompoundOrEmpty(i));
+            final int nextId = compactPalette.size();
+            final int stateId = stateIds.computeIfAbsent(state, ignored -> {
+                compactPalette.add(NbtUtils.writeBlockState(state));
+                return nextId;
+            });
+            remap[i] = stateId;
+        }
+        if (compactPalette.size() == palette.size()) {
+            return;
+        }
+
+        final int sectionY = section.getByteOr("Y", (byte) 0);
+        if (compactPalette.size() == 1) {
+            blockStates.put("palette", compactPalette);
+            blockStates.remove("data");
+        } else {
+            final long[] packed = blockStates.getLongArray("data").orElse(null);
+            if (packed == null) {
+                return;
+            }
+
+            try {
+                final SimpleBitStorage oldStorage =
+                        new SimpleBitStorage(serializedBlockBits(palette.size()), VoxelBlob.full_size, packed);
+                final int[] values = new int[VoxelBlob.full_size];
+                for (int i = 0; i < values.length; i++) {
+                    final int oldId = oldStorage.get(i);
+                    values[i] = oldId < remap.length ? remap[oldId] : 0;
+                }
+                final SimpleBitStorage newStorage =
+                        new SimpleBitStorage(serializedBlockBits(compactPalette.size()), values.length, values);
+                blockStates.put("palette", compactPalette);
+                blockStates.putLongArray("data", newStorage.getRaw());
+            } catch (final RuntimeException error) {
+                LOGGER.warn("Could not recover legacy block palette in section {}", sectionY, error);
+                return;
+            }
+        }
+
+        LOGGER.warn(
+                "Recovered legacy block palette in section {} by collapsing {} missing or duplicate states",
+                sectionY,
+                palette.size() - compactPalette.size());
+    }
+
+    private static int serializedBlockBits(final int paletteSize) {
+        return Math.max(Integer.SIZE - Integer.numberOfLeadingZeros(paletteSize - 1), 4);
     }
 
     private static int mostCommonState(final VoxelBlob blob) {

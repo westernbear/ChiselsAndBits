@@ -7,6 +7,10 @@ import mod.chiselsandbits.legacy.LegacyChiseledBlockFix;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.datafix.schemas.V99;
 import net.minecraft.util.filefix.FileFixerUpper;
+import net.minecraft.world.level.LevelHeightAccessor;
+import net.minecraft.world.level.chunk.PalettedContainerFactory;
+import net.minecraft.world.level.chunk.storage.SerializableChunkData;
+import net.minecraft.world.level.chunk.storage.SimpleRegionStorage;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -70,6 +74,36 @@ public final class LegacyChiseledBlockFixMixins {
         private CompoundTag chiselsandbits$preserveForgeRegistry(final CompoundTag root) {
             LegacyChiseledBlockFix.preserveForgeRegistry(root);
             return root;
+        }
+    }
+
+    @Mixin(SerializableChunkData.class)
+    public static class SerializableChunkDataMixin {
+
+        @Inject(method = "parse", at = @At("HEAD"))
+        private static void chiselsandbits$sanitizeLegacyData(
+                final LevelHeightAccessor levelHeight,
+                final PalettedContainerFactory containerFactory,
+                final CompoundTag chunkData,
+                final CallbackInfoReturnable<SerializableChunkData> callback) {
+            LegacyChiseledBlockFix.sanitizeLegacyData(chunkData);
+        }
+    }
+
+    @Mixin(SimpleRegionStorage.class)
+    public static class SimpleRegionStorageMixin {
+
+        @Inject(
+                method =
+                        "upgradeChunkTag(Lnet/minecraft/nbt/CompoundTag;ILnet/minecraft/nbt/CompoundTag;I)Lnet/minecraft/nbt/CompoundTag;",
+                at = @At("RETURN"))
+        private void chiselsandbits$sanitizeLegacyData(
+                final CompoundTag chunkTag,
+                final int defaultVersion,
+                final CompoundTag contextTag,
+                final int targetVersion,
+                final CallbackInfoReturnable<CompoundTag> callback) {
+            LegacyChiseledBlockFix.sanitizeLegacyData(callback.getReturnValue());
         }
     }
 
