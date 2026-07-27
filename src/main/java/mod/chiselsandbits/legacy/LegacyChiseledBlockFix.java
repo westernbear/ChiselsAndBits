@@ -465,7 +465,7 @@ public final class LegacyChiseledBlockFix {
             }
         }
 
-        LOGGER.warn(
+        LOGGER.debug(
                 "Recovered legacy block palette in section {} by collapsing {} missing or duplicate states",
                 sectionY,
                 palette.size() - compactPalette.size());

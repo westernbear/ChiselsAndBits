@@ -49,6 +49,16 @@ public class LegacyCompatibilityGameTests {
                 DataFixers.getDataFixer(), legacyChunk(), DATA_VERSION_1_12_2);
         helper.assertTrue(
                 fixed.toString().contains("chiselsandbits:chiseled_block"), "legacy container block was not upgraded");
+        final CompoundTag fixedBody = fixed.getCompound("Level").orElse(fixed);
+        final long chiseledPaletteEntries = fixedBody
+                .getListOrEmpty("sections")
+                .compoundStream()
+                .flatMap(section -> section.getCompoundOrEmpty("block_states")
+                        .getListOrEmpty("palette")
+                        .compoundStream())
+                .filter(state -> state.getStringOr("Name", "").equals(LegacyChiseledBlockFix.CURRENT_BLOCK))
+                .count();
+        helper.assertValueEqual(chiseledPaletteEntries, 1L, "legacy container palette entries");
 
         final CompoundTag fixedBlockEntity = findChiseledBlockEntity(fixed);
         helper.assertValueEqual(fixedBlockEntity.getStringOr("id", ""), "chiselsandbits:chiseled", "block entity id");
@@ -188,6 +198,9 @@ public class LegacyCompatibilityGameTests {
 
         final ListTag blockEntities = new ListTag();
         blockEntities.add(blockEntity);
+        final CompoundTag secondBlockEntity = blockEntity.copy();
+        secondBlockEntity.putInt("x", 2);
+        blockEntities.add(secondBlockEntity);
 
         final CompoundTag section = new CompoundTag();
         section.putByte("Y", (byte) 4);

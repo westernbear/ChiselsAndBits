@@ -138,6 +138,8 @@ public final class LegacyChiseledBlockFixMixins {
 
         @Inject(method = "<init>(Lcom/mojang/serialization/Dynamic;)V", at = @At("TAIL"))
         private void chiselsandbits$upgradeLegacyBlocks(final Dynamic<?> level, final CallbackInfo callback) {
+            final Dynamic<?> blockState =
+                    level.emptyMap().set("Name", level.createString(LegacyChiseledBlockFix.CURRENT_BLOCK));
             for (final Int2ObjectMap.Entry<Dynamic<?>> entry : blockEntities.int2ObjectEntrySet()) {
                 final Dynamic<?> fixed = LegacyChiseledBlockFix.convertBlockEntity(entry.getValue());
                 if (fixed == null) {
@@ -145,8 +147,6 @@ public final class LegacyChiseledBlockFixMixins {
                 }
 
                 entry.setValue(fixed);
-                final Dynamic<?> blockState =
-                        fixed.emptyMap().set("Name", fixed.createString(LegacyChiseledBlockFix.CURRENT_BLOCK));
                 chiselsandbits$setBlock(entry.getIntKey(), blockState);
             }
         }
