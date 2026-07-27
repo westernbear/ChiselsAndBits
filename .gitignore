@@ -38,3 +38,17 @@ hs_err_*.log
 replay_*.log
 *.hprof
 *.jfr
+
+# local workspace
+
+/.codex/
+/AGENTS.md
+/codex-md.py
+/graphify-out/
+/src/graphify-out/
+/logs/
+/run-client/
+/run-server/
+/20260726_*.md
+/chiselsandbits-port-1.20.4-twilight.zip
+/wak_birth.zip
