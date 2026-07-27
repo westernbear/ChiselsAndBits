@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "chiselsandbits_test",
+  "name": "Chisels & Bits Tests",
+  "version": "1",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-gametest": [
+      "mod.chiselsandbits.gametest.LegacyCompatibilityGameTests"
+    ],
+    "fabric-client-gametest": [
+      "mod.chiselsandbits.gametest.ChiselsAndBitsClientGameTest"
+    ]
+  },
+  "depends": {
+    "fabricloader": "*",
+    "fabric-api": "*",
+    "chiselsandbits": "*"
+  }
+}

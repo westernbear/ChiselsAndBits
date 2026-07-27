@@ -7,15 +7,11 @@
     "   "
   ],
   "key": {
-    "s": {
-      "tag": "forge:rods/blaze"
-    },
-    "t": {
-      "tag": "forge:ingots/netherite"
-    }
+    "s": "#c:rods/blaze",
+    "t": "#c:ingots/netherite"
   },
   "result": {
     "count": 1,
-    "item": "chiselsandbits:chisel_netherite"
+    "id": "chiselsandbits:chisel_netherite"
   }
 }

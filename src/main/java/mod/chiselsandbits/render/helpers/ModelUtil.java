@@ -21,11 +21,11 @@ import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
-import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
+import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
@@ -98,14 +98,14 @@ public class ModelUtil implements ICacheClearable {
                 if (xf.getAxis() == Axis.Y) {
                     mp[0].sprite = Minecraft.getInstance()
                             .getAtlasManager()
-                            .getAtlasOrThrow(TextureAtlas.LOCATION_BLOCKS)
+                            .getAtlasOrThrow(AtlasIds.BLOCKS)
                             .getSprite(
                                     FluidUtil.getStillTexture(fluid).contents().name());
                     mp[0].uvs = new float[] {Uf, Vf, 0, Vf, Uf, 0, 0, 0};
                 } else if (xf.getAxis() == Axis.X) {
                     mp[0].sprite = Minecraft.getInstance()
                             .getAtlasManager()
-                            .getAtlasOrThrow(TextureAtlas.LOCATION_BLOCKS)
+                            .getAtlasOrThrow(AtlasIds.BLOCKS)
                             .getSprite(FluidUtil.getFlowingTexture(fluid)
                                     .contents()
                                     .name());
@@ -113,7 +113,7 @@ public class ModelUtil implements ICacheClearable {
                 } else {
                     mp[0].sprite = Minecraft.getInstance()
                             .getAtlasManager()
-                            .getAtlasOrThrow(TextureAtlas.LOCATION_BLOCKS)
+                            .getAtlasOrThrow(AtlasIds.BLOCKS)
                             .getSprite(FluidUtil.getFlowingTexture(fluid)
                                     .contents()
                                     .name());
@@ -246,7 +246,7 @@ public class ModelUtil implements ICacheClearable {
         if (q.materialInfo().sprite() == null) {
             return Minecraft.getInstance()
                     .getAtlasManager()
-                    .getAtlasOrThrow(TextureAtlas.LOCATION_BLOCKS)
+                    .getAtlasOrThrow(AtlasIds.BLOCKS)
                     .getSprite(MissingTextureAtlasSprite.getLocation());
         }
         return q.materialInfo().sprite();
@@ -326,7 +326,7 @@ public class ModelUtil implements ICacheClearable {
                     blockToTexture.get(Pair.of(layer, myFace)).get(BlockRef);
             return Minecraft.getInstance()
                     .getAtlasManager()
-                    .getAtlasOrThrow(TextureAtlas.LOCATION_BLOCKS)
+                    .getAtlasOrThrow(AtlasIds.BLOCKS)
                     .getSprite(Identifier.parse(textureName));
         }
 
@@ -372,7 +372,7 @@ public class ModelUtil implements ICacheClearable {
         if (texture == null) {
             texture = Minecraft.getInstance()
                     .getAtlasManager()
-                    .getAtlasOrThrow(TextureAtlas.LOCATION_BLOCKS)
+                    .getAtlasOrThrow(AtlasIds.BLOCKS)
                     .getSprite(Identifier.parse("missingno"));
         }
 

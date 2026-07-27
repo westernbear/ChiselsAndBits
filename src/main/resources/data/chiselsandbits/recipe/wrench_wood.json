@@ -7,15 +7,11 @@
     "  w"
   ],
   "key": {
-    "s": {
-      "tag": "forge:rods/wooden"
-    },
-    "w": {
-      "tag": "minecraft:planks"
-    }
+    "s": "#c:rods/wooden",
+    "w": "#minecraft:planks"
   },
   "result": {
     "count": 1,
-    "item": "chiselsandbits:wrench_wood"
+    "id": "chiselsandbits:wrench_wood"
   }
 }

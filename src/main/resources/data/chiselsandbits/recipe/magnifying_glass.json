@@ -7,18 +7,12 @@
     "   "
   ],
   "key": {
-    "c": {
-      "tag": "chiselsandbits:chisel"
-    },
-    "g": {
-      "tag": "forge:glass"
-    },
-    "s": {
-      "tag": "forge:rods/wooden"
-    }
+    "c": "#chiselsandbits:chisel",
+    "g": "#c:glass_blocks",
+    "s": "#c:rods/wooden"
   },
   "result": {
     "count": 1,
-    "item": "chiselsandbits:magnifying_glass"
+    "id": "chiselsandbits:magnifying_glass"
   }
 }

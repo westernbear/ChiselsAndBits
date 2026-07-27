@@ -87,7 +87,14 @@ public class TileEntityBlockChiseled extends BlockEntity
     public void setLevel(final Level level) {
         super.setLevel(level);
         if (!level.isClientSide() && getBlockState().getBlock() instanceof BlockChiseled) {
-            level.scheduleTick(worldPosition, getBlockState().getBlock(), 1);
+            final var server = level.getServer();
+            if (server != null) {
+                server.schedule(server.wrapRunnable(() -> {
+                    if (level.isLoaded(worldPosition) && level.getBlockEntity(worldPosition) == this) {
+                        synchronizeBlockStateProperties();
+                    }
+                }));
+            }
         }
     }
 

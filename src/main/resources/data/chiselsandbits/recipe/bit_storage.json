@@ -7,21 +7,13 @@
     "ici"
   ],
   "key": {
-    "g": {
-      "tag": "forge:glass"
-    },
-    "l": {
-      "tag": "minecraft:logs"
-    },
-    "i": {
-      "tag": "forge:ingots/iron"
-    },
-    "c": {
-      "tag": "chiselsandbits:chisel"
-    }
+    "g": "#c:glass_blocks",
+    "l": "#minecraft:logs",
+    "i": "#c:ingots/iron",
+    "c": "#chiselsandbits:chisel"
   },
   "result": {
     "count": 1,
-    "item": "chiselsandbits:bit_storage"
+    "id": "chiselsandbits:bit_storage"
   }
 }

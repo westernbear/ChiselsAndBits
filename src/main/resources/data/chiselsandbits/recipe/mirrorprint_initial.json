@@ -2,18 +2,12 @@
   "type": "minecraft:crafting_shapeless",
   "group": "chiselsandbits",
   "ingredients": [
-    {
-      "tag": "forge:paper"
-    },
-    {
-      "item": "minecraft:water_bucket"
-    },
-    {
-      "tag": "forge:dusts/glowstone"
-    }
+    "minecraft:paper",
+    "minecraft:water_bucket",
+    "#c:dusts/glowstone"
   ],
   "result": {
     "count": 1,
-    "item": "chiselsandbits:mirrorprint"
+    "id": "chiselsandbits:mirrorprint"
   }
 }

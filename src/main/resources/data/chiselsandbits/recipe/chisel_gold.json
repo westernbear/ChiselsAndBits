@@ -7,15 +7,11 @@
     "   "
   ],
   "key": {
-    "s": {
-      "tag": "forge:rods/wooden"
-    },
-    "t": {
-      "tag": "forge:ingots/gold"
-    }
+    "s": "#c:rods/wooden",
+    "t": "#c:ingots/gold"
   },
   "result": {
     "count": 1,
-    "item": "chiselsandbits:chisel_gold"
+    "id": "chiselsandbits:chisel_gold"
   }
 }

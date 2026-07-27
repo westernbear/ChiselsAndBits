@@ -23,7 +23,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.block.dispatch.BlockModelRotation;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
-import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.ModelBaker;
 import net.minecraft.client.resources.model.cuboid.CuboidFace;
@@ -33,6 +32,7 @@ import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
+import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
@@ -59,7 +59,7 @@ public class ChiseledBlockBakedModel extends BaseBakedBlockModel {
         for (final Direction myFace : Direction.values()) {
             final TextureAtlasSprite texture = Minecraft.getInstance()
                     .getAtlasManager()
-                    .getAtlasOrThrow(TextureAtlas.LOCATION_BLOCKS)
+                    .getAtlasOrThrow(AtlasIds.BLOCKS)
                     .getSprite(Identifier.parse("missingno"));
             final ModelBaker.Interner interner = new ModelBaker.Interner() {
                 @Override

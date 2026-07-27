@@ -7,15 +7,11 @@
     "   "
   ],
   "key": {
-    "s": {
-      "tag": "forge:rods/wooden"
-    },
-    "t": {
-      "tag": "forge:ingots/iron"
-    }
+    "s": "#c:rods/wooden",
+    "t": "#c:ingots/iron"
   },
   "result": {
     "count": 1,
-    "item": "chiselsandbits:chisel_iron"
+    "id": "chiselsandbits:chisel_iron"
   }
 }

@@ -1,8 +1,7 @@
 {
   "display": {
     "icon": {
-      "item": "chiselsandbits:chisel_diamond",
-      "nbt": "{Damage:0}"
+      "id": "chiselsandbits:chisel_diamond"
     },
     "title": {
       "translate": "mod.chiselsandbits.advancements.root.title"
@@ -14,7 +13,7 @@
     "show_toast": true,
     "announce_to_chat": true,
     "hidden": true,
-    "background": "minecraft:textures/gui/advancements/backgrounds/stone.png"
+    "background": "minecraft:gui/advancements/backgrounds/stone"
   },
   "criteria": {
     "chisel": {
@@ -22,7 +21,7 @@
       "conditions": {
         "items": [
           {
-            "tag": "chiselsandbits:chisel"
+            "items": "#chiselsandbits:chisel"
           }
         ]
       }

@@ -7,18 +7,12 @@
     "ii "
   ],
   "key": {
-    "i": {
-      "tag": "forge:ingots/iron"
-    },
-    "s": {
-      "tag": "forge:string"
-    },
-    "y": {
-      "tag": "forge:dyes/yellow"
-    }
+    "i": "#c:ingots/iron",
+    "s": "#c:strings",
+    "y": "#c:dyes/yellow"
   },
   "result": {
     "count": 1,
-    "item": "chiselsandbits:tape_measure"
+    "id": "chiselsandbits:tape_measure"
   }
 }

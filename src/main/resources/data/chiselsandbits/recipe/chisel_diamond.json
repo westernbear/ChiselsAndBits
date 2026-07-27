@@ -7,15 +7,11 @@
     "   "
   ],
   "key": {
-    "s": {
-      "tag": "forge:rods/wooden"
-    },
-    "t": {
-      "tag": "forge:gems/diamond"
-    }
+    "s": "#c:rods/wooden",
+    "t": "#c:gems/diamond"
   },
   "result": {
     "count": 1,
-    "item": "chiselsandbits:chisel_diamond"
+    "id": "chiselsandbits:chisel_diamond"
   }
 }

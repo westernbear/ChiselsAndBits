@@ -7,15 +7,11 @@
     "www"
   ],
   "key": {
-    "b": {
-      "item": "chiselsandbits:block_bit"
-    },
-    "w": {
-      "tag": "minecraft:wool"
-    }
+    "b": "chiselsandbits:block_bit",
+    "w": "#minecraft:wool"
   },
   "result": {
     "count": 1,
-    "item": "chiselsandbits:bit_bag"
+    "id": "chiselsandbits:bit_bag"
   }
 }

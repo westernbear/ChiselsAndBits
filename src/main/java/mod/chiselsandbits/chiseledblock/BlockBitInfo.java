@@ -321,25 +321,6 @@ public class BlockBitInfo {
         return doSupportAnalysis(state).isSupported();
     }
 
-    private static Class<?> getDeclaringClass(
-            final Class<?> blkClass, final String methodName, final Class<?>... args) {
-        try {
-            return blkClass.getMethod(methodName, args).getDeclaringClass();
-        } catch (final NoSuchMethodException e) {
-            // nothing here...
-        } catch (final SecurityException e) {
-            // nothing here..
-        } catch (final NoClassDefFoundError e) {
-            Log.eligibility("Unable to determine blocks eligibility for chiseling, " + blkClass.getName()
-                    + " attempted to load " + e.getMessage() + " missing @OnlyIn( Dist.CLIENT ) or @Optional?");
-            return blkClass;
-        } catch (final Throwable t) {
-            return blkClass;
-        }
-
-        return getDeclaringClass(blkClass.getSuperclass(), methodName, args);
-    }
-
     public static BlockBitInfo createFromState(final BlockState state) {
         try {
             final ReflectionHelperBlock reflectBlock = ModBlocks.REFLECTION_HELPER_BLOCK.get();

@@ -51,6 +51,10 @@ public class EventPlayerInteract {
         if ((is.getItem() instanceof ItemChisel || is.getItem() instanceof ItemChiseledBit) && validEvent) {
             final BlockState state = world.getBlockState(pos);
             if (BlockBitInfo.canChisel(state)) {
+                if (world.isClientSide()) {
+                    is.canDestroyBlock(state, world, pos, player);
+                }
+
                 // cancel interactions vs chiseable blocks, creative is
                 // magic.
                 return InteractionResult.FAIL;

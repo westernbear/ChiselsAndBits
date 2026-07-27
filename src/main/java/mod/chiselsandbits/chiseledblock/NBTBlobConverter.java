@@ -108,12 +108,7 @@ public class NBTBlobConverter {
 
         compound.putInt(NBT_LIGHTVALUE, lightValue);
 
-        if (crossWorld) {
-            compound.putString(NBT_PRIMARY_STATE, StringStates.getNameFromStateID(primaryBlockState));
-        } else {
-            compound.putInt(NBT_PRIMARY_STATE, primaryBlockState);
-        }
-
+        compound.putString(NBT_PRIMARY_STATE, StringStates.getNameFromStateID(primaryBlockState));
         compound.putInt(NBT_SIDE_FLAGS, sideState);
         compound.putBoolean(NBT_NORMALCUBE_FLAG, isNormalCube);
         compound.putByteArray(NBT_VERSIONED_VOXEL, voxelBytes);
@@ -165,11 +160,7 @@ public class NBTBlobConverter {
                 : voxelRef.getVoxelBlob().blobToBytes(newFormat);
 
         output.putInt(NBT_LIGHTVALUE, lightValue);
-        if (crossWorld) {
-            output.putString(NBT_PRIMARY_STATE, StringStates.getNameFromStateID(primaryBlockState));
-        } else {
-            output.putInt(NBT_PRIMARY_STATE, primaryBlockState);
-        }
+        output.putString(NBT_PRIMARY_STATE, StringStates.getNameFromStateID(primaryBlockState));
         output.putInt(NBT_SIDE_FLAGS, sideState);
         output.putBoolean(NBT_NORMALCUBE_FLAG, isNormalCube);
         output.store(NBT_VERSIONED_VOXEL, Codec.BYTE_BUFFER, ByteBuffer.wrap(voxelBytes));

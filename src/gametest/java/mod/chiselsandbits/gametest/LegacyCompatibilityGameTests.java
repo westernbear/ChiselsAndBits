@@ -1,0 +1,194 @@
+package mod.chiselsandbits.gametest;
+
+import com.mojang.serialization.Dynamic;
+import java.nio.file.Path;
+import java.util.Base64;
+import mod.chiselsandbits.chiseledblock.NBTBlobConverter;
+import mod.chiselsandbits.chiseledblock.TileEntityBlockChiseled;
+import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
+import mod.chiselsandbits.helpers.ModUtil;
+import mod.chiselsandbits.legacy.LegacyChiseledBlockFix;
+import mod.chiselsandbits.registry.ModBlocks;
+import mod.chiselsandbits.registry.ModItems;
+import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.util.datafix.DataFixTypes;
+import net.minecraft.util.datafix.DataFixers;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
+
+public class LegacyCompatibilityGameTests {
+
+    private static final int DATA_VERSION_1_12_2 = 1343;
+    private static final byte[] LEGACY_1_12_BLOB =
+            Base64.getDecoder().decode("eJxjYGFgXHyA+f9/RoYGDgYGBiaGUTAKaAYODLQDRgEO4ADEACSRBPU=");
+
+    @GameTest(maxTicks = 200)
+    public void upgradesLegacyWorldData(final GameTestHelper helper) {
+        final CompoundTag levelData = legacyLevelData();
+        final Path levelPath = Path.of("legacy-level.dat").toAbsolutePath();
+        LegacyChiseledBlockFix.captureForgeRegistry(levelPath, levelData);
+        final CompoundTag legacyFml = LegacyChiseledBlockFix.activateForgeRegistry(levelPath);
+        final CompoundTag savedLevelData = new CompoundTag();
+        LegacyChiseledBlockFix.preserveForgeRegistry(savedLevelData, legacyFml);
+        helper.assertValueEqual(
+                savedLevelData.getCompoundOrEmpty("FML"),
+                levelData.getCompoundOrEmpty("FML"),
+                "legacy Forge registry for lazy chunks");
+
+        final CompoundTag fixed = DataFixTypes.CHUNK.updateToCurrentVersion(
+                DataFixers.getDataFixer(), legacyChunk(), DATA_VERSION_1_12_2);
+        helper.assertTrue(
+                fixed.toString().contains("chiselsandbits:chiseled_block"), "legacy container block was not upgraded");
+
+        final CompoundTag fixedBlockEntity = findChiseledBlockEntity(fixed);
+        helper.assertValueEqual(fixedBlockEntity.getStringOr("id", ""), "chiselsandbits:chiseled", "block entity id");
+        helper.assertFalse(fixedBlockEntity.contains("v"), "legacy voxel field must be removed");
+
+        final BlockPos position = new BlockPos(1, 64, 1);
+        final TileEntityBlockChiseled loaded = load(position, fixedBlockEntity, helper);
+        assertVoxelData(loaded, helper);
+
+        final CompoundTag saved = loaded.saveWithFullMetadata(helper.getLevel().registryAccess());
+        helper.assertTrue(
+                saved.get(NBTBlobConverter.NBT_PRIMARY_STATE) instanceof StringTag, "primary state was not stable");
+        final TileEntityBlockChiseled reloaded = load(position, saved, helper);
+        assertVoxelData(reloaded, helper);
+
+        final ItemStack item = new ItemStack(ModItems.ITEM_CHISELED_BLOCK.get());
+        helper.assertTrue(new NBTBlobConverter(false, reloaded).writeToStack(item, true), "item data was not written");
+        final NBTBlobConverter itemData = new NBTBlobConverter();
+        helper.assertTrue(
+                itemData.readFromStack(item, VoxelBlob.VERSION_COMPACT_PALLETED), "item data was not reloaded");
+        try {
+            helper.assertValueEqual(
+                    itemData.getVoxelRef(VoxelBlob.VERSION_COMPACT_PALLETED, 0).getVoxelBlob(),
+                    reloaded.getBlob(),
+                    "chiseled item voxel data");
+        } catch (final Exception error) {
+            throw new AssertionError(error);
+        }
+
+        LegacyChiseledBlockFix.captureForgeRegistry(new CompoundTag());
+        final CompoundTag unmapped = new CompoundTag();
+        unmapped.putString("id", "minecraft:mod.chiselsandbits.tileentitychiseled");
+        helper.assertTrue(
+                LegacyChiseledBlockFix.convertBlockEntity(new Dynamic<>(NbtOps.INSTANCE, unmapped)) == null,
+                "legacy data without its Forge registry must remain unchanged");
+
+        helper.succeed();
+    }
+
+    private static void assertVoxelData(final TileEntityBlockChiseled blockEntity, final GameTestHelper helper) {
+        final VoxelBlob blob = blockEntity.getBlob();
+        helper.assertValueEqual(blob.get(0, 0, 0), ModUtil.getStateId(Blocks.STONE.defaultBlockState()), "stone voxel");
+        helper.assertValueEqual(blob.get(7, 8, 9), 0, "missing mod voxel fallback");
+        helper.assertValueEqual(
+                blob.get(15, 15, 15), ModUtil.getStateId(Blocks.WOOL.red().defaultBlockState()), "metadata voxel");
+        helper.assertValueEqual(blob.filled(), 2, "filled voxel count");
+        helper.assertValueEqual(
+                blockEntity.getPrimaryBlockStateId(),
+                ModUtil.getStateId(Blocks.WOOL.red().defaultBlockState()),
+                "primary state");
+        helper.assertValueEqual(blockEntity.getLightValue(), 0, "light value");
+    }
+
+    private static TileEntityBlockChiseled load(
+            final BlockPos position, final CompoundTag tag, final GameTestHelper helper) {
+        final BlockEntity loaded = BlockEntity.loadStatic(
+                position,
+                ModBlocks.getChiseledDefaultState(),
+                tag,
+                helper.getLevel().registryAccess());
+        helper.assertTrue(loaded instanceof TileEntityBlockChiseled, "converted block entity did not load");
+        final TileEntityBlockChiseled chiseled = (TileEntityBlockChiseled) loaded;
+        chiseled.setLevel(helper.getLevel());
+        return chiseled;
+    }
+
+    private static CompoundTag findChiseledBlockEntity(final CompoundTag chunk) {
+        final CompoundTag body = chunk.getCompound("Level").orElse(chunk);
+        for (final String key : new String[] {"block_entities", "TileEntities"}) {
+            for (final CompoundTag blockEntity :
+                    body.getListOrEmpty(key).compoundStream().toList()) {
+                if (blockEntity.getStringOr("id", "").equals("chiselsandbits:chiseled")) {
+                    return blockEntity;
+                }
+            }
+        }
+        throw new AssertionError("converted block entity is missing");
+    }
+
+    private static CompoundTag legacyChunk() {
+        final CompoundTag blockEntity = new CompoundTag();
+        blockEntity.putString("id", "minecraft:mod.chiselsandbits.tileentitychiseled");
+        blockEntity.putInt("x", 1);
+        blockEntity.putInt("y", 64);
+        blockEntity.putInt("z", 1);
+        blockEntity.putInt("b", 14 << 12 | 35);
+        blockEntity.putByteArray("X", LEGACY_1_12_BLOB);
+        blockEntity.putInt("s", 0);
+        blockEntity.putInt("lv", 15);
+        blockEntity.putBoolean("nc", true);
+
+        final ListTag blockEntities = new ListTag();
+        blockEntities.add(blockEntity);
+
+        final CompoundTag section = new CompoundTag();
+        section.putByte("Y", (byte) 4);
+        section.putByteArray("Blocks", new byte[4096]);
+        section.putByteArray("Data", new byte[2048]);
+        section.putByteArray("BlockLight", new byte[2048]);
+        section.putByteArray("SkyLight", new byte[2048]);
+        final ListTag sections = new ListTag();
+        sections.add(section);
+
+        final CompoundTag level = new CompoundTag();
+        level.putInt("xPos", 0);
+        level.putInt("zPos", 0);
+        level.putLong("LastUpdate", 0);
+        level.putLong("InhabitedTime", 0);
+        level.putBoolean("TerrainPopulated", true);
+        level.putBoolean("LightPopulated", true);
+        level.put("Sections", sections);
+        level.put("TileEntities", blockEntities);
+        level.put("Entities", new ListTag());
+        level.put("TileTicks", new ListTag());
+        level.putByteArray("Biomes", new byte[256]);
+        level.putIntArray("HeightMap", new int[256]);
+
+        final CompoundTag chunk = new CompoundTag();
+        chunk.putInt("DataVersion", DATA_VERSION_1_12_2);
+        chunk.put("Level", level);
+        return chunk;
+    }
+
+    private static CompoundTag legacyLevelData() {
+        final ListTag ids = new ListTag();
+        ids.add(registryEntry("chiselsandbits:chiseled_rock", 256));
+        ids.add(registryEntry("missing:gone", 4095));
+
+        final CompoundTag blockRegistry = new CompoundTag();
+        blockRegistry.put("ids", ids);
+        final CompoundTag registries = new CompoundTag();
+        registries.put("minecraft:blocks", blockRegistry);
+        final CompoundTag fml = new CompoundTag();
+        fml.put("Registries", registries);
+        final CompoundTag root = new CompoundTag();
+        root.put("FML", fml);
+        return root;
+    }
+
+    private static CompoundTag registryEntry(final String name, final int id) {
+        final CompoundTag entry = new CompoundTag();
+        entry.putString("K", name);
+        entry.putInt("V", id);
+        return entry;
+    }
+}

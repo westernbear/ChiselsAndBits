@@ -88,13 +88,13 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.minecraft.client.renderer.state.level.BlockOutlineRenderState;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
+import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -1453,7 +1453,7 @@ public class ClientSide {
     public TextureAtlasSprite getMissingIcon() {
         return Minecraft.getInstance()
                 .getAtlasManager()
-                .getAtlasOrThrow(TextureAtlas.LOCATION_BLOCKS)
+                .getAtlasOrThrow(AtlasIds.BLOCKS)
                 .missingSprite();
     }
 

@@ -10,6 +10,18 @@ base {
 	archivesName = project.archives_base_name
 }
 
+sourceSets {
+	gametest {
+		compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+		runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+	}
+}
+
+configurations {
+	gametestImplementation.extendsFrom implementation
+	gametestRuntimeOnly.extendsFrom runtimeOnly
+}
+
 repositories {
 	mavenCentral()
 	maven {
@@ -24,6 +36,15 @@ repositories {
 
 loom {
 	accessWidenerPath = file('src/main/resources/chiselsandbits.accesswidener')
+
+	mods {
+		chiselsandbits {
+			sourceSet sourceSets.main
+		}
+		chiselsandbits_test {
+			sourceSet sourceSets.gametest
+		}
+	}
 
 	runs {
 
@@ -43,11 +64,31 @@ loom {
 
 			ideConfigGenerated = true
 		}
+
+		gametest {
+			inherit server
+			name = 'Game Test'
+			source sourceSets.gametest
+			vmArg '-Dfabric-api.gametest'
+			vmArg "-Dfabric-api.gametest.report-file=${layout.buildDirectory.file('gametest-report.xml').get().asFile}"
+			runDir = 'build/gametest'
+			ideConfigGenerated = true
+		}
+
+		clientGametest {
+			inherit client
+			name = 'Client Game Test'
+			source sourceSets.gametest
+			vmArg '-Dfabric.client.gametest'
+			runDir = 'build/client-gametest'
+			ideConfigGenerated = true
+		}
 	}
 }
 
 
 dependencies {
+	// Minecraft 26.2 ships named Mojang classes; no Yarn mapping artifact exists for this version.
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
@@ -72,12 +113,19 @@ def faceRegionMergeCheck = tasks.register("faceRegionMergeCheck", JavaExec) {
 	mainClass = "mod.chiselsandbits.render.chiseledblock.FaceRegionMergeCheck"
 }
 
+def legacyBlobCompatibilityCheck = tasks.register("legacyBlobCompatibilityCheck", JavaExec) {
+	dependsOn testClasses
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = "mod.chiselsandbits.mixin.LegacyBlobCompatibilityCheck"
+}
+
 tasks.named("test") {
 	failOnNoDiscoveredTests.set(false)
 }
 
 tasks.named("check") {
 	dependsOn faceRegionMergeCheck
+	dependsOn legacyBlobCompatibilityCheck
 }
 
 javadoc{

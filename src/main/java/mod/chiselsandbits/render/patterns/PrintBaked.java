@@ -7,9 +7,9 @@ import mod.chiselsandbits.interfaces.IPatternItem;
 import mod.chiselsandbits.render.NullBakedModel;
 import mod.chiselsandbits.render.chiseledblock.ChiseledBlockSmartModel;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.Direction;
+import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
@@ -40,7 +40,7 @@ public class PrintBaked extends BaseBakedItemModel {
     public TextureAtlasSprite getParticleIcon() {
         return Minecraft.getInstance()
                 .getAtlasManager()
-                .getAtlasOrThrow(TextureAtlas.LOCATION_BLOCKS)
+                .getAtlasOrThrow(AtlasIds.BLOCKS)
                 .getSprite(Identifier.fromNamespaceAndPath(ChiselsAndBits.MODID, "item/" + itemName));
     }
 }

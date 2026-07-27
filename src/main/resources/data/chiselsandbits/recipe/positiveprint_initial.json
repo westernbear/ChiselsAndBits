@@ -2,18 +2,12 @@
   "type": "minecraft:crafting_shapeless",
   "group": "chiselsandbits",
   "ingredients": [
-    {
-      "tag": "forge:paper"
-    },
-    {
-      "item": "minecraft:water_bucket"
-    },
-    {
-      "tag": "forge:gems/lapis"
-    }
+    "minecraft:paper",
+    "minecraft:water_bucket",
+    "#c:gems/lapis"
   ],
   "result": {
     "count": 1,
-    "item": "chiselsandbits:positiveprint"
+    "id": "chiselsandbits:positiveprint"
   }
 }
