@@ -155,7 +155,7 @@ public class TileEntitySpecialRenderBitStorage
                 final BlockState containedState = ModUtil.getStateById(packedTint >>> 8);
                 final BlockTintSource tintSource =
                         Minecraft.getInstance().getBlockColors().getTintSource(containedState, packedTint & 0xff);
-                color = ARGB.opaque(tintSource.colorInWorld(containedState, level, pos));
+                color = tintSource == null ? -1 : ARGB.opaque(tintSource.colorInWorld(containedState, level, pos));
             }
             output.add(new ColoredQuad(quad, ARGB.multiply(color, baseColor)));
         }

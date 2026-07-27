@@ -117,7 +117,7 @@ public final class FabricBakedModelDelegate implements BlockStateModel, FabricBl
         final int tintIndex = packedTint & 0xff;
         final BlockTintSource tintSource =
                 Minecraft.getInstance().getBlockColors().getTintSource(containedState, tintIndex);
-        int color = tintSource.colorInWorld(containedState, level, pos);
+        int color = tintSource == null ? -1 : tintSource.colorInWorld(containedState, level, pos);
         if ((color & 0xff000000) == 0) {
             color |= 0xff000000;
         }
