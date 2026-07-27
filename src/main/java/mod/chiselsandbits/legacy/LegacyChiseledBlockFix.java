@@ -152,6 +152,33 @@ public final class LegacyChiseledBlockFix {
         }
     }
 
+    public static <T> Dynamic<T> convertItemStack(final Dynamic<T> itemStack) {
+        final String id = itemStack.get("id").asString("").toLowerCase(Locale.ROOT);
+        if (!id.startsWith("chiselsandbits:chiseled_")) {
+            return null;
+        }
+
+        final Dynamic<T> tag = itemStack.get("tag").orElseEmptyMap();
+        Dynamic<T> blockEntity = tag.get(ModUtil.NBT_BLOCKENTITYTAG).orElseEmptyMap();
+        if (blockEntity.get(NBTBlobConverter.NBT_VERSIONED_VOXEL).result().isEmpty()
+                && blockEntity.get(NBTBlobConverter.NBT_LEGACY_VOXEL).result().isEmpty()) {
+            return null;
+        }
+        if (id.equals(CURRENT_BLOCK)) {
+            return blockEntity.get("id").asString("").equals(CURRENT_BLOCK_ENTITY) ? itemStack : null;
+        }
+        if (blockEntity.get("id").asString("").isEmpty()) {
+            blockEntity = blockEntity.set("id", blockEntity.createString("mod.chiselsandbits.tileentitychiseled"));
+        }
+
+        final Dynamic<?> fixed = convertBlockEntity(blockEntity);
+        return fixed == null
+                ? null
+                : itemStack
+                        .set("id", itemStack.createString(CURRENT_BLOCK))
+                        .set("tag", tag.set(ModUtil.NBT_BLOCKENTITYTAG, fixed));
+    }
+
     private static boolean isLegacyBlockEntity(final String id) {
         String normalized = id.toLowerCase(Locale.ROOT);
         if (normalized.startsWith("minecraft:")) {

@@ -2,8 +2,10 @@ package mod.chiselsandbits.mixin;
 
 import com.mojang.serialization.Dynamic;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import java.util.Map;
 import mod.chiselsandbits.legacy.LegacyChiseledBlockFix;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.util.datafix.schemas.V99;
 import net.minecraft.util.filefix.FileFixerUpper;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import org.spongepowered.asm.mixin.Final;
@@ -68,6 +70,25 @@ public final class LegacyChiseledBlockFixMixins {
         private CompoundTag chiselsandbits$preserveForgeRegistry(final CompoundTag root) {
             LegacyChiseledBlockFix.preserveForgeRegistry(root);
             return root;
+        }
+    }
+
+    @Mixin(V99.class)
+    public static class ItemStackNamesMixin {
+
+        @Inject(
+                method = "addNames(Lcom/mojang/serialization/Dynamic;Ljava/util/Map;Ljava/util/Map;)Ljava/lang/Object;",
+                at = @At("HEAD"),
+                cancellable = true)
+        private static void chiselsandbits$upgradeLegacyItem(
+                final Dynamic<?> itemStack,
+                final Map<String, String> blockEntityNames,
+                final Map<String, String> entityNames,
+                final CallbackInfoReturnable<Object> callback) {
+            final Dynamic<?> fixed = LegacyChiseledBlockFix.convertItemStack(itemStack);
+            if (fixed != null) {
+                callback.setReturnValue(fixed.getValue());
+            }
         }
     }
 

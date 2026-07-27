@@ -9,14 +9,17 @@ import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
 import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.legacy.LegacyChiseledBlockFix;
 import mod.chiselsandbits.registry.ModBlocks;
+import mod.chiselsandbits.registry.ModDataComponents;
 import mod.chiselsandbits.registry.ModItems;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.StringTag;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.util.datafix.DataFixers;
 import net.minecraft.world.item.ItemStack;
@@ -74,6 +77,52 @@ public class LegacyCompatibilityGameTests {
         } catch (final Exception error) {
             throw new AssertionError(error);
         }
+
+        final Dynamic<?> convertedItem = LegacyChiseledBlockFix.convertItemStack(new Dynamic<>(
+                NbtOps.INSTANCE,
+                legacyPlayer()
+                        .getListOrEmpty("Inventory")
+                        .compoundStream()
+                        .findFirst()
+                        .orElseThrow()));
+        helper.assertTrue(
+                convertedItem != null && LegacyChiseledBlockFix.convertItemStack(convertedItem) != null,
+                "legacy item conversion must be idempotent");
+
+        final CompoundTag fixedPlayer = DataFixTypes.PLAYER.updateToCurrentVersion(
+                DataFixers.getDataFixer(), legacyPlayer(), DATA_VERSION_1_12_2);
+        final CompoundTag fixedLegacyItem = fixedPlayer
+                .getListOrEmpty("Inventory")
+                .compoundStream()
+                .findFirst()
+                .orElseThrow();
+        helper.assertValueEqual(
+                fixedLegacyItem.getStringOr("id", ""), LegacyChiseledBlockFix.CURRENT_BLOCK, "legacy item id");
+        helper.assertValueEqual(
+                fixedLegacyItem
+                        .getCompoundOrEmpty("components")
+                        .getCompoundOrEmpty("minecraft:block_entity_data")
+                        .getStringOr("id", ""),
+                "chiselsandbits:chiseled",
+                "legacy item block entity id");
+
+        final ItemStack legacyItem = ItemStack.CODEC
+                .parse(RegistryOps.create(NbtOps.INSTANCE, helper.getLevel().registryAccess()), fixedLegacyItem)
+                .getOrThrow(AssertionError::new);
+        final NBTBlobConverter legacyItemData = new NBTBlobConverter();
+        helper.assertTrue(
+                legacyItemData.readFromStack(legacyItem, VoxelBlob.VERSION_COMPACT_PALLETED),
+                "legacy item data was not reloaded");
+        helper.assertValueEqual(
+                legacyItemData.getBlob().get(0, 0, 0),
+                ModUtil.getStateId(Blocks.STONE.defaultBlockState()),
+                "legacy item stone voxel");
+        helper.assertValueEqual(
+                legacyItemData.getBlob().get(15, 15, 15),
+                ModUtil.getStateId(Blocks.WOOL.red().defaultBlockState()),
+                "legacy item metadata voxel");
+        helper.assertTrue(legacyItem.get(ModDataComponents.CHISELED_DATA) != null, "legacy item component");
+        helper.assertTrue(legacyItem.get(DataComponents.BLOCK_ENTITY_DATA) == null, "legacy item data cleanup");
 
         LegacyChiseledBlockFix.captureForgeRegistry(new CompoundTag());
         final CompoundTag unmapped = new CompoundTag();
@@ -183,6 +232,32 @@ public class LegacyCompatibilityGameTests {
         final CompoundTag root = new CompoundTag();
         root.put("FML", fml);
         return root;
+    }
+
+    private static CompoundTag legacyPlayer() {
+        final CompoundTag blockEntity = new CompoundTag();
+        blockEntity.putInt("b", 14 << 12 | 35);
+        blockEntity.putByteArray("X", LEGACY_1_12_BLOB);
+        blockEntity.putInt("s", 0);
+        blockEntity.putInt("lv", 15);
+        blockEntity.putBoolean("nc", true);
+
+        final CompoundTag tag = new CompoundTag();
+        tag.put("BlockEntityTag", blockEntity);
+        tag.putByte("side", (byte) 3);
+
+        final CompoundTag item = new CompoundTag();
+        item.putByte("Slot", (byte) 0);
+        item.putString("id", "chiselsandbits:chiseled_rock");
+        item.putByte("Count", (byte) 1);
+        item.putShort("Damage", (short) 0);
+        item.put("tag", tag);
+
+        final ListTag inventory = new ListTag();
+        inventory.add(item);
+        final CompoundTag player = new CompoundTag();
+        player.put("Inventory", inventory);
+        return player;
     }
 
     private static CompoundTag registryEntry(final String name, final int id) {

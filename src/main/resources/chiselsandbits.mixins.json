@@ -10,6 +10,7 @@
     "ExperienceOrbMixin",
     "ItemEntityMixin",
     "LegacyChiseledBlockFixMixins$FileFixerUpperMixin",
+    "LegacyChiseledBlockFixMixins$ItemStackNamesMixin",
     "LegacyChiseledBlockFixMixins$LevelDataMixin",
     "LegacyChiseledBlockFixMixins$LevelDataSaveMixin",
     "LegacyChiseledBlockFixMixins$UpgradeChunkMixin",
