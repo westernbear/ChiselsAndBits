@@ -38,10 +38,47 @@ public final class LegacyBlobCompatibilityCheck {
         final CompoundTag equipment = new CompoundTag();
         equipment.put("head", item("extrabitmanipulation:chiseled_helmet"));
         equipment.put("chest", item("minecraft:stone"));
+        equipment.put("feet", item("missing:gone"));
         entity.put("equipment", equipment);
+        final ListTag armorItems = new ListTag();
+        armorItems.add(item("extrabitmanipulation:chiseled_leggings"));
+        entity.put("ArmorItems", armorItems);
         final ListTag entities = new ListTag();
         entities.add(entity);
         chunk.put("entities", entities);
+
+        final String[][] replacements = {
+            {"extrabitmanipulation:chiseled_helmet", "minecraft:diamond_helmet"},
+            {"extrabitmanipulation:chiseled_chestplate", "minecraft:diamond_chestplate"},
+            {"extrabitmanipulation:chiseled_leggings", "minecraft:diamond_leggings"},
+            {"extrabitmanipulation:chiseled_boots", "minecraft:diamond_boots"},
+            {"extrabitmanipulation:chiseled_helmet_iron", "minecraft:iron_helmet"},
+            {"extrabitmanipulation:chiseled_chestplate_iron", "minecraft:iron_chestplate"},
+            {"extrabitmanipulation:chiseled_leggings_iron", "minecraft:iron_leggings"},
+            {"extrabitmanipulation:chiseled_boots_iron", "minecraft:iron_boots"}
+        };
+        final ListTag items = new ListTag();
+        for (int i = 0; i < replacements.length; i++) {
+            final CompoundTag stack = item(replacements[i][0]);
+            stack.putByte("Slot", (byte) i);
+            items.add(stack);
+        }
+        final CompoundTag retained = item("minecraft:stone");
+        retained.putByte("Slot", (byte) replacements.length);
+        final CompoundTag components = new CompoundTag();
+        final CompoundTag customData = new CompoundTag();
+        customData.putString("marker", "kept");
+        customData.putString("id", "extrabitmanipulation:chiseled_helmet");
+        customData.putInt("count", 1);
+        components.put("minecraft:custom_data", customData);
+        retained.put("components", components);
+        items.add(retained);
+        final CompoundTag shulker = new CompoundTag();
+        shulker.putString("id", "minecraft:shulker_box");
+        shulker.put("Items", items);
+        final ListTag blockEntities = new ListTag();
+        blockEntities.add(shulker);
+        chunk.put("block_entities", blockEntities);
 
         final CompoundTag section = new CompoundTag();
         section.putByte("Y", (byte) 4);
@@ -64,8 +101,34 @@ public final class LegacyBlobCompatibilityCheck {
         LegacyChiseledBlockFix.sanitizeLegacyData(chunk);
 
         require(attributes.size() == 1, "invalid legacy attribute was not removed");
-        require(equipment.get("head") == null, "missing legacy equipment was not removed");
+        require(
+                equipment.getCompoundOrEmpty("head").getStringOr("id", "").equals("minecraft:diamond_helmet"),
+                "legacy armor equipment was not recovered");
         require(equipment.get("chest") != null, "installed equipment was removed");
+        require(equipment.get("feet") == null, "unknown legacy equipment was not removed");
+        require(
+                armorItems.getCompoundOrEmpty(0).getStringOr("id", "").equals("minecraft:diamond_leggings"),
+                "legacy armor stand item was not recovered");
+        require(items.size() == replacements.length + 1, "legacy container items were removed");
+        for (int i = 0; i < replacements.length; i++) {
+            require(
+                    items.getCompoundOrEmpty(i).getStringOr("id", "").equals(replacements[i][1]),
+                    "legacy container armor was not recovered at index " + i);
+        }
+        require(
+                items.getCompoundOrEmpty(replacements.length)
+                        .getCompoundOrEmpty("components")
+                        .getCompoundOrEmpty("minecraft:custom_data")
+                        .getStringOr("marker", "")
+                        .equals("kept"),
+                "installed container item data was changed");
+        require(
+                items.getCompoundOrEmpty(replacements.length)
+                        .getCompoundOrEmpty("components")
+                        .getCompoundOrEmpty("minecraft:custom_data")
+                        .getStringOr("id", "")
+                        .equals("extrabitmanipulation:chiseled_helmet"),
+                "non-item custom data id was changed");
         require(blockStates.getListOrEmpty("palette").size() == 2, "legacy block palette was not compacted");
         final SimpleBitStorage fixedStorage = new SimpleBitStorage(
                 4, VoxelBlob.full_size, blockStates.getLongArray("data").orElseThrow());

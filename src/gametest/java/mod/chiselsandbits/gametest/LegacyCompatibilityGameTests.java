@@ -23,6 +23,7 @@ import net.minecraft.resources.RegistryOps;
 import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.util.datafix.DataFixers;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
@@ -115,6 +116,25 @@ public class LegacyCompatibilityGameTests {
                         .getStringOr("id", ""),
                 "chiselsandbits:chiseled",
                 "legacy item block entity id");
+
+        final CompoundTag fixedArmorItem = fixedPlayer
+                .getListOrEmpty("Inventory")
+                .compoundStream()
+                .filter(stack -> stack.getStringOr("id", "").equals("minecraft:diamond_chestplate"))
+                .findFirst()
+                .orElseThrow();
+        helper.assertValueEqual(
+                fixedArmorItem
+                        .getCompoundOrEmpty("components")
+                        .getCompoundOrEmpty("minecraft:custom_data")
+                        .getCompoundOrEmpty("data")
+                        .getStringOr("migration_marker", ""),
+                "kept",
+                "legacy armor custom data");
+        final ItemStack recoveredArmor = ItemStack.CODEC
+                .parse(RegistryOps.create(NbtOps.INSTANCE, helper.getLevel().registryAccess()), fixedArmorItem)
+                .getOrThrow(AssertionError::new);
+        helper.assertTrue(recoveredArmor.is(Items.DIAMOND_CHESTPLATE), "legacy armor item did not decode");
 
         final ItemStack legacyItem = ItemStack.CODEC
                 .parse(RegistryOps.create(NbtOps.INSTANCE, helper.getLevel().registryAccess()), fixedLegacyItem)
@@ -275,6 +295,19 @@ public class LegacyCompatibilityGameTests {
 
         final ListTag inventory = new ListTag();
         inventory.add(item);
+
+        final CompoundTag armorData = new CompoundTag();
+        armorData.putString("migration_marker", "kept");
+        final CompoundTag armorTag = new CompoundTag();
+        armorTag.put("data", armorData);
+        final CompoundTag armor = new CompoundTag();
+        armor.putByte("Slot", (byte) 1);
+        armor.putString("id", "extrabitmanipulation:chiseled_chestplate");
+        armor.putByte("Count", (byte) 1);
+        armor.putShort("Damage", (short) 0);
+        armor.put("tag", armorTag);
+        inventory.add(armor);
+
         final CompoundTag player = new CompoundTag();
         player.put("Inventory", inventory);
         return player;

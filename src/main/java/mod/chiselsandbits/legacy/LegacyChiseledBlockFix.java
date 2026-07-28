@@ -39,6 +39,15 @@ public final class LegacyChiseledBlockFix {
     private static final String CURRENT_BLOCK_ENTITY = "chiselsandbits:chiseled";
     public static final String CURRENT_BLOCK = "chiselsandbits:chiseled_block";
     private static final int MAX_INFLATED_BLOB_BYTES = 64 * 1024;
+    private static final Map<String, String> LEGACY_ITEM_REPLACEMENTS = Map.of(
+            "extrabitmanipulation:chiseled_helmet", "minecraft:diamond_helmet",
+            "extrabitmanipulation:chiseled_chestplate", "minecraft:diamond_chestplate",
+            "extrabitmanipulation:chiseled_leggings", "minecraft:diamond_leggings",
+            "extrabitmanipulation:chiseled_boots", "minecraft:diamond_boots",
+            "extrabitmanipulation:chiseled_helmet_iron", "minecraft:iron_helmet",
+            "extrabitmanipulation:chiseled_chestplate_iron", "minecraft:iron_chestplate",
+            "extrabitmanipulation:chiseled_leggings_iron", "minecraft:iron_leggings",
+            "extrabitmanipulation:chiseled_boots_iron", "minecraft:iron_boots");
     private static final Snapshot EMPTY = new Snapshot(Map.of(), null);
     private static final Set<String> MISSING_BLOCKS = ConcurrentHashMap.newKeySet();
     private static final ThreadLocal<PendingSnapshot> PENDING_SNAPSHOT = new ThreadLocal<>();
@@ -106,8 +115,19 @@ public final class LegacyChiseledBlockFix {
     }
 
     public static void sanitizeLegacyData(final CompoundTag root) {
-        final int removedEntityEntries =
-                sanitizeEntities(root.getListOrEmpty("entities")) + sanitizeEntities(root.getListOrEmpty("Entities"));
+        final ListTag entities = root.getListOrEmpty("entities");
+        final ListTag legacyEntities = root.getListOrEmpty("Entities");
+        final int recoveredItemEntries = recoverBlockEntityItems(root.getListOrEmpty("block_entities"))
+                + recoverBlockEntityItems(root.getListOrEmpty("TileEntities"))
+                + recoverEntityItems(entities)
+                + recoverEntityItems(legacyEntities);
+        if (recoveredItemEntries > 0) {
+            LOGGER.info(
+                    "Recovered {} legacy Extra Bit Manipulation armor item stacks as matching vanilla armor",
+                    recoveredItemEntries);
+        }
+
+        final int removedEntityEntries = sanitizeEntities(entities) + sanitizeEntities(legacyEntities);
         if (removedEntityEntries > 0) {
             LOGGER.warn("Discarded {} invalid legacy entity attributes or equipment entries", removedEntityEntries);
         }
@@ -170,6 +190,10 @@ public final class LegacyChiseledBlockFix {
 
     public static <T> Dynamic<T> convertItemStack(final Dynamic<T> itemStack) {
         final String id = itemStack.get("id").asString("").toLowerCase(Locale.ROOT);
+        final String replacement = LEGACY_ITEM_REPLACEMENTS.get(id);
+        if (replacement != null) {
+            return itemStack.set("id", itemStack.createString(replacement));
+        }
         if (!id.startsWith("chiselsandbits:chiseled_")) {
             return null;
         }
@@ -367,6 +391,65 @@ public final class LegacyChiseledBlockFix {
             }
         }
         return removed;
+    }
+
+    private static int recoverBlockEntityItems(final ListTag blockEntities) {
+        int recovered = 0;
+        for (final Tag value : blockEntities) {
+            if (value instanceof CompoundTag blockEntity) {
+                recovered += recoverItemList(blockEntity.getListOrEmpty("Items"));
+            }
+        }
+        return recovered;
+    }
+
+    private static int recoverEntityItems(final ListTag entities) {
+        int recovered = 0;
+        for (final Tag value : entities) {
+            if (!(value instanceof CompoundTag entity)) {
+                continue;
+            }
+            recovered += recoverItemList(entity.getListOrEmpty("ArmorItems"));
+            recovered += recoverItemList(entity.getListOrEmpty("HandItems"));
+            recovered += recoverItemList(entity.getListOrEmpty("Inventory"));
+            recovered += recoverItemList(entity.getListOrEmpty("Items"));
+            recovered += recoverItem(entity.get("Item"));
+            recovered += recoverItem(entity.get("item"));
+            recovered += recoverEquipment(entity.get("equipment"));
+            recovered += recoverEntityItems(entity.getListOrEmpty("Passengers"));
+        }
+        return recovered;
+    }
+
+    private static int recoverItemList(final ListTag items) {
+        int recovered = 0;
+        for (final Tag item : items) {
+            recovered += recoverItem(item);
+        }
+        return recovered;
+    }
+
+    private static int recoverEquipment(final Tag value) {
+        int recovered = 0;
+        if (value instanceof CompoundTag equipment) {
+            for (final String slot : equipment.keySet()) {
+                recovered += recoverItem(equipment.get(slot));
+            }
+        }
+        return recovered;
+    }
+
+    private static int recoverItem(final Tag value) {
+        if (!(value instanceof CompoundTag item)) {
+            return 0;
+        }
+        final String replacement =
+                LEGACY_ITEM_REPLACEMENTS.get(item.getStringOr("id", "").toLowerCase(Locale.ROOT));
+        if (replacement == null) {
+            return 0;
+        }
+        item.putString("id", replacement);
+        return 1;
     }
 
     private static int sanitizeEntity(final CompoundTag entity) {
