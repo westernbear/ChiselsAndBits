@@ -128,6 +128,10 @@ public class LegacyCompatibilityGameTests {
                 ModUtil.getStateId(Blocks.STONE.defaultBlockState()),
                 "legacy item stone voxel");
         helper.assertValueEqual(
+                legacyItemData.getBlob().get(7, 8, 9),
+                ModUtil.getStateId(Blocks.COBBLESTONE.defaultBlockState()),
+                "legacy item bodypart template voxel");
+        helper.assertValueEqual(
                 legacyItemData.getBlob().get(15, 15, 15),
                 ModUtil.getStateId(Blocks.WOOL.red().defaultBlockState()),
                 "legacy item metadata voxel");
@@ -147,10 +151,13 @@ public class LegacyCompatibilityGameTests {
     private static void assertVoxelData(final TileEntityBlockChiseled blockEntity, final GameTestHelper helper) {
         final VoxelBlob blob = blockEntity.getBlob();
         helper.assertValueEqual(blob.get(0, 0, 0), ModUtil.getStateId(Blocks.STONE.defaultBlockState()), "stone voxel");
-        helper.assertValueEqual(blob.get(7, 8, 9), 0, "missing mod voxel fallback");
+        helper.assertValueEqual(
+                blob.get(7, 8, 9),
+                ModUtil.getStateId(Blocks.COBBLESTONE.defaultBlockState()),
+                "bodypart template voxel fallback");
         helper.assertValueEqual(
                 blob.get(15, 15, 15), ModUtil.getStateId(Blocks.WOOL.red().defaultBlockState()), "metadata voxel");
-        helper.assertValueEqual(blob.filled(), 2, "filled voxel count");
+        helper.assertValueEqual(blob.filled(), 3, "filled voxel count");
         helper.assertValueEqual(
                 blockEntity.getPrimaryBlockStateId(),
                 ModUtil.getStateId(Blocks.WOOL.red().defaultBlockState()),
@@ -234,7 +241,7 @@ public class LegacyCompatibilityGameTests {
     private static CompoundTag legacyLevelData() {
         final ListTag ids = new ListTag();
         ids.add(registryEntry("chiselsandbits:chiseled_rock", 256));
-        ids.add(registryEntry("missing:gone", 4095));
+        ids.add(registryEntry("extrabitmanipulation:bodypart_template", 4095));
 
         final CompoundTag blockRegistry = new CompoundTag();
         blockRegistry.put("ids", ids);

@@ -345,6 +345,14 @@ public final class LegacyChiseledBlockFix {
             return ModUtil.getStateId(currentBlock.defaultBlockState());
         }
 
+        // Extra Bit Manipulation crafted this placeholder from one cobblestone.
+        if (oldName.equalsIgnoreCase("extrabitmanipulation:bodypart_template")) {
+            if (MISSING_BLOCKS.add(oldName)) {
+                LOGGER.info("Recovered legacy block {} as minecraft:cobblestone", oldName);
+            }
+            return ModUtil.getStateId(Blocks.COBBLESTONE.defaultBlockState());
+        }
+
         if (MISSING_BLOCKS.add(oldName)) {
             LOGGER.warn("Legacy block {} is not installed; affected bits will become air", oldName);
         }
