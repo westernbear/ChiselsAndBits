@@ -283,6 +283,11 @@ public class ChiseledBlockSmartModel extends BaseSmartModel implements ICacheCle
             @NotNull BlockState state,
             @NotNull IModelData modelData) {
 
+        if (Boolean.FALSE.equals(modelData.getData(TileEntityBlockChiseled.MODEL_UPDATE))
+                && modelData.getData(TileEntityBlockChiseled.MODEL_PROP) != null) {
+            return;
+        }
+
         VoxelBlobStateReference data = modelData.getData(TileEntityBlockChiseled.MP_VBSR);
         final VoxelBlob blob = data == null ? null : data.getVoxelBlob();
         Map<ChiselRenderType, LegacyBakedModel> typedModels = new ConcurrentHashMap<>();

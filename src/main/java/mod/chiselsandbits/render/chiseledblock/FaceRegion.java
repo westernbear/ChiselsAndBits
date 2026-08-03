@@ -34,6 +34,23 @@ public class FaceRegion {
         maxZ = centerZ;
     }
 
+    static FaceRegion createRow(
+            final Direction face,
+            final int centerX,
+            final int centerY,
+            final int centerZ,
+            final int blockStateID,
+            final boolean isEdge,
+            final int length) {
+        final FaceRegion region = new FaceRegion(face, centerX, centerY, centerZ, blockStateID, isEdge);
+        if (face.getAxis() == Direction.Axis.X) {
+            region.maxY += (length - 1) * 2;
+        } else {
+            region.maxX += (length - 1) * 2;
+        }
+        return region;
+    }
+
     public int getMinX() {
         return minX;
     }

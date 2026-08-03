@@ -90,6 +90,36 @@ public final class FaceRegionMergeCheck {
         singleton.set(7, 8, 9, 2);
         assertExtraction(singleton, "singleton");
 
+        final VoxelBlob axisEdges = new VoxelBlob();
+        axisEdges.set(0, 0, 0, 3);
+        axisEdges.set(15, 15, 15, 3);
+        axisEdges.set(0, 15, 8, 3);
+        axisEdges.set(15, 0, 7, 3);
+        assertExtraction(axisEdges, "axis edges");
+
+        final VoxelBlob singleStateRandom = new VoxelBlob();
+        final Random singleStateRandomSource = new Random(0xb17);
+        for (int z = 0; z < VoxelBlob.dim; z++) {
+            for (int y = 0; y < VoxelBlob.dim; y++) {
+                for (int x = 0; x < VoxelBlob.dim; x++) {
+                    if (singleStateRandomSource.nextInt(4) == 0) {
+                        singleStateRandom.set(x, y, z, 3);
+                    }
+                }
+            }
+        }
+        assertExtraction(singleStateRandom, "single-state random");
+
+        final VoxelBlob hiddenAirFaces = new VoxelBlob();
+        hiddenAirFaces.fill(1);
+        hiddenAirFaces.set(8, 8, 8, 0);
+        assertExtraction(hiddenAirFaces, "hidden air faces", (state, neighbor) -> false, (state, neighbor) -> false);
+
+        final VoxelBlob staleOccupancyCache = new VoxelBlob();
+        staleOccupancyCache.fill(1);
+        staleOccupancyCache.fillAmount(1, 1);
+        assertExtraction(staleOccupancyCache, "stale occupancy cache");
+
         final VoxelBlob checkerboard = new VoxelBlob();
         for (int z = 0; z < VoxelBlob.dim; z++) {
             for (int y = 0; y < VoxelBlob.dim; y++) {
@@ -110,6 +140,40 @@ public final class FaceRegionMergeCheck {
             }
         }
         assertExtraction(randomBlob, "random");
+
+        final VoxelBlob fourStates = new VoxelBlob();
+        for (int z = 0; z < VoxelBlob.dim; z++) {
+            for (int y = 0; y < VoxelBlob.dim; y++) {
+                for (int x = 0; x < VoxelBlob.dim; x++) {
+                    fourStates.set(x, y, z, (x + 2 * y + 3 * z) % 5);
+                }
+            }
+        }
+        final int[] orderedRow = {1, 1, 2, 2, 1, 1, 0, 3, 3, 4, 4, 1, 0, 2, 3, 4};
+        for (int x = 0; x < orderedRow.length; x++) {
+            fourStates.set(x, 7, 9, orderedRow[x]);
+        }
+        final ICullTest asymmetricCull = (state, neighbor) ->
+                state != 0 && state != neighbor && (neighbor == 0 ? (state & 1) != 0 : state < neighbor);
+        assertExtraction(fourStates, "four states", asymmetricCull, asymmetricCull);
+
+        final VoxelBlob fourStateDense = new VoxelBlob();
+        final Random fourStateRandom = new Random(0x4b17);
+        for (int z = 0; z < VoxelBlob.dim; z++) {
+            for (int y = 0; y < VoxelBlob.dim; y++) {
+                for (int x = 0; x < VoxelBlob.dim; x++) {
+                    fourStateDense.set(x, y, z, fourStateRandom.nextInt(4) + 1);
+                }
+            }
+        }
+        assertExtraction(fourStateDense, "four dense states", asymmetricCull, asymmetricCull);
+
+        final VoxelBlob lateFifthState = new VoxelBlob();
+        for (int index = 0; index < VoxelBlob.full_size; index++) {
+            lateFifthState.set(index & 15, index >>> 4 & 15, index >>> 8 & 15, (index & 3) + 1);
+        }
+        lateFifthState.set(15, 15, 15, 5);
+        assertExtraction(lateFifthState, "late fifth state");
     }
 
     private static void checkCullWorkReduced() {
@@ -123,11 +187,35 @@ public final class FaceRegionMergeCheck {
 
         require(referenceTest.calls == 6 * 15 * 16 * 16, "reference scan must test every interior directed face");
         require(optimizedTest.calls == 0, "equal-state transitions must skip cull calls");
+
+        final VoxelBlob hole = new VoxelBlob();
+        hole.fill(1);
+        hole.set(8, 8, 8, 0);
+        final OrderedCullTest holeTest = new OrderedCullTest();
+        FaceRegionExtractor.extract(hole, holeTest);
+        require(holeTest.calls == 1, "single-state extraction must evaluate state-to-air culling once");
+
+        final VoxelBlob checkerboard = new VoxelBlob();
+        for (int z = 0; z < VoxelBlob.dim; z++) {
+            for (int y = 0; y < VoxelBlob.dim; y++) {
+                for (int x = 0; x < VoxelBlob.dim; x++) {
+                    checkerboard.set(x, y, z, (x + y + z & 1) + 1);
+                }
+            }
+        }
+        final OrderedCullTest paletteTest = new OrderedCullTest();
+        FaceRegionExtractor.extract(checkerboard, paletteTest);
+        require(paletteTest.calls == 2, "two-state extraction must cache both directed cull pairs");
     }
 
     private static void assertExtraction(final VoxelBlob blob, final String label) {
-        final ArrayList<ArrayList<FaceRegion>> expected = reference(blob, new OrderedCullTest());
-        final ArrayList<ArrayList<FaceRegion>> actual = FaceRegionExtractor.extract(blob, new OrderedCullTest());
+        assertExtraction(blob, label, new OrderedCullTest(), new OrderedCullTest());
+    }
+
+    private static void assertExtraction(
+            final VoxelBlob blob, final String label, final ICullTest referenceTest, final ICullTest optimizedTest) {
+        final ArrayList<ArrayList<FaceRegion>> expected = reference(blob, referenceTest);
+        final ArrayList<ArrayList<FaceRegion>> actual = FaceRegionExtractor.extract(blob, optimizedTest);
 
         assertRegionsEqual(expected, actual, label + " row runs");
         mergeAll(expected);

@@ -168,6 +168,25 @@ public final class VoxelBlob implements IVoxelSrc {
         return noneAir;
     }
 
+    public int getSingleNonAirState() {
+        int state = 0;
+        int occupiedCount = 0;
+
+        for (int index = 0; index < array_size; index++) {
+            final int current = values[index];
+            if (current == 0) {
+                continue;
+            }
+            if (state != 0 && state != current) {
+                return -1;
+            }
+            state = current;
+            occupiedCount++;
+        }
+
+        return occupiedCount == noneAir.cardinality() ? state : -1;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) {

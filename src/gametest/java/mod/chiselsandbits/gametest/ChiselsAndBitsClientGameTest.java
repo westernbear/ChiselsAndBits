@@ -1,20 +1,29 @@
 package mod.chiselsandbits.gametest;
 
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import java.util.Map;
 import mod.chiselsandbits.api.IChiselAndBitsAPI;
 import mod.chiselsandbits.api.ModKeyBinding;
 import mod.chiselsandbits.bitbag.BagGui;
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
 import mod.chiselsandbits.chiseledblock.TileEntityBlockChiseled;
+import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
+import mod.chiselsandbits.client.model.baked.LegacyBakedModel;
+import mod.chiselsandbits.client.model.data.ModelDataMap;
 import mod.chiselsandbits.core.ChiselsAndBits;
+import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.printer.ChiselPrinterScreen;
 import mod.chiselsandbits.registry.ModBlocks;
 import mod.chiselsandbits.registry.ModItems;
+import mod.chiselsandbits.render.chiseledblock.ChiselRenderType;
+import mod.chiselsandbits.render.chiseledblock.ChiseledBlockSmartModel;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.world.TestWorldSave;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
 import net.minecraft.core.BlockPos;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 import org.spongepowered.asm.mixin.MixinEnvironment;
@@ -70,6 +79,10 @@ public class ChiselsAndBitsClientGameTest implements FabricClientGameTest {
             context.waitFor(client -> client.level.getBlockState(target).is(ModBlocks.CHISELED_BLOCK.get()));
             waitForSingleBitRemoved(context, singleplayer, target);
             context.takeScreenshot("chiselsandbits_chiseled_block");
+            context.runOnClient(client -> {
+                checkCachedModelDataReuse(client);
+                checkDensePaletteModel(client);
+            });
 
             singleplayer.getServer().runCommand("item replace entity @a[limit=1] hotbar.0 with chiselsandbits:bit_bag");
             context.waitFor(client -> client.player.getMainHandItem().is(ModItems.ITEM_BIT_BAG_DEFAULT.get()));
@@ -114,6 +127,42 @@ public class ChiselsAndBitsClientGameTest implements FabricClientGameTest {
         }
 
         throw new AssertionError("chiseled block did not contain exactly 4095 bits");
+    }
+
+    private static void checkCachedModelDataReuse(final net.minecraft.client.Minecraft client) {
+        final Map<ChiselRenderType, LegacyBakedModel> cachedModels = Map.of();
+        final ModelDataMap modelData = new ModelDataMap();
+        modelData.setData(TileEntityBlockChiseled.MODEL_PROP, cachedModels);
+        modelData.setData(TileEntityBlockChiseled.MODEL_UPDATE, false);
+
+        new ChiseledBlockSmartModel()
+                .updateModelData(client.level, BlockPos.ZERO, Blocks.STONE.defaultBlockState(), modelData);
+        if (modelData.getData(TileEntityBlockChiseled.MODEL_PROP) != cachedModels) {
+            throw new AssertionError("unchanged model data was rebuilt");
+        }
+    }
+
+    private static void checkDensePaletteModel(final net.minecraft.client.Minecraft client) {
+        final int[] states = {
+            ModUtil.getStateId(Blocks.STONE.defaultBlockState()),
+            ModUtil.getStateId(Blocks.DIRT.defaultBlockState()),
+            ModUtil.getStateId(Blocks.COBBLESTONE.defaultBlockState()),
+            ModUtil.getStateId(Blocks.OAK_PLANKS.defaultBlockState())
+        };
+        final VoxelBlob blob = new VoxelBlob();
+        for (int z = 0; z < VoxelBlob.dim; z++) {
+            for (int y = 0; y < VoxelBlob.dim; y++) {
+                for (int x = 0; x < VoxelBlob.dim; x++) {
+                    blob.set(x, y, z, states[(x / 4 + y / 4 + z / 4) & 3]);
+                }
+            }
+        }
+
+        if (ChiseledBlockSmartModel.getCachedModel(
+                        states[0], blob, ChiselRenderType.SOLID, DefaultVertexFormat.BLOCK, RandomSource.create())
+                .isEmpty()) {
+            throw new AssertionError("dense four-state model produced no quads");
+        }
     }
 
     private static String command(final String format, final BlockPos position) {
