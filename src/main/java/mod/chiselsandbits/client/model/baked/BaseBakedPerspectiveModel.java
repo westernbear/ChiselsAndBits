@@ -3,6 +3,7 @@ package mod.chiselsandbits.client.model.baked;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Transformation;
 import mod.chiselsandbits.utils.TransformationUtils;
+import net.minecraft.client.resources.model.cuboid.ItemTransform;
 import net.minecraft.client.resources.model.cuboid.ItemTransforms;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemDisplayContext;
@@ -23,12 +24,28 @@ public abstract class BaseBakedPerspectiveModel implements LegacyBakedModel {
     protected static final Transformation thirdPerson_righthand;
     protected static final Transformation thirdPerson_lefthand;
 
+    private static final ItemTransforms ITEM_TRANSFORMS;
+
     static {
         gui = getMatrix(0, 0, 0, 30, 225, 0, 0.625f);
         ground = getMatrix(0, 3 / 16.0f, 0, 0, 0, 0, 0.25f);
         fixed = getMatrix(0, 0, 0, 0, 0, 0, 0.5f);
         thirdPerson_lefthand = thirdPerson_righthand = getMatrix(0, 2.5f / 16.0f, 0, 75, 45, 0, 0.375f);
         firstPerson_righthand = firstPerson_lefthand = getMatrix(0, 0, 0, 0, 45, 0, 0.40f);
+
+        // ItemTransform.apply() always finishes with translate(-0.5) so models in 0..1
+        // space rotate around their center. These must stay as ItemTransforms rather than
+        // being folded into localTransform, or GUI atlas draws clip to empty slots.
+        ITEM_TRANSFORMS = new ItemTransforms(
+                itemTransform(0, 2.5f / 16.0f, 0, 75, 45, 0, 0.375f),
+                itemTransform(0, 2.5f / 16.0f, 0, 75, 45, 0, 0.375f),
+                itemTransform(0, 0, 0, 0, 45, 0, 0.40f),
+                itemTransform(0, 0, 0, 0, 45, 0, 0.40f),
+                ItemTransform.NO_TRANSFORM,
+                itemTransform(0, 0, 0, 30, 225, 0, 0.625f),
+                itemTransform(0, 3 / 16.0f, 0, 0, 0, 0, 0.25f),
+                itemTransform(0, 0, 0, 0, 0, 0, 0.5f),
+                itemTransform(0, 0, 0, 0, 0, 0, 0.5f));
     }
 
     private static Transformation getMatrix(
@@ -45,9 +62,23 @@ public abstract class BaseBakedPerspectiveModel implements LegacyBakedModel {
         return new Transformation(translation, rotation, scale, null);
     }
 
+    private static ItemTransform itemTransform(
+            final float transX,
+            final float transY,
+            final float transZ,
+            final float rotX,
+            final float rotY,
+            final float rotZ,
+            final float scaleXYZ) {
+        return new ItemTransform(
+                new Vector3f(rotX, rotY, rotZ),
+                new Vector3f(transX, transY, transZ),
+                new Vector3f(scaleXYZ, scaleXYZ, scaleXYZ));
+    }
+
     @Override
     public ItemTransforms getTransforms() {
-        return ItemTransforms.NO_TRANSFORMS;
+        return ITEM_TRANSFORMS;
     }
 
     @Override

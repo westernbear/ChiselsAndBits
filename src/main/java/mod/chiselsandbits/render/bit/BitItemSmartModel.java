@@ -32,6 +32,10 @@ public class BitItemSmartModel extends BaseSmartModel implements ICacheClearable
                 ModItems.ITEM_BLOCK_BIT.get().fillItemCategory(alternativeStacks);
             }
 
+            if (alternativeStacks.isEmpty()) {
+                return this;
+            }
+
             final int alternativeIndex =
                     (int) ((Math.floor(TickHandler.getClientTicks() / 20d)) % alternativeStacks.size());
 

@@ -151,8 +151,10 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
                 ModItems.ITEM_BLOCK_BIT.get().fillItemCategory(alternativeStacks);
             }
 
-            stateID = ItemChiseledBit.getStackState(alternativeStacks.get(
-                    (int) (TickHandler.getClientTicks() % ((alternativeStacks.size() * 20L)) / 20L)));
+            if (!alternativeStacks.isEmpty()) {
+                stateID = ItemChiseledBit.getStackState(alternativeStacks.get(
+                        (int) (TickHandler.getClientTicks() % ((alternativeStacks.size() * 20L)) / 20L)));
+            }
 
             if (stateID == 0) {
                 alternativeStacks.clear();

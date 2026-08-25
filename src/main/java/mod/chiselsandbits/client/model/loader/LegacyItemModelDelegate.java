@@ -69,11 +69,14 @@ public final class LegacyItemModelDelegate implements ItemModel {
             layer.setParticleMaterial(new Material.Baked(particle, false));
         }
 
-        final Matrix4f transform = new Matrix4f(resolved.getItemTransform(displayContext));
+        // Display transforms must go through ItemTransform so GUI atlas rendering
+        // applies the built-in model centering (-0.5) after rotation/scale. Folding the
+        // GUI matrix into localTransform alone rotates around the block corner and clips
+        // bit icons out of the 16x16 atlas slot (empty creative-tab / hotbar icons).
+        layer.setItemTransform(resolved.getTransforms().getTransform(displayContext));
         if (bakeTransformation != null) {
-            transform.mul(bakeTransformation);
+            layer.setLocalTransform(new Matrix4f(bakeTransformation));
         }
-        layer.setLocalTransform(transform);
 
         final Vector3fc[] extents = CuboidItemModelWrapper.computeExtents(quads);
         layer.setExtents(() -> extents);

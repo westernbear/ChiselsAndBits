@@ -2,6 +2,7 @@ package mod.chiselsandbits.gametest;
 
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import mod.chiselsandbits.api.IChiselAndBitsAPI;
 import mod.chiselsandbits.api.ModKeyBinding;
 import mod.chiselsandbits.bitbag.BagGui;
@@ -12,9 +13,11 @@ import mod.chiselsandbits.client.model.baked.LegacyBakedModel;
 import mod.chiselsandbits.client.model.data.ModelDataMap;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.helpers.ModUtil;
+import mod.chiselsandbits.items.ItemChiseledBit;
 import mod.chiselsandbits.printer.ChiselPrinterScreen;
 import mod.chiselsandbits.registry.ModBlocks;
 import mod.chiselsandbits.registry.ModItems;
+import mod.chiselsandbits.render.SmartModelManager;
 import mod.chiselsandbits.render.chiseledblock.ChiselRenderType;
 import mod.chiselsandbits.render.chiseledblock.ChiseledBlockSmartModel;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -22,9 +25,13 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.world.TestWorldSave;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 
@@ -82,9 +89,28 @@ public class ChiselsAndBitsClientGameTest implements FabricClientGameTest {
             context.runOnClient(client -> {
                 checkCachedModelDataReuse(client);
                 checkDensePaletteModel(client);
+                checkBitItemGuiModel(client);
             });
 
+            final int stoneBitState = ModUtil.getStateId(Blocks.STONE.defaultBlockState());
+            singleplayer
+                    .getServer()
+                    .runCommand(
+                            "item replace entity @a[limit=1] hotbar.1 with chiselsandbits:block_bit[chiselsandbits:bit_state=%d]"
+                                    .formatted(stoneBitState));
+            context.waitTicks(5);
+            context.runOnClient(client -> {
+                client.player.getInventory().setSelectedSlot(1);
+                final ItemStack hotbarBit = client.player.getInventory().getItem(1);
+                if (!hotbarBit.is(ModItems.ITEM_BLOCK_BIT.get())) {
+                    throw new AssertionError("hotbar slot 1 did not receive a block bit");
+                }
+                checkBitItemGuiModel(client, hotbarBit);
+            });
+            context.takeScreenshot("chiselsandbits_stone_bit_hotbar");
+
             singleplayer.getServer().runCommand("item replace entity @a[limit=1] hotbar.0 with chiselsandbits:bit_bag");
+            context.runOnClient(client -> client.player.getInventory().setSelectedSlot(0));
             context.waitFor(client -> client.player.getMainHandItem().is(ModItems.ITEM_BIT_BAG_DEFAULT.get()));
             context.getInput().lookAt(0, -90);
             context.waitTick();
@@ -162,6 +188,50 @@ public class ChiselsAndBitsClientGameTest implements FabricClientGameTest {
                         states[0], blob, ChiselRenderType.SOLID, DefaultVertexFormat.BLOCK, RandomSource.create())
                 .isEmpty()) {
             throw new AssertionError("dense four-state model produced no quads");
+        }
+    }
+
+    private static void checkBitItemGuiModel(final net.minecraft.client.Minecraft client) {
+        final int stoneId = ModUtil.getStateId(Blocks.STONE.defaultBlockState());
+        checkBitItemGuiModel(client, ItemChiseledBit.createStack(stoneId, 1, true));
+
+        final ItemStack grassBit =
+                ItemChiseledBit.createStack(ModUtil.getStateId(Blocks.GRASS_BLOCK.defaultBlockState()), 1, true);
+        checkBitItemGuiModel(client, grassBit);
+    }
+
+    private static void checkBitItemGuiModel(final net.minecraft.client.Minecraft client, final ItemStack bit) {
+        final LegacyBakedModel resolved =
+                SmartModelManager.getInstance().resolveLegacyItemModel(bit, client.level, client.player);
+        if (resolved == null
+                || resolved.getQuads(null, null, RandomSource.create()).isEmpty()) {
+            throw new AssertionError("bit legacy model produced no GUI quads for " + bit);
+        }
+
+        final ItemStackRenderState renderState = new ItemStackRenderState();
+        client.getItemModelResolver()
+                .updateForTopItem(renderState, bit, ItemDisplayContext.GUI, client.level, client.player, 0);
+        if (renderState.isEmpty()) {
+            throw new AssertionError("bit ItemStackRenderState is empty in GUI for " + bit);
+        }
+
+        final AtomicInteger extentCount = new AtomicInteger();
+        renderState.visitExtents(extent -> extentCount.incrementAndGet());
+        if (extentCount.get() == 0) {
+            throw new AssertionError("bit GUI model has no extents for " + bit);
+        }
+
+        final AABB bounds = renderState.getModelBoundingBox();
+        if (bounds.getXsize() <= 0 || bounds.getYsize() <= 0 || bounds.getZsize() <= 0) {
+            throw new AssertionError("bit GUI model has degenerate bounds for " + bit + ": " + bounds);
+        }
+        // GuiItemAtlas centers items around the slot; geometry must stay near the origin
+        // after ItemTransform centering. Corner-pivoted transforms push bits outside the
+        // 16x16 atlas scissor and show up as empty inventory icons (#1).
+        if (Math.abs(bounds.getCenter().x) > 0.75
+                || Math.abs(bounds.getCenter().y) > 0.75
+                || Math.abs(bounds.getCenter().z) > 0.75) {
+            throw new AssertionError("bit GUI model is not centered for atlas blit: " + bounds);
         }
     }
 
