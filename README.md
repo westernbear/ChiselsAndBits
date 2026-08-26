@@ -32,15 +32,3 @@ The mod jar is written to `build/libs/`.
 # Client GameTests (headless UI / item-model checks)
 ./gradlew runClientGametest
 ```
-
-## Issue #1 — empty Block bit GUI icons
-
-Minecraft 26.2 draws inventory icons through `GuiItemAtlas`, which applies
-`ItemTransform` (including a built-in `-0.5` model center) before the bake
-`localTransform`. C&B was folding the GUI perspective matrix into
-`localTransform` only, so bits rotated around the block corner and were clipped
-out of the 16×16 atlas slot — tooltips still worked, but icons looked empty.
-
-The fix routes display transforms through `ItemTransform` again and keeps only
-the bake matrix in `localTransform`. Client GameTests assert bit GUI models stay
-centered and capture a hotbar screenshot.
