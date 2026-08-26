@@ -73,6 +73,7 @@ public final class VoxelBlob implements IVoxelSrc {
      * during ghost previews before the first chiseled model bake).
      */
     private static volatile Map<Object, BitSet> layerFilters = Map.of();
+
     private static final int VERSION_COMPACT = 0; // stored meta.
     private static final int VERSION_CROSSWORLD_LEGACY = 1; // stored meta.
     private static final Logger log = LoggerFactory.getLogger(VoxelBlob.class);
