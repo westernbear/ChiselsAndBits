@@ -67,6 +67,7 @@ import mod.chiselsandbits.render.SmartModelManager;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.FabricRenderState;
 import net.fabricmc.fabric.api.client.rendering.v1.RenderStateDataKey;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext;
@@ -306,7 +307,10 @@ public class ClientSide {
 
     private KeyMapping registerKeybind(
             final String bindingName, final InputConstants.Key defaultKey, final String groupName) {
-        return new KeyMapping(bindingName, defaultKey.getType(), defaultKey.getValue(), KEY_CATEGORY);
+        // Fabric only shows bindings in Options when they are registered through KeyMappingHelper.
+        // Creating a bare KeyMapping leaves the Controls category empty even though the objects exist.
+        return KeyMappingHelper.registerKeyMapping(
+                new KeyMapping(bindingName, defaultKey.getType(), defaultKey.getValue(), KEY_CATEGORY));
     }
 
     public void postInit() {

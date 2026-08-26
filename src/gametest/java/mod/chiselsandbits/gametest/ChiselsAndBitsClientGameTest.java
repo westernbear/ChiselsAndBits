@@ -1,7 +1,9 @@
 package mod.chiselsandbits.gametest;
 
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import mod.chiselsandbits.api.IChiselAndBitsAPI;
 import mod.chiselsandbits.api.ModKeyBinding;
@@ -24,6 +26,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.world.TestWorldSave;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.core.BlockPos;
@@ -47,6 +50,27 @@ public class ChiselsAndBitsClientGameTest implements FabricClientGameTest {
             for (final ModKeyBinding binding : ModKeyBinding.values()) {
                 if (api.getKeyBinding(binding) == null) {
                     throw new AssertionError("missing key binding: " + binding);
+                }
+            }
+            // Options only lists Fabric-registered KeyMappings. Creating KeyMapping objects without
+            // KeyMappingHelper.registerKeyMapping leaves the Controls category empty.
+            final Set<String> optionNames = new HashSet<>();
+            for (final KeyMapping mapping : client.options.keyMappings) {
+                optionNames.add(mapping.getName());
+            }
+            for (final String expected : new String[] {
+                "mod.chiselsandbits.other.mode",
+                "mod.chiselsandbits.other.rotate.ccw",
+                "mod.chiselsandbits.other.rotate.cw",
+                "mod.chiselsandbits.other.pickbit",
+                "mod.chiselsandbits.other.offgrid",
+                "mod.chiselsandbits.other.undo",
+                "mod.chiselsandbits.other.redo",
+                "mod.chiselsandbits.other.add_to_clipboard",
+                "mod.chiselsandbits.chiselmode.single"
+            }) {
+                if (!optionNames.contains(expected)) {
+                    throw new AssertionError("key binding not registered in Options: " + expected);
                 }
             }
             ChiselsAndBits.getConfig().getClient().onUpdateClient();

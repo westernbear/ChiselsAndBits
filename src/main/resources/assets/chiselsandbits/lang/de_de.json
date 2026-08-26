@@ -1,6 +1,7 @@
 {
   "itemGroup.chiselsandbits": "Chisels & Bits",
   "itemGroup.chiselsandbits.Clipboard": "Chisels & Bits Clipboard",
+  "key.category.chiselsandbits.main": "Chisels & Bits",
   "block.chiselsandbits.chiseled_wood": "Gemeißeltes Holz",
   "block.chiselsandbits.chiseled_rock": "Gemeißelter Stein",
   "block.chiselsandbits.chiseled_iron": "Gemeißeltes Metall",
