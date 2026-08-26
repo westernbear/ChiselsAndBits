@@ -11,6 +11,7 @@ import mod.chiselsandbits.bitbag.BagGui;
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
 import mod.chiselsandbits.chiseledblock.TileEntityBlockChiseled;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
+import mod.chiselsandbits.client.RenderHelper;
 import mod.chiselsandbits.client.model.baked.LegacyBakedModel;
 import mod.chiselsandbits.client.model.data.ModelDataMap;
 import mod.chiselsandbits.core.ChiselsAndBits;
@@ -21,6 +22,7 @@ import mod.chiselsandbits.registry.ModBlocks;
 import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.render.SmartModelManager;
 import mod.chiselsandbits.render.chiseledblock.ChiselRenderType;
+import mod.chiselsandbits.render.chiseledblock.ChiseledBlockBakedModel;
 import mod.chiselsandbits.render.chiseledblock.ChiseledBlockSmartModel;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -114,6 +116,7 @@ public class ChiselsAndBitsClientGameTest implements FabricClientGameTest {
                 checkCachedModelDataReuse(client);
                 checkDensePaletteModel(client);
                 checkBitItemGuiModel(client);
+                checkShowGhostCrashPaths(client);
             });
 
             final int stoneBitState = ModUtil.getStateId(Blocks.STONE.defaultBlockState());
@@ -212,6 +215,53 @@ public class ChiselsAndBitsClientGameTest implements FabricClientGameTest {
                         states[0], blob, ChiselRenderType.SOLID, DefaultVertexFormat.BLOCK, RandomSource.create())
                 .isEmpty()) {
             throw new AssertionError("dense four-state model produced no quads");
+        }
+    }
+
+    /**
+     * Reproduces the two showGhost() NPEs from issue #1: empty layerFilters during filter, and
+     * packed tint lookup against the wrong block state for tinted materials (grass / stained glass).
+     */
+    private static void checkShowGhostCrashPaths(final net.minecraft.client.Minecraft client) {
+        // Force the empty-cache path that ghost previews hit before any chiseled model bake.
+        VoxelBlob.clearCache();
+
+        final int glassId = ModUtil.getStateId(Blocks.STAINED_GLASS.red().defaultBlockState());
+        final VoxelBlob glassBlob = new VoxelBlob();
+        glassBlob.fill(glassId);
+
+        for (final ChiselRenderType layer : ChiselRenderType.values()) {
+            final VoxelBlob filtered = new VoxelBlob(glassBlob);
+            // Must not NPE when layerFilters was cleared / never built.
+            layer.filter(filtered);
+        }
+
+        final ChiseledBlockBakedModel glassModel = new ChiseledBlockBakedModel(
+                glassId, ChiselRenderType.TRANSLUCENT, glassBlob, DefaultVertexFormat.BLOCK);
+        if (glassModel.isEmpty()) {
+            throw new AssertionError("stained-glass ghost model produced no quads");
+        }
+
+        final int grassId = ModUtil.getStateId(Blocks.GRASS_BLOCK.defaultBlockState());
+        final VoxelBlob grassBlob = new VoxelBlob();
+        grassBlob.fill(grassId);
+        final ChiseledBlockBakedModel grassModel =
+                new ChiseledBlockBakedModel(grassId, ChiselRenderType.SOLID, grassBlob, DefaultVertexFormat.BLOCK);
+        if (grassModel.isEmpty()) {
+            throw new AssertionError("grass ghost model produced no quads");
+        }
+
+        // prepareModel -> getTint must accept packed tint indices without NPE.
+        final RenderHelper.PreparedModel prepared =
+                RenderHelper.prepareModel(grassModel, client.level, BlockPos.ZERO, 0xaa000000);
+        if (prepared == null) {
+            throw new AssertionError("prepareModel returned null for tinted grass ghost");
+        }
+
+        final int packedTint = (grassId << 8) | 0;
+        final int tint = RenderHelper.getTint(0xaa000000, packedTint, client.level, BlockPos.ZERO);
+        if ((tint >>> 24) != 0xaa) {
+            throw new AssertionError("getTint dropped packed alpha: " + Integer.toHexString(tint));
         }
     }
 

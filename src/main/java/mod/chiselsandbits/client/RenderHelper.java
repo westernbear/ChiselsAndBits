@@ -9,7 +9,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 import mod.chiselsandbits.client.model.baked.LegacyBakedModel;
-import mod.chiselsandbits.registry.ModBlocks;
+import mod.chiselsandbits.helpers.ModUtil;
 import net.fabricmc.fabric.api.client.rendering.v1.FabricOrderedSubmitNodeCollector;
 import net.fabricmc.fabric.api.client.rendering.v1.SubmitRenderPhases;
 import net.minecraft.client.Minecraft;
@@ -32,6 +32,7 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -298,12 +299,23 @@ public final class RenderHelper {
         }
     }
 
-    public static int getTint(final int alpha, final int tintIndex, final Level world, final BlockPos blockPos) {
+    /**
+     * Resolves a packed C&amp;B tint ({@code stateId << 8 | localTint}) the same way item/block
+     * smart models do. Looking up the packed index against the chiseled default state returned null
+     * for tinted materials (FCB, stained glass) and crashed ghost previews.
+     */
+    public static int getTint(final int alpha, final int packedTint, final Level world, final BlockPos blockPos) {
+        final BlockState containedState = ModUtil.getStateById(packedTint >>> 8);
+        final int tintIndex = packedTint & 0xff;
         final BlockTintSource tintSource =
-                Minecraft.getInstance().getBlockColors().getTintSource(ModBlocks.getChiseledDefaultState(), tintIndex);
+                Minecraft.getInstance().getBlockColors().getTintSource(containedState, tintIndex);
+        if (tintSource == null) {
+            return ARGB.color(alpha >>> 24, 255, 255, 255);
+        }
+
         final int tint = world instanceof BlockAndTintGetter tintWorld
-                ? tintSource.colorInWorld(ModBlocks.getChiseledDefaultState(), tintWorld, blockPos)
-                : tintSource.color(ModBlocks.getChiseledDefaultState());
+                ? tintSource.colorInWorld(containedState, tintWorld, blockPos)
+                : tintSource.color(containedState);
         return ARGB.color(alpha >>> 24, ARGB.red(tint), ARGB.green(tint), ARGB.blue(tint));
     }
 
