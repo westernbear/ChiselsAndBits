@@ -313,6 +313,29 @@ public class ClientSide {
                 new KeyMapping(bindingName, defaultKey.getType(), defaultKey.getValue(), KEY_CATEGORY));
     }
 
+    /**
+     * Radial-menu hold detection that survives Screen open / KeyMapping.releaseAll().
+     * KeyMapping.isDown() is cleared when the menu Screen opens, so we query the raw bind instead.
+     */
+    private boolean isRadialMenuKeyHeld() {
+        if (modeMenu.isUnbound()) {
+            return false;
+        }
+
+        final InputConstants.Key key = KeyMappingHelper.getBoundKeyOf(modeMenu);
+        if (key == InputConstants.UNKNOWN) {
+            return false;
+        }
+
+        final Minecraft minecraft = Minecraft.getInstance();
+        if (key.getType() == InputConstants.Type.MOUSE) {
+            return org.lwjgl.glfw.GLFW.glfwGetMouseButton(minecraft.getWindow().handle(), key.getValue())
+                    == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+        }
+
+        return InputConstants.isKeyDown(minecraft.getWindow(), key.getValue());
+    }
+
     public void postInit() {
         readyState = readyState.updateState(ReadyState.TRIGGER_POST);
     }
@@ -331,7 +354,10 @@ public class ClientSide {
         if (type == OverlayRenderCallback.Types.CROSSHAIRS && tool != null && tool.hasMenu()) {
             final boolean wasVisible = ChiselsAndBitsMenu.instance.isVisible();
 
-            if (!modeMenu.isUnbound() && modeMenu.isDown()) {
+            // Use the raw keyboard/mouse state while the radial menu is up. Opening a Screen (and the
+            // old KeyMapping.releaseAll() call) clears KeyMapping "down" flags even though the key is
+            // still held, which made the menu open/close every frame and left the cursor stuck.
+            if (isRadialMenuKeyHeld()) {
                 ChiselsAndBitsMenu.instance.actionUsed = false;
                 if (ChiselsAndBitsMenu.instance.raiseVisibility()) {
                     Minecraft.getInstance().mouseHandler.releaseMouse();
@@ -417,19 +443,11 @@ public class ClientSide {
                     Minecraft.getInstance().gui.setScreen(ChiselsAndBitsMenu.instance);
                     Minecraft.getInstance().mouseHandler.releaseMouse();
                 }
-
-                if (Minecraft.getInstance().mouseHandler.isMouseGrabbed()) {
-                    KeyMapping.releaseAll();
+            } else if (wasVisible) {
+                if (Minecraft.getInstance().gui.screen() == ChiselsAndBitsMenu.instance) {
+                    Minecraft.getInstance().gui.setScreen(null);
                 }
-                /*
-                final int k1 = (int) (Minecraft.getInstance().mouseHelper.getMouseX() * window.getScaledWidth() / window.getWidth());
-                final int l1 = (int) (window.getScaledHeight() - Minecraft.getInstance().mouseHelper.getMouseY() * window.getScaledHeight() / window.getHeight() - 1);
-
-                net.minecraftforge.client.ForgeHooksClient.drawScreen(ChiselsAndBitsMenu.instance, event.getMatrixStack(), k1, l1, event.getPartialTicks());*/
-            } else {
-                if (wasVisible) {
-                    Minecraft.getInstance().mouseHandler.grabMouse();
-                }
+                Minecraft.getInstance().mouseHandler.grabMouse();
             }
         }
 

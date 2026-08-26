@@ -66,6 +66,17 @@ public class ChiselsAndBitsMenu extends Screen {
         return visibility > 0.001;
     }
 
+    @Override
+    public boolean isPauseScreen() {
+        // Keep the world ticking and avoid extra pause-screen input resets while holding the menu key.
+        return false;
+    }
+
+    @Override
+    public boolean shouldCloseOnEsc() {
+        return true;
+    }
+
     public void configure(final int scaledWidth, final int scaledHeight) {
         width = scaledWidth;
         height = scaledHeight;
