@@ -67,7 +67,12 @@ public final class VoxelBlob implements IVoxelSrc {
     public static final int VERSION_COMPACT_PALLETED = 3;
     static final int SHORT_BYTES = Short.SIZE / 8;
     private static final BitSet fluidFilterState;
-    private static final Map<Object, BitSet> layerFilters = new HashMap<>();
+    /**
+     * Client render-layer membership for state ids. Replaced atomically on rebuild so readers never
+     * observe a half-cleared map (which previously caused NPEs in {@link #filter}/{@link #simulateFilter}
+     * during ghost previews before the first chiseled model bake).
+     */
+    private static volatile Map<Object, BitSet> layerFilters = Map.of();
     private static final int VERSION_COMPACT = 0; // stored meta.
     private static final int VERSION_CROSSWORLD_LEGACY = 1; // stored meta.
     private static final Logger log = LoggerFactory.getLogger(VoxelBlob.class);
@@ -118,12 +123,10 @@ public final class VoxelBlob implements IVoxelSrc {
 
     @Environment(EnvType.CLIENT)
     private static void updateCacheClient() {
-        layerFilters.clear();
-
-        final Map<Object, BitSet> layerFilters = VoxelBlob.layerFilters;
+        final Map<Object, BitSet> rebuilt = new HashMap<>();
 
         for (final ChunkSectionLayer layer : ChunkSectionLayer.values()) {
-            layerFilters.put(layer, new BitSet(4096));
+            rebuilt.put(layer, new BitSet());
         }
         final var blockReg = BuiltInRegistries.BLOCK;
         for (final Block block : blockReg) {
@@ -138,7 +141,7 @@ public final class VoxelBlob implements IVoxelSrc {
                 }
 
                 for (final ChiselRenderType renderType : ModUtil.getRenderType(state)) {
-                    layerFilters.get(renderType.layer).set(id);
+                    rebuilt.get(renderType.layer).set(id);
                 }
             }
         }
@@ -151,9 +154,36 @@ public final class VoxelBlob implements IVoxelSrc {
                         .getFluidStateModelSet()
                         .get(state)
                         .layer();
-                layerFilters.get(layer).set(id);
+                final BitSet layerBits = rebuilt.get(layer);
+                if (layerBits != null) {
+                    layerBits.set(id);
+                }
             }
         }
+
+        layerFilters = Map.copyOf(rebuilt);
+    }
+
+    /**
+     * Ensures client layer filters exist. Ghost previews can run before any chiseled block model has
+     * triggered {@link #clearCache()}, which previously left {@code layerFilters} empty.
+     */
+    @Environment(EnvType.CLIENT)
+    private static BitSet layerFilterOrEmpty(final ChunkSectionLayer layer) {
+        BitSet filter = layerFilters.get(layer);
+        if (filter != null) {
+            return filter;
+        }
+
+        synchronized (VoxelBlob.class) {
+            filter = layerFilters.get(layer);
+            if (filter == null) {
+                updateCacheClient();
+                filter = layerFilters.get(layer);
+            }
+        }
+
+        return filter != null ? filter : new BitSet();
     }
 
     public static int getDataIndex(final int x, final int y, final int z) {
@@ -824,8 +854,7 @@ public final class VoxelBlob implements IVoxelSrc {
     }
 
     public boolean simulateFilter(final ChunkSectionLayer layer) {
-        final BitSet layerFilterState = layerFilters.get(layer);
-        boolean hasValues = false;
+        final BitSet layerFilterState = layerFilterOrEmpty(layer);
 
         for (int x = 0; x < array_size; x++) {
             final int ref = values[x];
@@ -838,11 +867,11 @@ public final class VoxelBlob implements IVoxelSrc {
             }
         }
 
-        return hasValues;
+        return false;
     }
 
     public boolean filter(final ChunkSectionLayer layer) {
-        final BitSet layerFilterState = layerFilters.get(layer);
+        final BitSet layerFilterState = layerFilterOrEmpty(layer);
         boolean hasValues = false;
 
         for (int x = 0; x < array_size; x++) {
