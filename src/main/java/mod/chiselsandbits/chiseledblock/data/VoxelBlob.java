@@ -168,7 +168,6 @@ public final class VoxelBlob implements IVoxelSrc {
      * Ensures client layer filters exist. Ghost previews can run before any chiseled block model has
      * triggered {@link #clearCache()}, which previously left {@code layerFilters} empty.
      */
-    @Environment(EnvType.CLIENT)
     private static BitSet layerFilterOrEmpty(final ChunkSectionLayer layer) {
         BitSet filter = layerFilters.get(layer);
         if (filter != null) {
@@ -178,7 +177,7 @@ public final class VoxelBlob implements IVoxelSrc {
         synchronized (VoxelBlob.class) {
             filter = layerFilters.get(layer);
             if (filter == null) {
-                updateCacheClient();
+                EnvExecutor.runWhenOn(EnvType.CLIENT, () -> VoxelBlob::updateCacheClient);
                 filter = layerFilters.get(layer);
             }
         }
