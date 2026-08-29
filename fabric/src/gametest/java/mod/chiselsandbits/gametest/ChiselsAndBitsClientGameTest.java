@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import mod.chiselsandbits.api.IChiselAndBitsAPI;
+import mod.chiselsandbits.api.IChiselAndBitsClientAPI;
 import mod.chiselsandbits.api.ModKeyBinding;
 import mod.chiselsandbits.bitbag.BagGui;
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
@@ -49,8 +50,9 @@ public class ChiselsAndBitsClientGameTest implements FabricClientGameTest {
             if (api != ChiselsAndBits.getApi()) {
                 throw new AssertionError("API singleton accessor returned another instance");
             }
+            final IChiselAndBitsClientAPI clientApi = IChiselAndBitsClientAPI.getInstance();
             for (final ModKeyBinding binding : ModKeyBinding.values()) {
-                if (api.getKeyBinding(binding) == null) {
+                if (clientApi.getKeyBinding(binding) == null) {
                     throw new AssertionError("missing key binding: " + binding);
                 }
             }
