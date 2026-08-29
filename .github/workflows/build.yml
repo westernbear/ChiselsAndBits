@@ -23,11 +23,28 @@ jobs:
           distribution: 'temurin'
       - name: build ${{ matrix.loader }}
         run: ./gradlew :${{ matrix.loader }}:build
+      - name: select ${{ matrix.loader }} release jar
+        env:
+          LOADER: ${{ matrix.loader }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-jars
+          mod_version="$(sed -n 's/^mod_version=//p' gradle.properties)"
+          mc_version="$(sed -n 's/^minecraft_version=//p' gradle.properties)"
+          jar="${LOADER}/build/libs/chiselsandbits-${LOADER}-${mod_version}+${mc_version}.jar"
+          if [[ ! -f "$jar" ]]; then
+            echo "Missing release jar: $jar" >&2
+            ls -la "${LOADER}/build/libs" >&2 || true
+            exit 1
+          fi
+          cp "$jar" "release-jars/"
+          echo "Selected $jar"
       - name: capture ${{ matrix.loader }} artifacts
         uses: actions/upload-artifact@v4
         with:
           name: chiselsandbits-${{ matrix.loader }}
-          path: ${{ matrix.loader }}/build/libs/
+          path: release-jars/*.jar
+          if-no-files-found: error
 
   fabric-gametest:
     needs: build
@@ -66,4 +83,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: gh release create "$GITHUB_REF_NAME" artifacts/**/*.jar --verify-tag --generate-notes
+        run: |
+          set -euo pipefail
+          fabric_jars=(artifacts/fabric/*.jar)
+          neoforge_jars=(artifacts/neoforge/*.jar)
+          if (( ${#fabric_jars[@]} != 1 )) || [[ ! -f "${fabric_jars[0]}" ]]; then
+            echo "Expected one Fabric jar under artifacts/fabric, found: ${fabric_jars[*]:-}" >&2
+            exit 1
+          fi
+          if (( ${#neoforge_jars[@]} != 1 )) || [[ ! -f "${neoforge_jars[0]}" ]]; then
+            echo "Expected one NeoForge jar under artifacts/neoforge, found: ${neoforge_jars[*]:-}" >&2
+            exit 1
+          fi
+          echo "Publishing:"
+          echo "  fabric:   ${fabric_jars[0]}"
+          echo "  neoforge: ${neoforge_jars[0]}"
+          gh release create "$GITHUB_REF_NAME" \
+            "${fabric_jars[0]}" \
+            "${neoforge_jars[0]}" \
+            --verify-tag \
+            --generate-notes

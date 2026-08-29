@@ -178,7 +178,7 @@ public final class VoxelBlob implements IVoxelSrc {
         synchronized (VoxelBlob.class) {
             filter = layerFilters.get(layer);
             if (filter == null) {
-                EnvExecutor.runWhenOn(EnvType.CLIENT, () -> VoxelBlob::updateCacheClient);
+                EnvExecutor.runWhenOn(Env.CLIENT, () -> VoxelBlob::updateCacheClient);
                 filter = layerFilters.get(layer);
             }
         }
