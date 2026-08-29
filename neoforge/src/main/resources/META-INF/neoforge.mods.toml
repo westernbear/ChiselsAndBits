@@ -1,0 +1,31 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "LGPLv3"
+
+[[mods]]
+modId = "chiselsandbits"
+version = "${version}"
+displayName = "ChiselsAndBits"
+description = "A mod about sculpting, decorating and aesthetics. Multiloader port for Fabric and NeoForge."
+authors = "OrionOnline, LDTTeam, AlgorithmX2, singlerr"
+
+[[dependencies.chiselsandbits]]
+modId = "neoforge"
+type = "required"
+versionRange = "[26.2,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.chiselsandbits]]
+modId = "minecraft"
+type = "required"
+versionRange = "[26.2,26.3)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.chiselsandbits]]
+modId = "architectury"
+type = "required"
+versionRange = "[21.0.7,)"
+ordering = "AFTER"
+side = "BOTH"

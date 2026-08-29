@@ -1,0 +1,99 @@
+plugins {
+	id 'net.neoforged.moddev' version '2.0.140'
+	id 'com.gradleup.shadow'
+}
+
+dependencies {
+	implementation project(':common')
+	implementation "dev.architectury:architectury-neoforge:${rootProject.architectury_version}"
+
+	implementation("me.fzzyhmstrs:fzzy_config:${rootProject.fzzy_config_version}") {
+		exclude group: 'com.terraformersmc', module: 'modmenu'
+	}
+}
+
+sourceSets {
+	gametest {
+		compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+		runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+	}
+}
+
+configurations {
+	gametestImplementation.extendsFrom implementation
+	gametestRuntimeOnly.extendsFrom runtimeOnly
+
+	shadowBundle {
+		canBeResolved = true
+		canBeConsumed = false
+	}
+}
+
+dependencies {
+	shadowBundle project(':common')
+	shadowBundle "dev.architectury:architectury-neoforge:${rootProject.architectury_version}"
+	shadowBundle("me.fzzyhmstrs:fzzy_config:${rootProject.fzzy_config_version}") {
+		exclude group: 'com.terraformersmc', module: 'modmenu'
+	}
+}
+
+neoForge {
+	enable {
+		version = rootProject.neoforge_version
+	}
+
+	validateAccessTransformers = true
+
+	mods {
+		chiselsandbits {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.gametest
+		}
+	}
+
+	runs {
+		client {
+			client()
+			programArguments.addAll('--username', 'Dev')
+		}
+
+		server {
+			server()
+		}
+
+		gametest {
+			type = 'gameTestServer'
+			sourceSet = sourceSets.gametest
+		}
+	}
+}
+
+processResources {
+	inputs.property 'version', project.version
+	filesMatching('META-INF/neoforge.mods.toml') {
+		expand 'version': project.version
+	}
+}
+
+jar {
+	archiveClassifier = 'raw'
+	from('LICENSE') {
+		rename { "${it}_${project.base.archivesName.get()}" }
+	}
+}
+
+shadowJar {
+	dependsOn jar
+	mainSpec.sourcePaths.clear()
+	from(zipTree(jar.archiveFile))
+	configurations = [
+		project.configurations.shadowBundle
+	]
+	archiveClassifier = null
+}
+
+assemble.dependsOn shadowJar
+
+tasks.named('compileJava').configure {
+	dependsOn ':common:classes'
+}

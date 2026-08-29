@@ -1,167 +1,64 @@
 plugins {
-	id 'net.fabricmc.fabric-loom' version "${loom_version}"
-	id 'com.diffplug.spotless' version "${spotless_version}"
+	id 'architectury-plugin' version "${architectury_plugin_version}"
+	id 'dev.architectury.loom-no-remap' version "${loom_version}" apply false
+	id 'com.diffplug.spotless' version "${spotless_version}" apply false
+	id 'com.gradleup.shadow' version '9.4.2' apply false
 }
 
-version = "${project.mod_version}+${project.minecraft_version}"
-group = project.maven_group
-
-base {
-	archivesName = project.archives_base_name
+architectury {
+	minecraft = rootProject.minecraft_version
 }
 
-sourceSets {
-	gametest {
-		compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
-		runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+allprojects {
+	group = rootProject.maven_group
+	version = rootProject.mod_version
+}
+
+subprojects {
+	apply plugin: 'java'
+	apply plugin: 'architectury-plugin'
+	apply plugin: 'com.diffplug.spotless'
+
+	if (project.name != 'neoforge') {
+		apply plugin: 'dev.architectury.loom-no-remap'
 	}
-}
 
-configurations {
-	gametestImplementation.extendsFrom implementation
-	gametestRuntimeOnly.extendsFrom runtimeOnly
-}
-
-repositories {
-	mavenCentral()
-	maven {
-		name = 'Fabric'
-		url = 'https://maven.fabricmc.net/'
+	base {
+		archivesName = "${rootProject.archives_base_name}-${project.name}"
 	}
-	maven {
-		name = 'Fzzy Config'
-		url = 'https://maven.fzzyhmstrs.me/'
+
+	version = "${rootProject.mod_version}+${rootProject.minecraft_version}"
+
+	repositories {
+		mavenCentral()
+		maven { url = 'https://maven.architectury.dev/' }
+		maven { url = 'https://maven.fabricmc.net/' }
+		maven { url = 'https://maven.neoforged.net/releases' }
+		maven { url = 'https://maven.fzzyhmstrs.me/' }
 	}
-}
 
-loom {
-	accessWidenerPath = file('src/main/resources/chiselsandbits.accesswidener')
-
-	mods {
-		chiselsandbits {
-			sourceSet sourceSets.main
-		}
-		chiselsandbits_test {
-			sourceSet sourceSets.gametest
+	dependencies {
+		if (project.name != 'neoforge') {
+			minecraft "com.mojang:minecraft:${rootProject.minecraft_version}"
 		}
 	}
 
-	runs {
-
-		client {
-
-			property 'mixin.debug', 'true'
-			programArgs '--username', 'Dev'
-
-			ideConfigGenerated = true
-			runDir = 'run-client'
-		}
-
-		server {
-
-			property 'mixin.debug', 'true'
-			runDir = 'run-server'
-
-			ideConfigGenerated = true
-		}
-
-		gametest {
-			inherit server
-			name = 'Game Test'
-			source sourceSets.gametest
-			vmArg '-Dfabric-api.gametest'
-			vmArg "-Dfabric-api.gametest.report-file=${layout.buildDirectory.file('gametest-report.xml').get().asFile}"
-			runDir = 'build/gametest'
-			ideConfigGenerated = true
-		}
-
-		clientGametest {
-			inherit client
-			name = 'Client Game Test'
-			source sourceSets.gametest
-			vmArg '-Dfabric.client.gametest'
-			runDir = 'build/client-gametest'
-			ideConfigGenerated = true
-		}
-	}
-}
-
-
-dependencies {
-	// Minecraft 26.2 ships named Mojang classes; no Yarn mapping artifact exists for this version.
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-
-	implementation("me.fzzyhmstrs:fzzy_config:${fzzy_config_version}") {
-		exclude group: 'com.terraformersmc', module: 'modmenu'
-	}
-	compileOnly "net.peanuuutz.tomlkt:tomlkt-jvm:0.3.7" // Bundled by Fzzy Config at runtime.
-}
-
-processResources {
-	inputs.property "version", project.version
-	filesMatching("fabric.mod.json") {
-		expand "version": project.version
-	}
-}
-
-tasks.withType(JavaCompile).configureEach {
-	it.options.release = 25
-}
-
-def faceRegionMergeCheck = tasks.register("faceRegionMergeCheck", JavaExec) {
-	dependsOn testClasses
-	classpath = sourceSets.test.runtimeClasspath
-	mainClass = "mod.chiselsandbits.render.chiseledblock.FaceRegionMergeCheck"
-}
-
-def legacyBlobCompatibilityCheck = tasks.register("legacyBlobCompatibilityCheck", JavaExec) {
-	dependsOn testClasses
-	classpath = sourceSets.test.runtimeClasspath
-	mainClass = "mod.chiselsandbits.mixin.LegacyBlobCompatibilityCheck"
-}
-
-def legacyConfigurationMigrationCheck = tasks.register("legacyConfigurationMigrationCheck", JavaExec) {
-	dependsOn testClasses
-	classpath = sourceSets.test.runtimeClasspath
-	mainClass = "mod.chiselsandbits.config.LegacyConfigurationMigrationCheck"
-}
-
-tasks.named("test") {
-	failOnNoDiscoveredTests.set(false)
-}
-
-tasks.named("check") {
-	dependsOn faceRegionMergeCheck
-	dependsOn legacyBlobCompatibilityCheck
-	dependsOn legacyConfigurationMigrationCheck
-	dependsOn tasks.named("runGametest")
-}
-
-javadoc{
-	failOnError = false
-}
-
-java {
-	withSourcesJar()
-	withJavadocJar()
-	sourceCompatibility = JavaVersion.VERSION_25
-	targetCompatibility = JavaVersion.VERSION_25
-}
-
-jar {
-	from("LICENSE") {
-		rename { "${it}_${project.base.archivesName.get()}" }
-	}
-}
-
-spotless {
 	java {
-		palantirJavaFormat()
+		withSourcesJar()
+		sourceCompatibility = JavaVersion.VERSION_25
+		targetCompatibility = JavaVersion.VERSION_25
 	}
 
-	groovyGradle {
-		greclipse()
+	tasks.withType(JavaCompile).configureEach {
+		it.options.release = 25
+	}
+
+	spotless {
+		java {
+			palantirJavaFormat()
+		}
+		groovyGradle {
+			greclipse()
+		}
 	}
 }

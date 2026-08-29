@@ -1,0 +1,35 @@
+{
+  "required": true,
+  "package": "mod.chiselsandbits.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "AbstractBoatMixin",
+    "AbstractHorseMixin",
+    "BlockItemMixin",
+    "EntityMixin",
+    "ExperienceOrbMixin",
+    "ItemEntityMixin",
+    "LegacyChiseledBlockFixMixins$FileFixerUpperMixin",
+    "LegacyChiseledBlockFixMixins$ItemStackNamesMixin",
+    "LegacyChiseledBlockFixMixins$LevelDataMixin",
+    "LegacyChiseledBlockFixMixins$LevelDataSaveMixin",
+    "LegacyChiseledBlockFixMixins$SerializableChunkDataMixin",
+    "LegacyChiseledBlockFixMixins$SimpleRegionStorageMixin",
+    "LegacyChiseledBlockFixMixins$UpgradeChunkMixin",
+    "LeashableMixin",
+    "LivingEntityMixin",
+    "ServerPlayerGameModeMixin",
+    "SnifferMixin",
+    "StructurePieceMixin",
+    "StructureTemplateMixin"
+  ],
+  "client": [
+    "compat.client.GuiMixin",
+    "compat.client.MouseHandlerMixin",
+    "compat.client.MultiPlayerGameModeMixin",
+    "compat.client.TextureAtlasMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,0 +1,125 @@
+plugins {
+	id 'com.gradleup.shadow'
+}
+
+architectury {
+	platformSetupLoomIde()
+	fabric()
+}
+
+loom {
+	accessWidenerPath = project(':common').loom.accessWidenerPath
+}
+
+configurations {
+	common {
+		canBeResolved = true
+		canBeConsumed = false
+	}
+	compileClasspath.extendsFrom common
+	runtimeClasspath.extendsFrom common
+	developmentFabric.extendsFrom common
+
+	shadowBundle {
+		canBeResolved = true
+		canBeConsumed = false
+	}
+}
+
+dependencies {
+	implementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_version}"
+	implementation "dev.architectury:architectury-fabric:${rootProject.architectury_version}"
+
+	implementation("me.fzzyhmstrs:fzzy_config:${rootProject.fzzy_config_version}") {
+		exclude group: 'com.terraformersmc', module: 'modmenu'
+	}
+
+	common(project(path: ':common')) { transitive = false }
+	shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
+}
+
+sourceSets {
+	gametest {
+		compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+		runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+	}
+}
+
+configurations {
+	gametestImplementation.extendsFrom implementation
+	gametestRuntimeOnly.extendsFrom runtimeOnly
+}
+
+loom {
+	mods {
+		chiselsandbits {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.gametest
+		}
+	}
+
+	runs {
+		client {
+			property 'mixin.debug', 'true'
+			programArgs '--username', 'Dev'
+			ideConfigGenerated = true
+			runDir = 'run-client'
+		}
+
+		server {
+			property 'mixin.debug', 'true'
+			runDir = 'run-server'
+			ideConfigGenerated = true
+		}
+
+		gametest {
+			inherit server
+			name = 'Game Test'
+			source sourceSets.gametest
+			vmArg '-Dfabric-api.gametest'
+			vmArg "-Dfabric-api.gametest.report-file=${layout.buildDirectory.file('gametest-report.xml').get().asFile}"
+			runDir = 'build/gametest'
+			ideConfigGenerated = true
+		}
+
+		clientGametest {
+			inherit client
+			name = 'Client Game Test'
+			source sourceSets.gametest
+			vmArg '-Dfabric.client.gametest'
+			runDir = 'build/client-gametest'
+			ideConfigGenerated = true
+		}
+	}
+}
+
+processResources {
+	inputs.property 'version', project.version
+	filesMatching('fabric.mod.json') {
+		expand 'version': project.version
+	}
+}
+
+tasks.named('check') {
+	// Gametest runs are invoked explicitly in CI.
+}
+
+jar {
+	archiveClassifier = 'raw'
+	from('LICENSE') {
+		rename { "${it}_${project.base.archivesName.get()}" }
+	}
+}
+
+shadowJar {
+	dependsOn jar
+	mainSpec.sourcePaths.clear()
+	from(zipTree(jar.archiveFile))
+	configurations = [
+		project.configurations.shadowBundle
+	]
+	archiveClassifier = null
+}
+
+assemble.dependsOn shadowJar
