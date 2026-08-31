@@ -97,8 +97,7 @@ public class ItemMirrorPrint extends Item implements IPatternItem {
                 ModUtil.setSide(newStack, ModUtil.getPlaceFace(context.getPlayer()));
 
                 final ItemEntity entity = context.getPlayer().drop(newStack, true);
-                entity.setPickUpDelay(0);
-                entity.setThrower(context.getPlayer());
+                configureDroppedItem(entity, context.getPlayer());
 
                 return InteractionResult.SUCCESS;
             }
@@ -107,6 +106,13 @@ public class ItemMirrorPrint extends Item implements IPatternItem {
         }
 
         return InteractionResult.FAIL;
+    }
+
+    static void configureDroppedItem(final ItemEntity entity, final Player player) {
+        if (entity != null) {
+            entity.setPickUpDelay(0);
+            entity.setThrower(player);
+        }
     }
 
     protected ChiseledData getChiseledDataFromBlock(

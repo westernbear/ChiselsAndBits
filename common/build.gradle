@@ -37,12 +37,19 @@ def legacyConfigurationMigrationCheck = tasks.register('legacyConfigurationMigra
 	mainClass = 'mod.chiselsandbits.config.LegacyConfigurationMigrationCheck'
 }
 
+def mirrorPrintDropCheck = tasks.register('mirrorPrintDropCheck', JavaExec) {
+	dependsOn testClasses
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'mod.chiselsandbits.items.MirrorPrintDropCheck'
+}
+
 tasks.named('test') {
 	failOnNoDiscoveredTests.set(false)
 }
 
 tasks.named('check') {
 	dependsOn faceRegionMergeCheck
+	dependsOn mirrorPrintDropCheck
 	dependsOn legacyBlobCompatibilityCheck
 	dependsOn legacyConfigurationMigrationCheck
 }
