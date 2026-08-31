@@ -1,4 +1,4 @@
-package mod.chiselsandbits.platform;
+package mod.chiselsandbits.platform.fabric;
 
 import java.util.Objects;
 import mod.chiselsandbits.bitstorage.FabricBitStorageStorage;

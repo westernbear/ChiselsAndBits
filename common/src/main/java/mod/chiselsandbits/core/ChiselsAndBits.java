@@ -49,14 +49,17 @@ public class ChiselsAndBits {
     }
 
     private ChiselsAndBits() {
+        instance = this;
         config = new Configuration();
-        ClientLifecycleEvent.CLIENT_STARTED.register(
-                client -> LanguageHandler.loadLangPath("assets/chiselsandbits/lang/%s.json"));
+        EnvExecutor.runWhenOn(
+                Env.CLIENT,
+                () -> () -> ClientLifecycleEvent.CLIENT_STARTED.register(
+                        client -> LanguageHandler.loadLangPath("assets/chiselsandbits/lang/%s.json")));
 
         VaporizeWater.register();
         EventPlayerInteract.register();
         PlatformPickBlock.register();
-        TickHandler.register();
+        EnvExecutor.runWhenOn(Env.CLIENT, () -> () -> TickHandler.register());
         ModDataComponents.onModConstruction();
         ModBlocks.onModConstruction();
         ModContainerTypes.onModConstruction();

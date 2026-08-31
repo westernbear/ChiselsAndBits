@@ -1,4 +1,4 @@
-package mod.chiselsandbits.platform;
+package mod.chiselsandbits.platform.neoforge;
 
 import mod.chiselsandbits.bitstorage.TileEntityBitStorage;
 import net.minecraft.world.InteractionHand;

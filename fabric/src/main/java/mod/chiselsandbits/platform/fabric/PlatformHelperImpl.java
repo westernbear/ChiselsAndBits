@@ -1,4 +1,4 @@
-package mod.chiselsandbits.platform;
+package mod.chiselsandbits.platform.fabric;
 
 import dev.architectury.platform.Platform;
 import java.nio.file.Path;

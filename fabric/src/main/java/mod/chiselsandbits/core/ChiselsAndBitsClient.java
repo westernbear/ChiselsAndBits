@@ -26,9 +26,6 @@ public class ChiselsAndBitsClient {
     @Environment(EnvType.CLIENT)
     public static void onClientInit() {
 
-        ClientSide.instance.preInit();
-        ClientSide.instance.init();
-        ClientSide.instance.postInit();
         MenuScreens.register(ModContainerTypes.BAG_CONTAINER.get(), BagGui::new);
         MenuScreens.register(ModContainerTypes.CHISEL_STATION_CONTAINER.get(), ChiselPrinterScreen::new);
     }

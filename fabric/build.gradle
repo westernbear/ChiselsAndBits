@@ -55,6 +55,8 @@ loom {
 	mods {
 		chiselsandbits {
 			sourceSet sourceSets.main
+		}
+		chiselsandbits_test {
 			sourceSet sourceSets.gametest
 		}
 	}
@@ -83,21 +85,31 @@ loom {
 			ideConfigGenerated = true
 		}
 
-		clientGametest {
-			inherit client
-			name = 'Client Game Test'
-			source sourceSets.gametest
-			vmArg '-Dfabric.client.gametest'
-			runDir = 'build/client-gametest'
-			ideConfigGenerated = true
-		}
-	}
+        clientGametest {
+            inherit client
+            name = 'Client Game Test'
+            source sourceSets.gametest
+            vmArg '-Dfabric.client.gametest'
+            vmArg "-Dfabric.client.gametest.testModResourcesPath=${sourceSets.gametest.output.resourcesDir.absolutePath}"
+            runDir = 'build/client-gametest'
+            ideConfigGenerated = true
+        }
+    }
 }
 
 processResources {
 	inputs.property 'version', project.version
 	filesMatching('fabric.mod.json') {
 		expand 'version': project.version
+	}
+	from(project(':common').sourceSets.main.resources) {
+		include 'chiselsandbits.accesswidener'
+	}
+}
+
+tasks.named('processGametestResources') {
+	from(project(':common').sourceSets.main.resources) {
+		include 'chiselsandbits.accesswidener'
 	}
 }
 

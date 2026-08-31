@@ -1,4 +1,4 @@
-package mod.chiselsandbits.platform;
+package mod.chiselsandbits.platform.neoforge;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.BlockHitResult;

@@ -1,4 +1,4 @@
-package mod.chiselsandbits.platform;
+package mod.chiselsandbits.platform.fabric;
 
 import mod.chiselsandbits.events.PickBlockHandler;
 import net.minecraft.server.level.ServerPlayer;
