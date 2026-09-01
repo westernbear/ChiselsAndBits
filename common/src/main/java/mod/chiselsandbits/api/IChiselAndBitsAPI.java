@@ -1,5 +1,7 @@
 package mod.chiselsandbits.api;
 
+import java.util.Collection;
+import java.util.List;
 import mod.chiselsandbits.api.APIExceptions.CannotBeChiseled;
 import mod.chiselsandbits.api.APIExceptions.InvalidBitItem;
 import mod.chiselsandbits.core.ChiselsAndBits;
@@ -25,6 +27,21 @@ public interface IChiselAndBitsAPI {
     void registerBlockProvider(@NotNull BlockProvider provider);
 
     void registerItemStackHandler(@NotNull Block block, @NotNull ItemStackHandler provider);
+
+    /**
+     * Registers a state-variant provider for a block, matching official C&amp;B
+     * {@code IStateVariantManager#registerProvider} used by Flat Colored Blocks.
+     */
+    void registerStateVariantProvider(@NotNull Block block, @NotNull StateVariantProvider provider);
+
+    /**
+     * Official bits-tab lookup: all default variants for this block, or empty if
+     * no provider is registered (the tab then falls back to {@code defaultBlockState}).
+     */
+    @NotNull
+    default Collection<BlockState> getAllDefaultVariants(@NotNull BlockState state) {
+        return List.of();
+    }
 
     /**
      * Gets the representative item stack for a block state. Registered

@@ -43,6 +43,12 @@ def mirrorPrintDropCheck = tasks.register('mirrorPrintDropCheck', JavaExec) {
 	mainClass = 'mod.chiselsandbits.items.MirrorPrintDropCheck'
 }
 
+def blockBitsTabCheck = tasks.register('blockBitsTabCheck', JavaExec) {
+	dependsOn testClasses
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'mod.chiselsandbits.registry.BlockBitsTabCheck'
+}
+
 tasks.named('test') {
 	failOnNoDiscoveredTests.set(false)
 }
@@ -50,6 +56,7 @@ tasks.named('test') {
 tasks.named('check') {
 	dependsOn faceRegionMergeCheck
 	dependsOn mirrorPrintDropCheck
+	dependsOn blockBitsTabCheck
 	dependsOn legacyBlobCompatibilityCheck
 	dependsOn legacyConfigurationMigrationCheck
 }

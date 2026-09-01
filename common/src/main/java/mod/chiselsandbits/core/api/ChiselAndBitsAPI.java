@@ -1,6 +1,7 @@
 package mod.chiselsandbits.core.api;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -20,6 +21,7 @@ import mod.chiselsandbits.api.ParameterType.BooleanParam;
 import mod.chiselsandbits.api.ParameterType.DoubleParam;
 import mod.chiselsandbits.api.ParameterType.FloatParam;
 import mod.chiselsandbits.api.ParameterType.IntegerParam;
+import mod.chiselsandbits.api.StateVariantProvider;
 import mod.chiselsandbits.bitbag.BagStorage;
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
 import mod.chiselsandbits.chiseledblock.BlockChiseled;
@@ -58,6 +60,7 @@ import org.jetbrains.annotations.NotNull;
 public class ChiselAndBitsAPI implements IChiselAndBitsAPI {
 
     private final Map<Block, ItemStackHandler> itemStackHandlers = new ConcurrentHashMap<>();
+    private final Map<Block, StateVariantProvider> stateVariantProviders = new ConcurrentHashMap<>();
     private final List<BlockProvider> stateProviders = new ArrayList<>();
 
     public Map<Block, ItemStackHandler> getItemStackHandlers() {
@@ -79,6 +82,39 @@ public class ChiselAndBitsAPI implements IChiselAndBitsAPI {
         itemStackHandlers.put(
                 Objects.requireNonNull(block, "Block cannot be null"),
                 Objects.requireNonNull(provider, "ItemStackHandler cannot be null"));
+    }
+
+    @Override
+    public void registerStateVariantProvider(final Block block, @NotNull final StateVariantProvider provider) {
+        stateVariantProviders.put(
+                Objects.requireNonNull(block, "Block cannot be null"),
+                Objects.requireNonNull(provider, "StateVariantProvider cannot be null"));
+    }
+
+    @Override
+    public @NotNull Collection<BlockState> getAllDefaultVariants(@NotNull final BlockState state) {
+        final StateVariantProvider variantProvider = stateVariantProviders.get(state.getBlock());
+        if (variantProvider != null) {
+            return List.copyOf(variantProvider.getAllDefaultVariants(state));
+        }
+
+        for (final BlockProvider blockProvider : stateProviders) {
+            if (blockProvider.getBlocks().contains(state.getBlock())) {
+                return List.copyOf(state.getBlock().getStateDefinition().getPossibleStates());
+            }
+        }
+
+        // FCB Restitched 8.1.x only called forceStateCompatibility. Treat its shade
+        // states as official default variants so Block Bits lists every color.
+        if (isFlatColoredBlock(state.getBlock())) {
+            return List.copyOf(state.getBlock().getStateDefinition().getPossibleStates());
+        }
+        return List.of();
+    }
+
+    private static boolean isFlatColoredBlock(final Block block) {
+        return "mod.flatcoloredblocks.block.BlockFlatColored"
+                .equals(block.getClass().getName());
     }
 
     @Override

@@ -2,14 +2,15 @@ package mod.chiselsandbits.registry;
 
 import com.google.common.base.Suppliers;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
-import mod.chiselsandbits.api.BlockProvider;
+import mod.chiselsandbits.api.IChiselAndBitsAPI;
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
 import mod.chiselsandbits.chiseledblock.BlockChiseled;
 import mod.chiselsandbits.client.CreativeClipboardTab;
 import mod.chiselsandbits.core.ChiselsAndBits;
-import mod.chiselsandbits.core.api.ChiselAndBitsAPI;
 import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.items.ItemChiseledBit;
 import mod.chiselsandbits.utils.Constants;
@@ -52,49 +53,12 @@ public final class ModItemGroups {
                         output.accept(new ItemStack(ModItems.ITEM_WRENCH.get()));
                     })
                     .build());
-    public static final Supplier<CreativeModeTab> BLOCK_BITS = Suppliers.memoize(() -> CreativeModeTab.builder(
-                    CreativeModeTab.Row.TOP, 1)
-            .icon(() -> new ItemStack(ModItems.ITEM_BLOCK_BIT.get()))
-            .title(Component.literal("Block bits"))
-            .displayItems((params, output) -> {
-                Set<Integer> reservedStates = new IntLinkedOpenHashSet();
-                for (BlockProvider stateProvider : ((ChiselAndBitsAPI) ChiselsAndBits.getApi()).getStateProviders()) {
-                    for (Block b : stateProvider.getBlocks()) {
-                        for (BlockState state : b.getStateDefinition().getPossibleStates()) {
-                            int stateId = ModUtil.getStateId(state);
-                            if (BlockBitInfo.canChisel(state)) {
-                                ItemStack itemStack = ItemChiseledBit.createStack(stateId, 1, true);
-                                output.accept(itemStack);
-                                reservedStates.add(stateId);
-                            }
-                        }
-                    }
-                }
-                for (Block block : BuiltInRegistries.BLOCK) {
-                    if (block instanceof BlockChiseled) {
-                        continue;
-                    }
-                    BlockState blockState = block.defaultBlockState();
-
-                    if (block instanceof LiquidBlock liquidBlock) {
-                        Fluid fluid = blockState.getFluidState().getType();
-                        if (fluid instanceof FlowingFluid flowingFluid) {
-                            blockState =
-                                    flowingFluid.getSource().defaultFluidState().createLegacyBlock();
-                        }
-                    }
-
-                    if (BlockBitInfo.canChisel(blockState)) {
-                        int stateId = ModUtil.getStateId(blockState);
-                        if (reservedStates.contains(stateId)) {
-                            continue;
-                        }
-                        ItemStack itemStack = ItemChiseledBit.createStack(stateId, 1, true);
-                        output.accept(itemStack);
-                    }
-                }
-            })
-            .build());
+    public static final Supplier<CreativeModeTab> BLOCK_BITS =
+            Suppliers.memoize(() -> CreativeModeTab.builder(CreativeModeTab.Row.TOP, 1)
+                    .icon(() -> new ItemStack(ModItems.ITEM_BLOCK_BIT.get()))
+                    .title(Component.literal("Block bits"))
+                    .displayItems((params, output) -> output.acceptAll(collectBlockBitStacks()))
+                    .build());
     public static Supplier<CreativeModeTab> CLIPBOARD =
             Suppliers.memoize(() -> CreativeModeTab.builder(CreativeModeTab.Row.TOP, 1)
                     .icon(() -> new ItemStack(ModItems.ITEM_POSITIVE_PRINT_WRITTEN.get()))
@@ -106,6 +70,54 @@ public final class ModItemGroups {
 
     private ModItemGroups() {
         throw new IllegalStateException("Tried to initialize: ModItemGroups but this is a Utility class.");
+    }
+
+    /**
+     * Official C&amp;B bits-tab algorithm ({@code ModCreativeTabs.BITS}):
+     * if a state-variant provider (FCB) supplies default variants, list those;
+     * otherwise list only {@code defaultBlockState} (source fluid for liquids).
+     */
+    public static List<ItemStack> collectBlockBitStacks() {
+        final List<ItemStack> bits = new ArrayList<>();
+        final Set<Integer> reservedStates = new IntLinkedOpenHashSet();
+        final IChiselAndBitsAPI api = ChiselsAndBits.getApi();
+
+        for (final Block block : BuiltInRegistries.BLOCK) {
+            if (block instanceof BlockChiseled) {
+                continue;
+            }
+
+            final BlockState defaultState = block.defaultBlockState();
+            final var defaultVariants = api.getAllDefaultVariants(defaultState);
+            if (!defaultVariants.isEmpty()) {
+                for (final BlockState variant : defaultVariants) {
+                    acceptChiselableBit(bits, reservedStates, variant);
+                }
+                continue;
+            }
+
+            BlockState blockState = defaultState;
+            if (block instanceof LiquidBlock) {
+                final Fluid fluid = blockState.getFluidState().getType();
+                if (fluid instanceof FlowingFluid flowingFluid) {
+                    blockState = flowingFluid.getSource().defaultFluidState().createLegacyBlock();
+                }
+            }
+            acceptChiselableBit(bits, reservedStates, blockState);
+        }
+        return bits;
+    }
+
+    private static void acceptChiselableBit(
+            final List<ItemStack> bits, final Set<Integer> reservedStates, final BlockState blockState) {
+        if (!BlockBitInfo.canChisel(blockState)) {
+            return;
+        }
+        final int stateId = ModUtil.getStateId(blockState);
+        if (!reservedStates.add(stateId)) {
+            return;
+        }
+        bits.add(ItemChiseledBit.createStack(stateId, 1, true));
     }
 
     public static void onModConstruction() {
