@@ -85,16 +85,16 @@ loom {
 			ideConfigGenerated = true
 		}
 
-        clientGametest {
-            inherit client
-            name = 'Client Game Test'
-            source sourceSets.gametest
-            vmArg '-Dfabric.client.gametest'
-            vmArg "-Dfabric.client.gametest.testModResourcesPath=${sourceSets.gametest.output.resourcesDir.absolutePath}"
-            runDir = 'build/client-gametest'
-            ideConfigGenerated = true
-        }
-    }
+		clientGametest {
+			inherit client
+			name = 'Client Game Test'
+			source sourceSets.gametest
+			vmArg '-Dfabric.client.gametest'
+			vmArg "-Dfabric.client.gametest.testModResourcesPath=${sourceSets.gametest.output.resourcesDir.absolutePath}"
+			runDir = 'build/client-gametest'
+			ideConfigGenerated = true
+		}
+	}
 }
 
 processResources {

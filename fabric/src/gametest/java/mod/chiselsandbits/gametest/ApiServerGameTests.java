@@ -102,14 +102,18 @@ public class ApiServerGameTests {
         isolatedApi.registerBlockProvider(provider);
         helper.assertTrue(isolatedApi.getStateProviders().contains(provider), "block provider was not registered");
         helper.assertValueEqual(
-                isolatedApi.getAllDefaultVariants(Blocks.STONE.defaultBlockState()).size(),
+                isolatedApi
+                        .getAllDefaultVariants(Blocks.STONE.defaultBlockState())
+                        .size(),
                 1,
                 "BlockProvider stone variants");
 
         isolatedApi.registerStateVariantProvider(
                 Blocks.OAK_LOG, state -> state.getBlock().getStateDefinition().getPossibleStates());
         helper.assertValueEqual(
-                isolatedApi.getAllDefaultVariants(Blocks.OAK_LOG.defaultBlockState()).size(),
+                isolatedApi
+                        .getAllDefaultVariants(Blocks.OAK_LOG.defaultBlockState())
+                        .size(),
                 3,
                 "oak log state-variant count");
 
