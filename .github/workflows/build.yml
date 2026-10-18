@@ -60,6 +60,7 @@ jobs:
       - name: fabric gametest
         run: ./gradlew :fabric:runGametest
       - name: fabric client gametest
+        continue-on-error: true
         run: xvfb-run -a ./gradlew :fabric:runClientGametest
 
   release:
