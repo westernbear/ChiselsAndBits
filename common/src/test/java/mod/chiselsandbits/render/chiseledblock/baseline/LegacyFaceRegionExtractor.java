@@ -1,4 +1,6 @@
-package mod.chiselsandbits.render.chiseledblock;
+package mod.chiselsandbits.render.chiseledblock.baseline;
+
+// Snapshot of the pre-redesign extractor, kept only as the benchmark and parity baseline.
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -7,20 +9,20 @@ import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
 import mod.chiselsandbits.client.culling.ICullTest;
 import net.minecraft.core.Direction;
 
-final class FaceRegionExtractor {
+public final class LegacyFaceRegionExtractor {
     private static final int MAX_FAST_STATES = 4;
     // ponytail: sparse surfaces are allocation-bound; retune only from an end-to-end client benchmark.
     private static final int MIN_FAST_OCCUPIED = VoxelBlob.full_size * 7 / 8;
 
-    private FaceRegionExtractor() {}
+    private LegacyFaceRegionExtractor() {}
 
-    static ArrayList<ArrayList<FaceRegion>> extract(final VoxelBlob blob, final ICullTest test) {
-        final ArrayList<ArrayList<FaceRegion>> fastResult = extractSingleState(blob, test);
+    public static ArrayList<ArrayList<LegacyFaceRegion>> extract(final VoxelBlob blob, final ICullTest test) {
+        final ArrayList<ArrayList<LegacyFaceRegion>> fastResult = extractSingleState(blob, test);
         if (fastResult != null) {
             return fastResult;
         }
 
-        final ArrayList<ArrayList<FaceRegion>> paletteResult = extractSmallPalette(blob, test);
+        final ArrayList<ArrayList<LegacyFaceRegion>> paletteResult = extractSmallPalette(blob, test);
         if (paletteResult != null) {
             return paletteResult;
         }
@@ -28,15 +30,16 @@ final class FaceRegionExtractor {
         return extractScalar(blob, test);
     }
 
-    private static ArrayList<ArrayList<FaceRegion>> extractScalar(final VoxelBlob blob, final ICullTest test) {
-        final ArrayList<ArrayList<FaceRegion>> result = new ArrayList<>();
+    private static ArrayList<ArrayList<LegacyFaceRegion>> extractScalar(final VoxelBlob blob, final ICullTest test) {
+        final ArrayList<ArrayList<LegacyFaceRegion>> result = new ArrayList<>();
         processXFaces(blob, test, result);
         processYFaces(blob, test, result);
         processZFaces(blob, test, result);
         return result;
     }
 
-    private static ArrayList<ArrayList<FaceRegion>> extractSingleState(final VoxelBlob blob, final ICullTest test) {
+    private static ArrayList<ArrayList<LegacyFaceRegion>> extractSingleState(
+            final VoxelBlob blob, final ICullTest test) {
         if (blob.detail != VoxelBlob.dim) {
             return null;
         }
@@ -73,14 +76,15 @@ final class FaceRegionExtractor {
         }
 
         final boolean interiorVisible = occupiedCount == VoxelBlob.full_size || test.isVisible(state, 0);
-        final ArrayList<ArrayList<FaceRegion>> result = new ArrayList<>();
+        final ArrayList<ArrayList<LegacyFaceRegion>> result = new ArrayList<>();
         processSingleStateXFaces(yzRows, state, interiorVisible, result);
         processSingleStateYFaces(xRows, state, interiorVisible, result);
         processSingleStateZFaces(xRows, state, interiorVisible, result);
         return result;
     }
 
-    private static ArrayList<ArrayList<FaceRegion>> extractSmallPalette(final VoxelBlob blob, final ICullTest test) {
+    private static ArrayList<ArrayList<LegacyFaceRegion>> extractSmallPalette(
+            final VoxelBlob blob, final ICullTest test) {
         if (blob.detail != VoxelBlob.dim || blob.getNoneAir().cardinality() < MIN_FAST_OCCUPIED) {
             return null;
         }
@@ -121,7 +125,7 @@ final class FaceRegionExtractor {
         }
 
         final byte[][] visibility = new byte[stateCount][stateCount + 1];
-        final ArrayList<ArrayList<FaceRegion>> result = new ArrayList<>();
+        final ArrayList<ArrayList<LegacyFaceRegion>> result = new ArrayList<>();
         processPaletteXFaces(yzRows, states, stateCount, test, visibility, result);
         processPaletteYFaces(xRows, states, stateCount, test, visibility, result);
         processPaletteZFaces(xRows, states, stateCount, test, visibility, result);
@@ -134,10 +138,10 @@ final class FaceRegionExtractor {
             final int stateCount,
             final ICullTest test,
             final byte[][] visibility,
-            final ArrayList<ArrayList<FaceRegion>> result) {
+            final ArrayList<ArrayList<LegacyFaceRegion>> result) {
         final int dimension = VoxelBlob.dim;
-        final ArrayList<FaceRegion>[] east = planes(dimension);
-        final ArrayList<FaceRegion>[] west = planes(dimension);
+        final ArrayList<LegacyFaceRegion>[] east = planes(dimension);
+        final ArrayList<LegacyFaceRegion>[] west = planes(dimension);
         final int[] eastMasks = new int[stateCount];
         final int[] westMasks = new int[stateCount];
 
@@ -172,10 +176,10 @@ final class FaceRegionExtractor {
             final int stateCount,
             final ICullTest test,
             final byte[][] visibility,
-            final ArrayList<ArrayList<FaceRegion>> result) {
+            final ArrayList<ArrayList<LegacyFaceRegion>> result) {
         final int dimension = VoxelBlob.dim;
-        final ArrayList<FaceRegion>[] up = planes(dimension);
-        final ArrayList<FaceRegion>[] down = planes(dimension);
+        final ArrayList<LegacyFaceRegion>[] up = planes(dimension);
+        final ArrayList<LegacyFaceRegion>[] down = planes(dimension);
         final int[] upMasks = new int[stateCount];
         final int[] downMasks = new int[stateCount];
 
@@ -210,10 +214,10 @@ final class FaceRegionExtractor {
             final int stateCount,
             final ICullTest test,
             final byte[][] visibility,
-            final ArrayList<ArrayList<FaceRegion>> result) {
+            final ArrayList<ArrayList<LegacyFaceRegion>> result) {
         final int dimension = VoxelBlob.dim;
-        final ArrayList<FaceRegion>[] south = planes(dimension);
-        final ArrayList<FaceRegion>[] north = planes(dimension);
+        final ArrayList<LegacyFaceRegion>[] south = planes(dimension);
+        final ArrayList<LegacyFaceRegion>[] north = planes(dimension);
         final int[] southMasks = new int[stateCount];
         final int[] northMasks = new int[stateCount];
 
@@ -327,7 +331,7 @@ final class FaceRegionExtractor {
     }
 
     private static void appendMasks(
-            final ArrayList<FaceRegion>[] planes,
+            final ArrayList<LegacyFaceRegion>[] planes,
             final int plane,
             final Direction face,
             final int outer,
@@ -359,10 +363,10 @@ final class FaceRegionExtractor {
             final int[] rows,
             final int state,
             final boolean interiorVisible,
-            final ArrayList<ArrayList<FaceRegion>> result) {
+            final ArrayList<ArrayList<LegacyFaceRegion>> result) {
         final int dimension = VoxelBlob.dim;
-        final ArrayList<FaceRegion>[] east = planes(dimension);
-        final ArrayList<FaceRegion>[] west = planes(dimension);
+        final ArrayList<LegacyFaceRegion>[] east = planes(dimension);
+        final ArrayList<LegacyFaceRegion>[] west = planes(dimension);
 
         for (int x = 0; x < dimension; x++) {
             final boolean eastEdge = x == dimension - 1;
@@ -388,10 +392,10 @@ final class FaceRegionExtractor {
             final int[] rows,
             final int state,
             final boolean interiorVisible,
-            final ArrayList<ArrayList<FaceRegion>> result) {
+            final ArrayList<ArrayList<LegacyFaceRegion>> result) {
         final int dimension = VoxelBlob.dim;
-        final ArrayList<FaceRegion>[] up = planes(dimension);
-        final ArrayList<FaceRegion>[] down = planes(dimension);
+        final ArrayList<LegacyFaceRegion>[] up = planes(dimension);
+        final ArrayList<LegacyFaceRegion>[] down = planes(dimension);
 
         for (int y = 0; y < dimension; y++) {
             final boolean upEdge = y == dimension - 1;
@@ -415,10 +419,10 @@ final class FaceRegionExtractor {
             final int[] rows,
             final int state,
             final boolean interiorVisible,
-            final ArrayList<ArrayList<FaceRegion>> result) {
+            final ArrayList<ArrayList<LegacyFaceRegion>> result) {
         final int dimension = VoxelBlob.dim;
-        final ArrayList<FaceRegion>[] south = planes(dimension);
-        final ArrayList<FaceRegion>[] north = planes(dimension);
+        final ArrayList<LegacyFaceRegion>[] south = planes(dimension);
+        final ArrayList<LegacyFaceRegion>[] north = planes(dimension);
 
         for (int z = 0; z < dimension; z++) {
             final boolean southEdge = z == dimension - 1;
@@ -441,14 +445,14 @@ final class FaceRegionExtractor {
     }
 
     private static void appendMask(
-            final ArrayList<FaceRegion>[] planes,
+            final ArrayList<LegacyFaceRegion>[] planes,
             final int plane,
             final Direction face,
             final int outer,
             int mask,
             final int state,
             final boolean edge) {
-        ArrayList<FaceRegion> faces = null;
+        ArrayList<LegacyFaceRegion> faces = null;
 
         while (mask != 0) {
             final int start = Integer.numberOfTrailingZeros(mask);
@@ -486,7 +490,7 @@ final class FaceRegionExtractor {
                 }
             }
 
-            faces.add(FaceRegion.createRow(
+            faces.add(LegacyFaceRegion.createRow(
                     face,
                     x * 2 + 1 + face.getStepX(),
                     y * 2 + 1 + face.getStepY(),
@@ -499,12 +503,12 @@ final class FaceRegionExtractor {
     }
 
     private static void processXFaces(
-            final VoxelBlob blob, final ICullTest test, final ArrayList<ArrayList<FaceRegion>> result) {
+            final VoxelBlob blob, final ICullTest test, final ArrayList<ArrayList<LegacyFaceRegion>> result) {
         final int dimension = blob.detail;
-        final ArrayList<FaceRegion>[] east = planes(dimension);
-        final ArrayList<FaceRegion>[] west = planes(dimension);
-        final FaceRegion[] eastRuns = new FaceRegion[dimension];
-        final FaceRegion[] westRuns = new FaceRegion[dimension];
+        final ArrayList<LegacyFaceRegion>[] east = planes(dimension);
+        final ArrayList<LegacyFaceRegion>[] west = planes(dimension);
+        final LegacyFaceRegion[] eastRuns = new LegacyFaceRegion[dimension];
+        final LegacyFaceRegion[] westRuns = new LegacyFaceRegion[dimension];
 
         for (int z = 0; z < dimension; z++) {
             Arrays.fill(eastRuns, null);
@@ -546,12 +550,12 @@ final class FaceRegionExtractor {
     }
 
     private static void processYFaces(
-            final VoxelBlob blob, final ICullTest test, final ArrayList<ArrayList<FaceRegion>> result) {
+            final VoxelBlob blob, final ICullTest test, final ArrayList<ArrayList<LegacyFaceRegion>> result) {
         final int dimension = blob.detail;
-        final ArrayList<FaceRegion>[] up = planes(dimension);
-        final ArrayList<FaceRegion>[] down = planes(dimension);
-        final FaceRegion[] upRuns = new FaceRegion[dimension];
-        final FaceRegion[] downRuns = new FaceRegion[dimension];
+        final ArrayList<LegacyFaceRegion>[] up = planes(dimension);
+        final ArrayList<LegacyFaceRegion>[] down = planes(dimension);
+        final LegacyFaceRegion[] upRuns = new LegacyFaceRegion[dimension];
+        final LegacyFaceRegion[] downRuns = new LegacyFaceRegion[dimension];
 
         for (int z = 0; z < dimension; z++) {
             Arrays.fill(upRuns, null);
@@ -593,12 +597,12 @@ final class FaceRegionExtractor {
     }
 
     private static void processZFaces(
-            final VoxelBlob blob, final ICullTest test, final ArrayList<ArrayList<FaceRegion>> result) {
+            final VoxelBlob blob, final ICullTest test, final ArrayList<ArrayList<LegacyFaceRegion>> result) {
         final int dimension = blob.detail;
-        final ArrayList<FaceRegion>[] south = planes(dimension);
-        final ArrayList<FaceRegion>[] north = planes(dimension);
-        final FaceRegion[] southRuns = new FaceRegion[dimension];
-        final FaceRegion[] northRuns = new FaceRegion[dimension];
+        final ArrayList<LegacyFaceRegion>[] south = planes(dimension);
+        final ArrayList<LegacyFaceRegion>[] north = planes(dimension);
+        final LegacyFaceRegion[] southRuns = new LegacyFaceRegion[dimension];
+        final LegacyFaceRegion[] northRuns = new LegacyFaceRegion[dimension];
 
         for (int y = 0; y < dimension; y++) {
             Arrays.fill(southRuns, null);
@@ -644,8 +648,8 @@ final class FaceRegionExtractor {
     }
 
     private static void append(
-            final ArrayList<FaceRegion>[] planes,
-            final FaceRegion[] runs,
+            final ArrayList<LegacyFaceRegion>[] planes,
+            final LegacyFaceRegion[] runs,
             final int plane,
             final Direction face,
             final int x,
@@ -656,14 +660,14 @@ final class FaceRegionExtractor {
         final int centerX = x * 2 + 1 + face.getStepX();
         final int centerY = y * 2 + 1 + face.getStepY();
         final int centerZ = z * 2 + 1 + face.getStepZ();
-        final FaceRegion current = runs[plane];
+        final LegacyFaceRegion current = runs[plane];
 
         if (current != null && current.extendRow(centerX, centerY, centerZ, state)) {
             return;
         }
 
-        final FaceRegion region = new FaceRegion(face, centerX, centerY, centerZ, state, edge);
-        ArrayList<FaceRegion> faces = planes[plane];
+        final LegacyFaceRegion region = new LegacyFaceRegion(face, centerX, centerY, centerZ, state, edge);
+        ArrayList<LegacyFaceRegion> faces = planes[plane];
         if (faces == null) {
             faces = new ArrayList<>(16);
             planes[plane] = faces;
@@ -673,8 +677,8 @@ final class FaceRegionExtractor {
     }
 
     private static void appendPlanes(
-            final ArrayList<ArrayList<FaceRegion>> result, final ArrayList<FaceRegion>[] planes) {
-        for (final ArrayList<FaceRegion> faces : planes) {
+            final ArrayList<ArrayList<LegacyFaceRegion>> result, final ArrayList<LegacyFaceRegion>[] planes) {
+        for (final ArrayList<LegacyFaceRegion> faces : planes) {
             if (faces != null) {
                 result.add(faces);
             }
@@ -682,7 +686,7 @@ final class FaceRegionExtractor {
     }
 
     @SuppressWarnings("unchecked")
-    private static ArrayList<FaceRegion>[] planes(final int dimension) {
-        return (ArrayList<FaceRegion>[]) new ArrayList<?>[dimension];
+    private static ArrayList<LegacyFaceRegion>[] planes(final int dimension) {
+        return (ArrayList<LegacyFaceRegion>[]) new ArrayList<?>[dimension];
     }
 }

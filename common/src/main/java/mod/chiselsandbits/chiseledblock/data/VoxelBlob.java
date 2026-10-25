@@ -66,24 +66,22 @@ public final class VoxelBlob implements IVoxelSrc {
     public static final int VERSION_CROSSWORLD = 2;
     public static final int VERSION_COMPACT_PALLETED = 3;
     static final int SHORT_BYTES = Short.SIZE / 8;
-    private static final BitSet fluidFilterState;
+    /** State ids of fluid bits; replaced, never mutated, so meshing threads can read it during a rebuild. */
+    private static volatile BitSet fluidFilterState = new BitSet(4096);
     /**
      * Client render-layer membership for state ids. Replaced atomically on rebuild so readers never
      * observe a half-cleared map (which previously caused NPEs in {@link #filter}/{@link #simulateFilter}
      * during ghost previews before the first chiseled model bake).
      */
     private static volatile Map<Object, BitSet> layerFilters = Map.of();
+    /** Client: state ids that render as opaque full cubes; a bit of one hides every face touching it. */
+    private static volatile BitSet opaqueStates = new BitSet();
 
     private static final int VERSION_COMPACT = 0; // stored meta.
     private static final int VERSION_CROSSWORLD_LEGACY = 1; // stored meta.
     private static final Logger log = LoggerFactory.getLogger(VoxelBlob.class);
     public static VoxelBlob NULL_BLOB = new VoxelBlob();
     static int bestBufferSize = 26;
-
-    static {
-        fluidFilterState = new BitSet(4096);
-        //        clearCache();
-    }
 
     final int[] values = new int[array_size];
     final BitSet noneAir;
@@ -108,7 +106,7 @@ public final class VoxelBlob implements IVoxelSrc {
     }
 
     public static synchronized void clearServerCache() {
-        fluidFilterState.clear();
+        final BitSet fluids = new BitSet(4096);
 
         final var blockReg = BuiltInRegistries.BLOCK;
 
@@ -116,15 +114,18 @@ public final class VoxelBlob implements IVoxelSrc {
             block.getStateDefinition().getPossibleStates().forEach(blockState -> {
                 final int stateId = ModUtil.getStateId(blockState);
                 if (BlockBitInfo.getTypeFromStateID(stateId) == VoxelType.FLUID) {
-                    fluidFilterState.set(stateId);
+                    fluids.set(stateId);
                 }
             });
         }
+
+        fluidFilterState = fluids;
     }
 
     @Environment(Env.CLIENT)
     private static void updateCacheClient() {
         final Map<Object, BitSet> rebuilt = new HashMap<>();
+        final BitSet opaque = new BitSet();
 
         for (final ChunkSectionLayer layer : ChunkSectionLayer.values()) {
             rebuilt.put(layer, new BitSet());
@@ -144,6 +145,9 @@ public final class VoxelBlob implements IVoxelSrc {
                 for (final ChiselRenderType renderType : ModUtil.getRenderType(state)) {
                     rebuilt.get(renderType.layer).set(id);
                 }
+                if (state.isSolidRender()) {
+                    opaque.set(id);
+                }
             }
         }
 
@@ -162,7 +166,19 @@ public final class VoxelBlob implements IVoxelSrc {
             }
         }
 
+        opaqueStates = opaque;
         layerFilters = Map.copyOf(rebuilt);
+    }
+
+    /** Client: whether bits of {@code state} render in {@code layer}. */
+    public static boolean inLayer(final ChunkSectionLayer layer, final int state) {
+        return layerFilterOrEmpty(layer).get(state);
+    }
+
+    /** Client: whether bits of {@code state} are opaque full cubes that hide any face touching them. */
+    public static boolean isOpaque(final int state) {
+        layerFilterOrEmpty(ChunkSectionLayer.SOLID);
+        return state > 0 && opaqueStates.get(state);
     }
 
     /**

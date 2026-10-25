@@ -1,11 +1,11 @@
-package mod.chiselsandbits.render.chiseledblock;
+package mod.chiselsandbits.render.chiseledblock.baseline;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import net.minecraft.core.Direction;
 
-public class FaceRegion {
+public class LegacyFaceRegion {
     public final Direction face;
     final int blockStateID;
     final boolean isEdge;
@@ -16,7 +16,7 @@ public class FaceRegion {
     private int maxY;
     private int maxZ;
 
-    public FaceRegion(
+    public LegacyFaceRegion(
             final Direction myFace,
             final int centerX,
             final int centerY,
@@ -34,7 +34,7 @@ public class FaceRegion {
         maxZ = centerZ;
     }
 
-    static FaceRegion createRow(
+    static LegacyFaceRegion createRow(
             final Direction face,
             final int centerX,
             final int centerY,
@@ -42,7 +42,7 @@ public class FaceRegion {
             final int blockStateID,
             final boolean isEdge,
             final int length) {
-        final FaceRegion region = new FaceRegion(face, centerX, centerY, centerZ, blockStateID, isEdge);
+        final LegacyFaceRegion region = new LegacyFaceRegion(face, centerX, centerY, centerZ, blockStateID, isEdge);
         if (face.getAxis() == Direction.Axis.X) {
             region.maxY += (length - 1) * 2;
         } else {
@@ -79,14 +79,14 @@ public class FaceRegion {
         return blockStateID;
     }
 
-    static void merge(final ArrayList<FaceRegion> faces) {
+    public static void merge(final ArrayList<LegacyFaceRegion> faces) {
         // Each list contains row-major runs from one face plane.
-        final Map<Long, FaceRegion> active = new HashMap<>(faces.size());
+        final Map<Long, LegacyFaceRegion> active = new HashMap<>(faces.size());
         int writeIndex = 0;
 
-        for (final FaceRegion face : faces) {
+        for (final LegacyFaceRegion face : faces) {
             final long key = face.mergeKey();
-            final FaceRegion previous = active.get(key);
+            final LegacyFaceRegion previous = active.get(key);
 
             if (previous == null || !previous.extend(face)) {
                 active.put(key, face);
@@ -137,7 +137,7 @@ public class FaceRegion {
         }
     }
 
-    public boolean extend(final FaceRegion currentFace) {
+    public boolean extend(final LegacyFaceRegion currentFace) {
         if (currentFace.blockStateID != blockStateID) {
             return false;
         }

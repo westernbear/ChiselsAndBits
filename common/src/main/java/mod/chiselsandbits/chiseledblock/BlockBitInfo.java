@@ -3,6 +3,8 @@ package mod.chiselsandbits.chiseledblock;
 import io.netty.util.collection.IntObjectHashMap;
 import io.netty.util.collection.IntObjectMap;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import mod.chiselsandbits.api.IgnoreBlockLogic;
 import mod.chiselsandbits.chiseledblock.data.VoxelType;
 import mod.chiselsandbits.core.ChiselsAndBits;
@@ -39,12 +41,14 @@ public class BlockBitInfo {
     // imc api...
     private static final HashMap<Block, Boolean> ignoreLogicBlocks = new HashMap<>();
     // cache data..
-    private static final HashMap<BlockState, BlockBitInfo> stateBitInfo = new HashMap<>();
-    private static final HashMap<Block, SupportsAnalysisResult> supportedBlocks = new HashMap<>();
+    // Read by the server thread and chunk meshing threads while a client reload clears them.
+    private static final Map<BlockState, BlockBitInfo> stateBitInfo = new ConcurrentHashMap<>();
+    private static final Map<Block, SupportsAnalysisResult> supportedBlocks = new ConcurrentHashMap<>();
     private static final HashMap<Block, Boolean> forcedBlocks = new HashMap<>();
-    private static final HashMap<Block, Fluid> fluidBlocks = new HashMap<>();
-    private static final IntObjectMap<Fluid> fluidStates = new IntObjectHashMap<>();
-    private static final HashMap<BlockState, Integer> bitColor = new HashMap<>();
+    // Replaced, never mutated, so readers never see a half-built table.
+    private static volatile Map<Block, Fluid> fluidBlocks = Map.of();
+    private static volatile IntObjectMap<Fluid> fluidStates = new IntObjectHashMap<>();
+    private static final Map<BlockState, Integer> bitColor = new ConcurrentHashMap<>();
 
     static {
         ignoreLogicBlocks.put(Blocks.ACACIA_LEAVES, true);
@@ -99,33 +103,43 @@ public class BlockBitInfo {
         recalculateFluids();
     }
 
-    public static void recalculateFluids() {
-        fluidBlocks.clear();
-
+    public static synchronized void recalculateFluids() {
+        final Map<Block, Fluid> blocks = new HashMap<>();
+        final IntObjectMap<Fluid> states = new IntObjectHashMap<>();
         for (final Fluid o : BuiltInRegistries.FLUID) {
             if (o.defaultFluidState().isSource()) {
-                BlockBitInfo.addFluidBlock(o);
+                addFluidBlock(o, blocks, states);
             }
         }
+        publishFluids(blocks, states);
     }
 
-    public static void addFluidBlock(final Fluid fluid) {
-        fluidBlocks.put(fluid.defaultFluidState().createLegacyBlock().getBlock(), fluid);
+    public static synchronized void addFluidBlock(final Fluid fluid) {
+        final Map<Block, Fluid> blocks = new HashMap<>(fluidBlocks);
+        final IntObjectMap<Fluid> states = new IntObjectHashMap<>();
+        states.putAll(fluidStates);
+        addFluidBlock(fluid, blocks, states);
+        publishFluids(blocks, states);
+    }
 
-        for (final BlockState state : fluid.defaultFluidState()
-                .createLegacyBlock()
-                .getBlock()
-                .getStateDefinition()
-                .getPossibleStates()) {
+    private static void addFluidBlock(
+            final Fluid fluid, final Map<Block, Fluid> blocks, final IntObjectMap<Fluid> states) {
+        final Block block = fluid.defaultFluidState().createLegacyBlock().getBlock();
+        blocks.put(block, fluid);
+
+        for (final BlockState state : block.getStateDefinition().getPossibleStates()) {
             try {
-                fluidStates.put(ModUtil.getStateId(state), fluid);
+                states.put(ModUtil.getStateId(state), fluid);
             } catch (final Throwable t) {
                 Log.logError("Error while determining fluid state.", t);
             }
         }
+    }
 
-        stateBitInfo.clear();
-        supportedBlocks.clear();
+    private static void publishFluids(final Map<Block, Fluid> blocks, final IntObjectMap<Fluid> states) {
+        fluidBlocks = blocks;
+        fluidStates = states;
+        reset();
     }
 
     public static Fluid getFluidFromBlock(final Block blk) {

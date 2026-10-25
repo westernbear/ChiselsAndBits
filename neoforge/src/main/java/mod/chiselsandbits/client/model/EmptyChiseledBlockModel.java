@@ -4,8 +4,8 @@ import net.minecraft.client.resources.model.UnbakedModel;
 import net.minecraft.client.resources.model.geometry.UnbakedGeometry;
 
 /**
- * Placeholder baked model for the chiseled block. The real geometry is produced per block entity by
- * {@code ChiseledBlockRenderer}, so the block model contributes no quads.
+ * Placeholder model for the chiseled block. Baking swaps it for {@link ChiseledBlockStateModel}, which meshes each
+ * block entity's bits into the chunk; this one only supplies the particle and material flags.
  */
 public final class EmptyChiseledBlockModel implements UnbakedModel {
 

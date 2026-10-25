@@ -29,6 +29,8 @@ public final class VoxelBlobStateInstance implements Comparable<VoxelBlobStateIn
     private SoftReference<AABB[]> solidBoxes = null;
     // cache the format after reading it once.
     private int format = Integer.MIN_VALUE;
+    /** Client render mesh for this shape, owned by {@code ShapeMeshes}; shared by every block entity using it. */
+    public volatile Object renderCache;
 
     public VoxelBlobStateInstance(final byte[] data) {
         voxelBytes = data;
@@ -78,6 +80,20 @@ public final class VoxelBlobStateInstance implements Comparable<VoxelBlobStateIn
     }
 
     public VoxelBlob getBlobCatchable() throws Exception {
+        return new VoxelBlob(decoded());
+    }
+
+    /** The decoded blob shared by every caller, without the defensive copy; never mutate it. */
+    public VoxelBlob peekBlob() {
+        try {
+            return decoded();
+        } catch (final Exception e) {
+            Log.logError("Unable to read blob.", e);
+            return new VoxelBlob();
+        }
+    }
+
+    private VoxelBlob decoded() throws Exception {
         VoxelBlob vb = blob == null ? null : blob.get();
 
         if (vb == null) {
@@ -86,7 +102,7 @@ public final class VoxelBlobStateInstance implements Comparable<VoxelBlobStateIn
             blob = new SoftReference<VoxelBlob>(vb);
         }
 
-        return new VoxelBlob(vb);
+        return vb;
     }
 
     private AABB[] getBoxType(final int type) {

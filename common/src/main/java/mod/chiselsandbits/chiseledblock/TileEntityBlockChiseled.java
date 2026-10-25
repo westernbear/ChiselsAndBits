@@ -67,7 +67,8 @@ public class TileEntityBlockChiseled extends BlockEntity
     int lightLevel = -1;
     private boolean renderUpdate = false;
     private BlockState state;
-    private VoxelBlobStateReference blobStateReference;
+    // Volatile: chunk meshing threads read it through getRenderData().
+    private volatile VoxelBlobStateReference blobStateReference;
     private int primaryBlockStateId;
     private IModelData modelData = newModelData();
     /**
@@ -309,10 +310,12 @@ public class TileEntityBlockChiseled extends BlockEntity
         synchronizeBlockStateProperties();
     }
 
+    /**
+     * The immutable shape reference, read by chunk meshing (snapshotted by Fabric and Sodium on the main thread) to
+     * find the shared mesh of this block's bits.
+     */
     public @Nullable Object getRenderData() {
-        modelData.setData(MP_VBSR, getBlobStateReference());
-        modelData.setData(MP_PBSI, getPrimaryBlockStateId());
-        return modelData;
+        return getBlobStateReference();
     }
 
     public VoxelBlob getBlob() {

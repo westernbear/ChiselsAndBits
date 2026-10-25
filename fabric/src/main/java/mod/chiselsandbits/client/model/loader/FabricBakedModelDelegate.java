@@ -2,13 +2,13 @@ package mod.chiselsandbits.client.model.loader;
 
 import java.util.List;
 import java.util.function.Predicate;
-import mod.chiselsandbits.chiseledblock.BlockBitInfo;
 import mod.chiselsandbits.chiseledblock.TileEntityBlockChiseled;
-import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
 import mod.chiselsandbits.client.model.baked.DataAwareBakedModel;
-import mod.chiselsandbits.client.model.data.IModelData;
 import mod.chiselsandbits.interfaces.ICacheClearable;
 import mod.chiselsandbits.render.chiseledblock.ChiseledBlockGeometry;
+import mod.chiselsandbits.render.chiseledblock.ChiseledEmitter;
+import mod.chiselsandbits.render.chiseledblock.ShapeMesh;
+import mod.chiselsandbits.render.chiseledblock.ShapeMeshes;
 import net.fabricmc.fabric.api.client.renderer.v1.mesh.QuadEmitter;
 import net.fabricmc.fabric.api.client.renderer.v1.model.FabricBlockStateModel;
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
@@ -22,11 +22,10 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
-/** Bridges the cached C&B geometry into Minecraft 26.2's block-state model pipeline. */
+/** Bakes chiseled blocks into Minecraft 26.2's chunk mesh from the shared per-shape {@link ShapeMesh}. */
 public final class FabricBakedModelDelegate implements BlockStateModel, FabricBlockStateModel, ICacheClearable {
     private final DataAwareBakedModel wrapped;
     private final BlockStateModel fallback;
-    private boolean cached;
 
     public FabricBakedModelDelegate(final DataAwareBakedModel wrapped, final BlockStateModel fallback) {
         this.wrapped = wrapped;
@@ -56,25 +55,36 @@ public final class FabricBakedModelDelegate implements BlockStateModel, FabricBl
             final BlockState state,
             final RandomSource random,
             final Predicate<@Nullable Direction> cullTest) {
-        initializeCaches();
-
-        if (!(level.getBlockEntity(pos) instanceof TileEntityBlockChiseled blockEntity)
-                || !(blockEntity.getRenderData() instanceof IModelData modelData)) {
+        if (!(level.getBlockEntity(pos) instanceof TileEntityBlockChiseled)) {
             emitFallback(emitter, level, pos, state, random, cullTest);
             return;
         }
 
-        for (final ChiseledBlockGeometry.RenderedQuad rendered :
-                ChiseledBlockGeometry.collect(wrapped, level, pos, state, random, cullTest, modelData)) {
-            emitter.fromBakedQuad(rendered.quad());
-            emitter.chunkLayer(rendered.layer());
-            emitter.cullFace(rendered.cullFace());
-            if (rendered.tintColor() != -1) {
-                emitter.tintIndex(-1);
-                emitter.multiplyColor(rendered.tintColor());
-            }
-            emitter.emit();
+        // Render data is snapshotted on the main thread, so these reads are safe on meshing workers.
+        final ShapeMesh mesh = ShapeMeshes.forRenderData(level.getBlockEntityRenderData(pos));
+        if (mesh == null) {
+            return;
         }
+
+        final ChiseledBlockGeometry.TintCache tints = new ChiseledBlockGeometry.TintCache(level, pos);
+        ChiseledEmitter.emitWorld(
+                mesh,
+                side -> ShapeMeshes.forRenderData(level.getBlockEntityRenderData(pos.relative(side))),
+                cullTest::test,
+                (quad, cullFace, layer) -> {
+                    emitter.fromBakedQuad(quad);
+                    emitter.chunkLayer(layer);
+                    emitter.cullFace(cullFace);
+                    // The packed tint index means nothing to the chiseled block's colours; bake the bit's colour in.
+                    if (quad.materialInfo().tintIndex() >= 0) {
+                        emitter.tintIndex(-1);
+                        final int tint = tints.color(quad);
+                        if (tint != -1) {
+                            emitter.multiplyColor(tint);
+                        }
+                    }
+                    emitter.emit();
+                });
     }
 
     private void emitFallback(
@@ -87,19 +97,10 @@ public final class FabricBakedModelDelegate implements BlockStateModel, FabricBl
         ((FabricBlockStateModel) (Object) fallback).emitQuads(emitter, level, pos, state, random, cullTest);
     }
 
-    private void initializeCaches() {
-        if (!cached) {
-            BlockBitInfo.recalculate();
-            VoxelBlob.clearCache();
-            cached = true;
-        }
-    }
-
     @Override
     public void clearCache() {
         if (wrapped instanceof ICacheClearable cache) {
             cache.clearCache();
         }
-        cached = false;
     }
 }
