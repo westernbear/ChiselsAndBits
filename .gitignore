@@ -42,7 +42,6 @@ replay_*.log
 # local workspace
 
 /.codex/
-/AGENTS.md
 /codex-md.py
 /graphify-out/
 /src/graphify-out/
