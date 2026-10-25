@@ -1,83 +1,29 @@
 package mod.chiselsandbits.render.chiseledblock;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Predicate;
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
-import mod.chiselsandbits.client.model.baked.DataAwareBakedModel;
-import mod.chiselsandbits.client.model.data.IModelData;
 import mod.chiselsandbits.helpers.ModUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.color.block.BlockTintSource;
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
-import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
-import org.jetbrains.annotations.Nullable;
 
 /**
- * Loader-neutral extraction of the dynamic C&amp;B block geometry.
+ * Loader-neutral helpers for placed chiseled geometry.
  *
- * <p>Produced quads carry the resolved per-bit tint colour; consumers either multiply it into their own emitter
- * (Fabric) or remap it into a tint-layer array (NeoForge {@code submitBlockModel}).
+ * <p>Quads carry a packed tint reference (state id + tint index); loaders resolve it per block with {@link TintCache}
+ * and multiply it into their own quad output.
  */
 public final class ChiseledBlockGeometry {
 
-    public record RenderedQuad(
-            BakedQuad quad,
-            int tintColor,
-            ChunkSectionLayer layer,
-            @Nullable Direction cullFace) {}
-
     private ChiseledBlockGeometry() {}
 
+    /** Rebuilds fluid tables, layer filters and the state lookup; run once per reload by {@link ShapeMeshes}. */
     public static void initializeCaches() {
         BlockBitInfo.recalculate();
         VoxelBlob.clearCache();
-    }
-
-    public static List<RenderedQuad> collect(
-            final DataAwareBakedModel wrapped,
-            final BlockAndTintGetter level,
-            final BlockPos pos,
-            final BlockState state,
-            final RandomSource random,
-            final Predicate<@Nullable Direction> cullTest,
-            final IModelData data) {
-        final List<RenderedQuad> quads = new ArrayList<>();
-
-        synchronized (wrapped) {
-            wrapped.updateModelData(level, pos, state, data);
-            for (final ChiselRenderType renderType : wrapped.getRenderTypes(level, pos, state, data)) {
-                collectSide(quads, wrapped, level, pos, state, random, data, renderType, null);
-                for (final Direction direction : Direction.values()) {
-                    if (!cullTest.test(direction)) {
-                        collectSide(quads, wrapped, level, pos, state, random, data, renderType, direction);
-                    }
-                }
-            }
-        }
-
-        return quads;
-    }
-
-    private static void collectSide(
-            final List<RenderedQuad> output,
-            final DataAwareBakedModel wrapped,
-            final BlockAndTintGetter level,
-            final BlockPos pos,
-            final BlockState state,
-            final RandomSource random,
-            final IModelData data,
-            final ChiselRenderType renderType,
-            @Nullable final Direction side) {
-        for (final BakedQuad quad : wrapped.getQuads(state, side, random, data, renderType)) {
-            output.add(new RenderedQuad(quad, tintFor(quad, level, pos), renderType.layer, side));
-        }
     }
 
     /** Resolves the packed C&amp;B tint reference (state id + tint index) into an ARGB colour. */
@@ -98,26 +44,38 @@ public final class ChiseledBlockGeometry {
         return color;
     }
 
-    public static BakedQuad withTintIndex(final BakedQuad quad, final int tintIndex) {
-        final BakedQuad.MaterialInfo material = quad.materialInfo();
-        final BakedQuad.MaterialInfo remapped = new BakedQuad.MaterialInfo(
-                material.sprite(),
-                material.layer(),
-                material.itemRenderType(),
-                tintIndex,
-                material.shade(),
-                material.lightEmission());
+    /** Remembers the colours of one block's few tinted states, so biome blending runs once per state, not per quad. */
+    public static final class TintCache {
+        private final BlockAndTintGetter level;
+        private final BlockPos pos;
+        private final int[] keys = new int[8];
+        private final int[] colors = new int[8];
+        private int size;
 
-        return new BakedQuad(
-                quad.position0(),
-                quad.position1(),
-                quad.position2(),
-                quad.position3(),
-                quad.packedUV0(),
-                quad.packedUV1(),
-                quad.packedUV2(),
-                quad.packedUV3(),
-                quad.direction(),
-                remapped);
+        public TintCache(final BlockAndTintGetter level, final BlockPos pos) {
+            this.level = level;
+            this.pos = pos;
+        }
+
+        /** The ARGB tint of {@code quad} at this block, or -1 when it is untinted. */
+        public int color(final BakedQuad quad) {
+            final int packedTint = quad.materialInfo().tintIndex();
+            if (packedTint < 0) {
+                return -1;
+            }
+
+            for (int index = 0; index < size; index++) {
+                if (keys[index] == packedTint) {
+                    return colors[index];
+                }
+            }
+
+            final int color = tintFor(quad, level, pos);
+            if (size < keys.length) {
+                keys[size] = packedTint;
+                colors[size++] = color;
+            }
+            return color;
+        }
     }
 }

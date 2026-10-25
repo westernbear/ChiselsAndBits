@@ -1,7 +1,9 @@
 package mod.chiselsandbits.render.helpers;
 
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
+import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.Direction;
 
 public class ModelQuadLayer {
@@ -15,6 +17,25 @@ public class ModelQuadLayer {
     public BakedQuad sourceQuad;
 
     public Direction face;
+
+    private volatile BakedQuad.MaterialInfo material;
+
+    /**
+     * The material every chiseled quad of this layer shares. A layer is cached per (state, chunk layer, face), so the
+     * chunk layer and packed tint never change for one instance.
+     */
+    public BakedQuad.MaterialInfo material(final ChunkSectionLayer chunkLayer, final int packedTint) {
+        BakedQuad.MaterialInfo cached = material;
+        if (cached == null) {
+            final int lightEmission = Math.max(0, Math.min(15, light));
+            final BakedQuad.MaterialInfo derived = BakedQuad.MaterialInfo.of(
+                    new Material.Baked(sprite, false), sprite.transparency(), packedTint, true, lightEmission);
+            cached = new BakedQuad.MaterialInfo(
+                    sprite, chunkLayer, derived.itemRenderType(), packedTint, true, lightEmission);
+            material = cached;
+        }
+        return cached;
+    }
 
     public static class ModelQuadLayerBuilder {
         public final ModelQuadLayer cache = new ModelQuadLayer();

@@ -1,6 +1,7 @@
 package mod.chiselsandbits.client.culling;
 
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
+import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
 import mod.chiselsandbits.helpers.ModUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -26,6 +27,11 @@ public class MCCullTest implements ICullTest, BlockGetter {
     @Override
     public boolean isVisible(final int mySpot, final int secondSpot) {
         if (mySpot == 0 || mySpot == secondSpot) {
+            return false;
+        }
+
+        // An opaque full-cube bit hides any face touching it, as a full block does in vanilla.
+        if (VoxelBlob.isOpaque(secondSpot)) {
             return false;
         }
 

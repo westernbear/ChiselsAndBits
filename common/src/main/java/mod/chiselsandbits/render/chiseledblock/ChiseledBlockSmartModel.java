@@ -111,32 +111,36 @@ public class ChiseledBlockSmartModel extends BaseSmartModel implements ICacheCle
             return new ChiseledBlockBakedModel(blockP, layer, null, format);
         }
 
-        ChiseledBlockBakedModel out = null;
-
-        if (format == getModelFormat()) {
-            out = MODEL_CACHE.get(new ModelCacheKey(data, layer));
+        // Items, previews and bit storage only: placed blocks use the per-shape ShapeMeshes cache instead.
+        final ModelCacheKey key = format == getModelFormat() ? new ModelCacheKey(data, layer) : null;
+        if (key != null) {
+            synchronized (MODEL_CACHE) {
+                final ChiseledBlockBakedModel cached = MODEL_CACHE.get(key);
+                if (cached != null) {
+                    return cached;
+                }
+            }
         }
 
-        if (out == null) {
-            out = new ChiseledBlockBakedModel(blockP, layer, data, format);
+        ChiseledBlockBakedModel out = new ChiseledBlockBakedModel(blockP, layer, data, format);
+        if (out.isEmpty()) {
+            out = ChiseledBlockBakedModel.breakingParticleModel(layer, blockP, random);
+        }
 
-            if (out.isEmpty()) {
-                out = ChiseledBlockBakedModel.breakingParticleModel(layer, blockP, random);
+        if (key != null) {
+            synchronized (MODEL_CACHE) {
+                MODEL_CACHE.put(key, out);
             }
-
-            if (format == getModelFormat()) {
-                MODEL_CACHE.put(new ModelCacheKey(data, layer), out);
-            }
-        } else {
-            return out;
         }
 
         return out;
     }
 
     public static void onConfigurationReload() {
-        MODEL_CACHE.changeMaxSize(
-                ChiselsAndBits.getConfig().getClient().modelCacheSize.get());
+        synchronized (MODEL_CACHE) {
+            MODEL_CACHE.changeMaxSize(
+                    ChiselsAndBits.getConfig().getClient().modelCacheSize.get());
+        }
     }
 
     @Override
@@ -265,7 +269,10 @@ public class ChiseledBlockSmartModel extends BaseSmartModel implements ICacheCle
     @Override
     public void clearCache() {
         SIDE_CACHE.clear();
-        MODEL_CACHE.clear();
+        synchronized (MODEL_CACHE) {
+            MODEL_CACHE.clear();
+        }
+        ShapeMeshes.invalidate();
         ITEM_TO_MODEL_CACHE.clear();
 
         FLUID_RENDER_TYPES.clear();
@@ -342,10 +349,13 @@ public class ChiseledBlockSmartModel extends BaseSmartModel implements ICacheCle
     private static final class ModelCacheKey {
         private final VoxelBlob blob;
         private final ChiselRenderType type;
+        private final int hash;
 
         private ModelCacheKey(final VoxelBlob blob, final ChiselRenderType type) {
             this.blob = blob;
             this.type = type;
+            // Hashing 4096 voxels is the expensive part of a lookup, so do it once per key.
+            this.hash = Objects.hash(blob, type);
         }
 
         @Override
@@ -361,7 +371,7 @@ public class ChiseledBlockSmartModel extends BaseSmartModel implements ICacheCle
 
         @Override
         public int hashCode() {
-            return Objects.hash(blob, type);
+            return hash;
         }
     }
 }

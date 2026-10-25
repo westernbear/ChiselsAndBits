@@ -28,6 +28,7 @@ public class ClientConfiguration extends Config {
     public ValidatedBoolean useGetLightValue = new ValidatedBoolean(true);
     public ValidatedBoolean disableCustomVertexFormats = new ValidatedBoolean(true);
     public ValidatedBoolean persistCreativeClipboard = new ValidatedBoolean(true);
+    // Item, preview and bit-storage models only; placed blocks keep one mesh per distinct shape.
     public ValidatedLong modelCacheSize = new ValidatedLong(1000L, 2000L, 0L);
 
     public ClientConfiguration() {

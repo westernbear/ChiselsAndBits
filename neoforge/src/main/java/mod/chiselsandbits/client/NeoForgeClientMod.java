@@ -2,6 +2,7 @@ package mod.chiselsandbits.client;
 
 import mod.chiselsandbits.bitbag.BagGui;
 import mod.chiselsandbits.bitstorage.TileEntitySpecialRenderBitStorage;
+import mod.chiselsandbits.client.model.ChiseledBlockStateModel;
 import mod.chiselsandbits.client.model.EmptyChiseledBlockModelLoader;
 import mod.chiselsandbits.client.model.baked.BaseSmartModel;
 import mod.chiselsandbits.client.model.loader.LegacyItemModelDelegate;
@@ -11,14 +12,17 @@ import mod.chiselsandbits.compat.client.OverlayRenderCallback;
 import mod.chiselsandbits.compat.client.TextureStitchCallback;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.printer.ChiselPrinterScreen;
+import mod.chiselsandbits.registry.ModBlocks;
 import mod.chiselsandbits.registry.ModContainerTypes;
 import mod.chiselsandbits.registry.ModTileEntityTypes;
 import mod.chiselsandbits.render.SmartModelManager;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.item.ItemModel;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -73,11 +77,20 @@ public final class NeoForgeClientMod {
                 itemModels.put(entry.getKey(), new LegacyItemModelDelegate(entry.getValue(), fallback, null));
             }
         }
+
+        final java.util.Map<BlockState, BlockStateModel> blockModels =
+                event.getBakingResult().blockStateModels();
+        for (final BlockState state :
+                ModBlocks.CHISELED_BLOCK.get().getStateDefinition().getPossibleStates()) {
+            final BlockStateModel placeholder = blockModels.get(state);
+            if (placeholder != null) {
+                blockModels.put(state, new ChiseledBlockStateModel(placeholder));
+            }
+        }
     }
 
     @SubscribeEvent
     public static void registerRenderers(final EntityRenderersEvent.RegisterRenderers event) {
-        event.registerBlockEntityRenderer(ModTileEntityTypes.CHISELED.get(), context -> new ChiseledBlockRenderer());
         event.registerBlockEntityRenderer(ModTileEntityTypes.BIT_STORAGE.get(), TileEntitySpecialRenderBitStorage::new);
     }
 

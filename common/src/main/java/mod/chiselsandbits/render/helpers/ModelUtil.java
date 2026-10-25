@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import mod.chiselsandbits.chiseledblock.BlockBitInfo;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.helpers.DeprecationHelper;
@@ -40,10 +42,11 @@ import org.apache.commons.lang3.tuple.Triple;
 public class ModelUtil implements ICacheClearable {
     private static final HashMap<Pair<ChunkSectionLayer, Direction>, HashMap<Integer, String>> blockToTexture =
             new HashMap<>();
-    private static final HashMap<Triple<Integer, ChunkSectionLayer, Direction>, ModelQuadLayer[]> cache =
-            new HashMap<>();
-    private static final HashMap<Pair<ChunkSectionLayer, Integer>, ChiseledBlockBakedModel> breakCache =
-            new HashMap<>();
+    // Concurrent: chunk meshing resolves face layers on worker threads.
+    private static final Map<Triple<Integer, ChunkSectionLayer, Direction>, ModelQuadLayer[]> cache =
+            new ConcurrentHashMap<>();
+    private static final Map<Pair<ChunkSectionLayer, Integer>, ChiseledBlockBakedModel> breakCache =
+            new ConcurrentHashMap<>();
 
     @SuppressWarnings("unused")
     private static final ModelUtil instance = new ModelUtil();
@@ -171,8 +174,8 @@ public class ModelUtil implements ICacheClearable {
         }
 
         final List<BlockStateModelPart> parts = new ArrayList<>();
-        rand.setSeed(42L);
-        model.collectParts(rand, parts);
+        // A fresh source per call: a shared one throws when worker threads reseed it concurrently.
+        model.collectParts(RandomSource.create(42L), parts);
         final List<BakedQuad> result = new ArrayList<>();
         for (final BlockStateModelPart part : parts) {
             for (final BakedQuad quad : part.getQuads(f)) {

@@ -41,7 +41,9 @@ Client render verification:
 CHISELSANDBITS_CLIENT_SMOKE=1 xvfb-run -a ./gradlew :neoforge:runClient
 ```
 
-The smoke asserts the chiseled block model contributes no quads, the bit item model is the dynamic delegate, and the captured frame is non-blank, then exits with a status code. The Fabric client gametest additionally compares rendered pixels in-world.
+The smoke asserts the chiseled block model is the chunk-baked `ChiseledBlockStateModel` (contributing no quads without level context), the bit item model is the dynamic delegate, and the captured frame is non-blank, then exits with a status code. The Fabric client gametest additionally compares rendered pixels in-world.
+
+Both loaders bake placed chiseled blocks into the chunk mesh from one shared `ShapeMesh` per distinct shape (`ShapeMeshes`, stored on the shared `VoxelBlobStateInstance`); nothing is redrawn per frame. `ChiseledEmitter` turns a mesh into quads and skips edge cells hidden by an opaque neighbouring chiseled block.
 
 ## Platform abstractions
 
@@ -86,7 +88,7 @@ Client logic is shared: `core/ClientSideImpl`, `client/RenderHelper`, `core/Chis
 | Ticks / input | `ClientTickEvents`, `UseBlockCallback` | `ClientTickEvent`, `PlayerInteractEvent.RightClickBlock`, `InputEvent.MouseScrollingEvent` |
 | Key mappings | `KeyMappingHelper` | `RegisterKeyMappingsEvent` (queued by `KeyBindings`) |
 | Models | `ModelLoadingPlugin` after-bake hooks | `ModelEvent.RegisterLoaders` / `ModifyBakingResult` |
-| Block rendering | `FabricBlockStateModel.emitQuads` | `ChiseledBlockRenderer` (BER) via `submitCustomGeometry` |
+| Block rendering | `FabricBlockStateModel.emitQuads` | `ChiseledBlockStateModel` (`DynamicBlockStateModel.collectParts`) |
 | Menus / atlases | `MenuScreens` (fabric access widener), `TextureStitchCallback` | `RegisterMenuScreensEvent`, `TextureAtlasStitchedEvent` |
 
 Fabric loads `chiselsandbits.client.mixins.json` (HUD, mouse, multiplayer game mode, atlas); NeoForge reaches the same hooks through `RenderGuiEvent.Post`, `InputEvent.MouseScrollingEvent` and `TextureAtlasStitchedEvent`, so the two loaders agree on behaviour without sharing the mixins.

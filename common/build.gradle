@@ -18,7 +18,7 @@ dependencies {
 }
 
 def standaloneChecks = [
-	faceRegionMergeCheck             : 'mod.chiselsandbits.render.chiseledblock.FaceRegionMergeCheck',
+	shapeMesherCheck                 : 'mod.chiselsandbits.render.chiseledblock.ShapeMesherCheck',
 	legacyBlobCompatibilityCheck     : 'mod.chiselsandbits.mixin.LegacyBlobCompatibilityCheck',
 	legacyConfigurationMigrationCheck: 'mod.chiselsandbits.config.LegacyConfigurationMigrationCheck',
 	mirrorPrintDropCheck             : 'mod.chiselsandbits.items.MirrorPrintDropCheck',
@@ -31,6 +31,18 @@ def checkTasks = standaloneChecks.collect { name, entryPoint ->
 		classpath = sourceSets.test.runtimeClasspath
 		it.mainClass = entryPoint
 	}
+}
+
+// Not part of check: replays the old and new meshers over a real world, e.g. -PbenchWorld=/path/to/world
+tasks.register('meshBenchmark', JavaExec) {
+	dependsOn testClasses
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'mod.chiselsandbits.render.chiseledblock.MeshBenchmark'
+	maxHeapSize = '4g'
+	args = [
+		project.findProperty('benchWorld') ?: '',
+		project.findProperty('benchRadius') ?: ''
+	]
 }
 
 tasks.named('test') {
