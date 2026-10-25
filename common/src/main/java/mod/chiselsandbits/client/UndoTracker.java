@@ -82,7 +82,7 @@ public class UndoTracker implements ICacheClearable {
     public void undo() {
         if (level > -1) {
             final UndoStep step = undoLevels.get(level);
-            final Player who = ClientSide.instance.getPlayer();
+            final Player who = ClientSide.getInstance().getPlayer();
 
             if (correctWorld(who, step) && step.after != null && step.before != null) {
                 final ActingPlayer testPlayer = ActingPlayer.testingAs(who, InteractionHand.MAIN_HAND);
@@ -98,7 +98,7 @@ public class UndoTracker implements ICacheClearable {
                 displayError();
             }
         } else {
-            ClientSide.instance
+            ClientSide.getInstance()
                     .getPlayer()
                     .sendSystemMessage(Component.translatable("mod.chiselsandbits.result.nothing_to_undo"));
         }
@@ -107,7 +107,7 @@ public class UndoTracker implements ICacheClearable {
     public void redo() {
         if (level + 1 < undoLevels.size()) {
             final UndoStep step = undoLevels.get(level + 1);
-            final Player who = ClientSide.instance.getPlayer();
+            final Player who = ClientSide.getInstance().getPlayer();
 
             if (correctWorld(who, step)) {
                 final ActingPlayer testPlayer = ActingPlayer.testingAs(who, InteractionHand.MAIN_HAND);
@@ -123,7 +123,7 @@ public class UndoTracker implements ICacheClearable {
                 displayError();
             }
         } else {
-            ClientSide.instance
+            ClientSide.getInstance()
                     .getPlayer()
                     .sendSystemMessage(Component.translatable("mod.chiselsandbits.result.nothing_to_redo"));
         }
@@ -215,7 +215,7 @@ public class UndoTracker implements ICacheClearable {
     @Environment(Env.CLIENT)
     private void displayError() {
         for (final String err : errors) {
-            ClientSide.instance.getPlayer().sendSystemMessage(Component.translatable(err));
+            ClientSide.getInstance().getPlayer().sendSystemMessage(Component.translatable(err));
         }
 
         errors.clear();

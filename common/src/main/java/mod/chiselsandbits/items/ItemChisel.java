@@ -116,7 +116,7 @@ public class ItemChisel extends Item implements IItemScrollWheel, IChiselModeIte
                     final HitResult mop = player.level().clip(context);
                     if (mop != null && mop instanceof BlockHitResult rayTraceResult) {
                         final BitLocation loc = new BitLocation(rayTraceResult, BitOperation.CHISEL);
-                        ClientSide.instance.pointAt(ChiselToolType.CHISEL, loc, hand);
+                        ClientSide.getInstance().pointAt(ChiselToolType.CHISEL, loc, hand);
                         return true;
                     }
 
@@ -156,7 +156,7 @@ public class ItemChisel extends Item implements IItemScrollWheel, IChiselModeIte
         }
 
         if (player.level().isClientSide()) {
-            return ClientSide.instance.getStartPos() != null;
+            return ClientSide.getInstance().getStartPos() != null;
         }
 
         return false;
@@ -315,8 +315,8 @@ public class ItemChisel extends Item implements IItemScrollWheel, IChiselModeIte
                 .helpText(
                         LocalStrings.HelpChisel,
                         helpText,
-                        ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyAttack),
-                        ClientSide.instance.getModeKey());
+                        ClientSide.getInstance().getKeyName(Minecraft.getInstance().options.keyAttack),
+                        ClientSide.getInstance().getModeKey());
         helpText.forEach(tooltip);
     }
 
@@ -350,7 +350,7 @@ public class ItemChisel extends Item implements IItemScrollWheel, IChiselModeIte
                 return formattableTextComponent
                         .append(" - ")
                         .append(ChiselModeManager.getChiselMode(
-                                        ClientSide.instance.getPlayer(),
+                                        ClientSide.getInstance().getPlayer(),
                                         ChiselToolType.CHISEL,
                                         InteractionHand.MAIN_HAND)
                                 .getName()

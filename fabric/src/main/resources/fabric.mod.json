@@ -11,7 +11,6 @@
     "homepage": "https://github.com/singlerr",
     "sources": "https://github.com/singlerr"
   },
-  "accessWidener": "chiselsandbits.accesswidener",
   "license": "LGPLv3",
   "icon": "assets/chiselsandbits/icon.png",
   "environment": "*",
@@ -24,13 +23,15 @@
     ]
   },
   "mixins": [
-    "chiselsandbits.mixins.json"
+    "chiselsandbits.mixins.json",
+    "chiselsandbits.client.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.19.3",
     "minecraft": "~26.2",
     "java": ">=25",
     "fabric-api": ">=0.155.2+26.2",
+    "architectury": ">=21.0.7",
     "fzzy_config": ">=0.7.6"
   }
 }

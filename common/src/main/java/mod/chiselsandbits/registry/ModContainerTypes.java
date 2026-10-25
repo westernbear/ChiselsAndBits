@@ -4,10 +4,6 @@ import com.google.common.base.Suppliers;
 import java.util.function.Supplier;
 import mod.chiselsandbits.bitbag.BagContainer;
 import mod.chiselsandbits.printer.ChiselPrinterContainer;
-import mod.chiselsandbits.utils.Constants;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
 import net.minecraft.world.flag.FeatureFlagSet;
 import net.minecraft.world.inventory.MenuType;
 
@@ -18,12 +14,8 @@ public final class ModContainerTypes {
     }
 
     public static void onModConstruction() {
-        Registry.register(
-                BuiltInRegistries.MENU, Identifier.fromNamespaceAndPath(Constants.MOD_ID, "bag"), BAG_CONTAINER.get());
-        Registry.register(
-                BuiltInRegistries.MENU,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "chisel_station"),
-                CHISEL_STATION_CONTAINER.get());
+        ModRegistry.add(ModRegistry.MENU_TYPES, "bag", BAG_CONTAINER);
+        ModRegistry.add(ModRegistry.MENU_TYPES, "chisel_station", CHISEL_STATION_CONTAINER);
     }
 
     public static final Supplier<MenuType<BagContainer>> BAG_CONTAINER =

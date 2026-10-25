@@ -7,11 +7,8 @@ import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Util;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-import org.jetbrains.annotations.NotNull;
 
 public final class FluidUtil {
 
@@ -57,10 +54,5 @@ public final class FluidUtil {
                 .get(fluid.defaultFluidState())
                 .flowingMaterial()
                 .sprite();
-    }
-
-    public static boolean interactWithFluidHandler(
-            final @NotNull Player player, final @NotNull InteractionHand hand, final @NotNull Object handler) {
-        return PlatformFluidUtil.interactWithFluidHandler(player, hand, handler);
     }
 }

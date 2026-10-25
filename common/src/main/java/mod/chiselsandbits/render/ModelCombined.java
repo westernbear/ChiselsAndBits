@@ -84,7 +84,7 @@ public class ModelCombined extends BaseBakedBlockModel {
             return a.getParticleIcon();
         }
 
-        return ClientSide.instance.getMissingIcon();
+        return ClientSide.getInstance().getMissingIcon();
     }
 
     @Override

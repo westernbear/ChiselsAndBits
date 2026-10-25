@@ -18,7 +18,7 @@ import mod.chiselsandbits.events.TickHandler;
 import mod.chiselsandbits.events.VaporizeWater;
 import mod.chiselsandbits.interfaces.ICacheClearable;
 import mod.chiselsandbits.network.NetworkChannel;
-import mod.chiselsandbits.platform.PlatformPickBlock;
+import mod.chiselsandbits.platform.RegistryFlush;
 import mod.chiselsandbits.registry.ModBlocks;
 import mod.chiselsandbits.registry.ModContainerTypes;
 import mod.chiselsandbits.registry.ModDataComponents;
@@ -30,7 +30,6 @@ import mod.chiselsandbits.render.chiseledblock.ChiseledBlockSmartModel;
 import mod.chiselsandbits.utils.Constants;
 import mod.chiselsandbits.utils.EnvExecutor;
 import mod.chiselsandbits.utils.LanguageHandler;
-import net.minecraft.client.Minecraft;
 import org.jetbrains.annotations.NotNull;
 
 public class ChiselsAndBits {
@@ -53,12 +52,14 @@ public class ChiselsAndBits {
         config = new Configuration();
         EnvExecutor.runWhenOn(
                 Env.CLIENT,
-                () -> () -> ClientLifecycleEvent.CLIENT_STARTED.register(
-                        client -> LanguageHandler.loadLangPath("assets/chiselsandbits/lang/%s.json")));
+                () -> () -> ClientLifecycleEvent.CLIENT_STARTED.register(client -> {
+                    LanguageHandler.loadLangPath("assets/chiselsandbits/lang/%s.json");
+                    // Minecraft.getInstance() does not exist yet while the mod constructs (NeoForge).
+                    setupClipboard(new File(client.gameDirectory, MODID + "_clipboard"));
+                }));
 
         VaporizeWater.register();
         EventPlayerInteract.register();
-        PlatformPickBlock.register();
         EnvExecutor.runWhenOn(Env.CLIENT, () -> () -> TickHandler.register());
         ModDataComponents.onModConstruction();
         ModBlocks.onModConstruction();
@@ -67,10 +68,8 @@ public class ChiselsAndBits {
         ModRecipeSerializers.onModConstruction();
         ModTileEntityTypes.onModConstruction();
         ModItemGroups.onModConstruction();
+        RegistryFlush.flush();
         networkChannel.registerCommonMessages();
-        EnvExecutor.runWhenOn(
-                Env.CLIENT,
-                () -> () -> setupClipboard(new File(Minecraft.getInstance().gameDirectory, MODID + "_clipboard")));
     }
 
     public static ChiselsAndBits getInstance() {

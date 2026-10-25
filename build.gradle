@@ -35,6 +35,8 @@ subprojects {
 		maven { url = 'https://maven.fabricmc.net/' }
 		maven { url = 'https://maven.neoforged.net/releases' }
 		maven { url = 'https://maven.fzzyhmstrs.me/' }
+		// Transitive of fzzy_config's NeoForge artifact (optional at runtime, resolvable at build time).
+		maven { url = 'https://repo.nyon.dev/releases' }
 	}
 
 	dependencies {
@@ -55,6 +57,8 @@ subprojects {
 
 	spotless {
 		java {
+			// Shared gametest sources are added as srcDirs by the loader modules; format them in `common`.
+			target 'src/**/*.java'
 			palantirJavaFormat()
 		}
 		groovyGradle {

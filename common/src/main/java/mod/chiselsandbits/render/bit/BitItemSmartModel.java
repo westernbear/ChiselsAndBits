@@ -68,7 +68,8 @@ public class BitItemSmartModel extends BaseSmartModel implements ICacheClearable
 
     public LegacyBakedModel func_239290_a_(
             final LegacyBakedModel originalModel, final ItemStack stack, final Level world, final LivingEntity entity) {
-        return getCachedModel(ItemChiseledBit.getStackState(stack), ClientSide.instance.holdingShift());
+        return getCachedModel(
+                ItemChiseledBit.getStackState(stack), ClientSide.getInstance().holdingShift());
     }
 
     @Override

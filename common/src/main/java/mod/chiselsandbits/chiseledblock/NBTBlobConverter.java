@@ -138,11 +138,11 @@ public class NBTBlobConverter {
     public final boolean writeToStack(final ItemStack stack, final boolean crossWorld) {
         final ChiseledData data = toComponent(crossWorld);
         if (data == null) {
-            stack.remove(ModDataComponents.CHISELED_DATA);
+            stack.remove(ModDataComponents.CHISELED_DATA.get());
             return false;
         }
 
-        stack.set(ModDataComponents.CHISELED_DATA, data);
+        stack.set(ModDataComponents.CHISELED_DATA.get(), data);
         clearLegacyChiseledData(stack);
         return true;
     }
@@ -239,7 +239,7 @@ public class NBTBlobConverter {
     }
 
     public final boolean readFromStack(final ItemStack stack, final int preferedFormat) {
-        final ChiseledData component = stack.get(ModDataComponents.CHISELED_DATA);
+        final ChiseledData component = stack.get(ModDataComponents.CHISELED_DATA.get());
         if (component != null) {
             return readChisleData(component, preferedFormat);
         }
@@ -253,10 +253,10 @@ public class NBTBlobConverter {
         final boolean result = readChisleData(legacy, preferedFormat);
         final ChiseledData migrated = toComponent(true);
         if (migrated != null) {
-            stack.set(ModDataComponents.CHISELED_DATA, migrated);
+            stack.set(ModDataComponents.CHISELED_DATA.get(), migrated);
         }
         if (legacySide != null) {
-            stack.set(ModDataComponents.PLACEMENT_SIDE, legacySide);
+            stack.set(ModDataComponents.PLACEMENT_SIDE.get(), legacySide);
         }
         clearLegacyChiseledData(stack);
         return result;
@@ -268,11 +268,11 @@ public class NBTBlobConverter {
             return null;
         }
 
-        ChiseledData component = stack.get(ModDataComponents.CHISELED_DATA);
+        ChiseledData component = stack.get(ModDataComponents.CHISELED_DATA.get());
         if (component == null) {
             final NBTBlobConverter converter = new NBTBlobConverter();
             if (converter.readFromStack(stack, VoxelBlob.VERSION_ANY)) {
-                component = stack.get(ModDataComponents.CHISELED_DATA);
+                component = stack.get(ModDataComponents.CHISELED_DATA.get());
             }
         }
         return component;
@@ -281,7 +281,7 @@ public class NBTBlobConverter {
     public static boolean hasChiseledData(final ItemStack stack) {
         return stack != null
                 && !stack.isEmpty()
-                && (stack.get(ModDataComponents.CHISELED_DATA) != null || findLegacyChiseledData(stack) != null);
+                && (stack.get(ModDataComponents.CHISELED_DATA.get()) != null || findLegacyChiseledData(stack) != null);
     }
 
     private static byte[] copyBytes(final ByteBuffer source) {

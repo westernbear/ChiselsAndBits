@@ -14,11 +14,10 @@ import mod.chiselsandbits.items.ItemPositivePrint;
 import mod.chiselsandbits.items.ItemTapeMeasure;
 import mod.chiselsandbits.items.ItemWrench;
 import mod.chiselsandbits.utils.Constants;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ToolMaterial;
 
@@ -81,98 +80,36 @@ public final class ModItems {
     }
 
     public static void onModConstruction() {
-        ITEM_CHISELED_BLOCK.get().registerBlocks(Item.BY_BLOCK, ITEM_CHISELED_BLOCK.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "chiseled_block"),
-                ITEM_CHISELED_BLOCK.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "chisel_stone"),
-                ITEM_CHISEL_STONE.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "chisel_iron"),
-                ITEM_CHISEL_IRON.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "chisel_gold"),
-                ITEM_CHISEL_GOLD.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "chisel_diamond"),
-                ITEM_CHISEL_DIAMOND.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "chisel_netherite"),
-                ITEM_CHISEL_NETHERITE.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "block_bit"),
-                ITEM_BLOCK_BIT.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "mirrorprint"),
-                ITEM_MIRROR_PRINT.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "mirrorprint_written"),
-                ITEM_MIRROR_PRINT_WRITTEN.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "positiveprint"),
-                ITEM_POSITIVE_PRINT.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "positiveprint_written"),
-                ITEM_POSITIVE_PRINT_WRITTEN.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "negativeprint"),
-                ITEM_NEGATIVE_PRINT.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "negativeprint_written"),
-                ITEM_NEGATIVE_PRINT_WRITTEN.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "bit_bag"),
-                ITEM_BIT_BAG_DEFAULT.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "bit_bag_dyed"),
-                ITEM_BIT_BAG_DYED.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "wrench_wood"),
-                ITEM_WRENCH.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "bitsaw_stone"),
-                ITEM_BIT_SAW_STONE.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "bitsaw_gold"),
-                ITEM_BIT_SAW_GOLD.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "bitsaw_iron"),
-                ITEM_BIT_SAW_IRON.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "bitsaw_diamond"),
-                ITEM_BIT_SAW_DIAMOND.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "bitsaw_netherite"),
-                ITEM_BIT_SAW_NETHERITE.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "tape_measure"),
-                ITEM_TAPE_MEASURE.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "magnifying_glass"),
-                ITEM_MAGNIFYING_GLASS.get());
+        ModRegistry.add(ModRegistry.ITEMS, "chiseled_block", withBlockLookup(ITEM_CHISELED_BLOCK));
+        ModRegistry.add(ModRegistry.ITEMS, "chisel_stone", ITEM_CHISEL_STONE);
+        ModRegistry.add(ModRegistry.ITEMS, "chisel_iron", ITEM_CHISEL_IRON);
+        ModRegistry.add(ModRegistry.ITEMS, "chisel_gold", ITEM_CHISEL_GOLD);
+        ModRegistry.add(ModRegistry.ITEMS, "chisel_diamond", ITEM_CHISEL_DIAMOND);
+        ModRegistry.add(ModRegistry.ITEMS, "chisel_netherite", ITEM_CHISEL_NETHERITE);
+        ModRegistry.add(ModRegistry.ITEMS, "block_bit", ITEM_BLOCK_BIT);
+        ModRegistry.add(ModRegistry.ITEMS, "mirrorprint", ITEM_MIRROR_PRINT);
+        ModRegistry.add(ModRegistry.ITEMS, "mirrorprint_written", ITEM_MIRROR_PRINT_WRITTEN);
+        ModRegistry.add(ModRegistry.ITEMS, "positiveprint", ITEM_POSITIVE_PRINT);
+        ModRegistry.add(ModRegistry.ITEMS, "positiveprint_written", ITEM_POSITIVE_PRINT_WRITTEN);
+        ModRegistry.add(ModRegistry.ITEMS, "negativeprint", ITEM_NEGATIVE_PRINT);
+        ModRegistry.add(ModRegistry.ITEMS, "negativeprint_written", ITEM_NEGATIVE_PRINT_WRITTEN);
+        ModRegistry.add(ModRegistry.ITEMS, "bit_bag", ITEM_BIT_BAG_DEFAULT);
+        ModRegistry.add(ModRegistry.ITEMS, "bit_bag_dyed", ITEM_BIT_BAG_DYED);
+        ModRegistry.add(ModRegistry.ITEMS, "wrench_wood", ITEM_WRENCH);
+        ModRegistry.add(ModRegistry.ITEMS, "bitsaw_stone", ITEM_BIT_SAW_STONE);
+        ModRegistry.add(ModRegistry.ITEMS, "bitsaw_gold", ITEM_BIT_SAW_GOLD);
+        ModRegistry.add(ModRegistry.ITEMS, "bitsaw_iron", ITEM_BIT_SAW_IRON);
+        ModRegistry.add(ModRegistry.ITEMS, "bitsaw_diamond", ITEM_BIT_SAW_DIAMOND);
+        ModRegistry.add(ModRegistry.ITEMS, "bitsaw_netherite", ITEM_BIT_SAW_NETHERITE);
+        ModRegistry.add(ModRegistry.ITEMS, "tape_measure", ITEM_TAPE_MEASURE);
+        ModRegistry.add(ModRegistry.ITEMS, "magnifying_glass", ITEM_MAGNIFYING_GLASS);
+    }
+
+    private static <T extends BlockItem> Supplier<T> withBlockLookup(final Supplier<T> item) {
+        return Suppliers.memoize(() -> {
+            final T created = item.get();
+            created.registerBlocks(Item.BY_BLOCK, created);
+            return created;
+        });
     }
 }

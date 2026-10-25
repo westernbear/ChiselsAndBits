@@ -14,4 +14,7 @@ public interface IToolMode {
     boolean isDisabled();
 
     int ordinal();
+
+    /** The client key mapping registered for this mode; unset on a dedicated server. */
+    Object binding();
 }

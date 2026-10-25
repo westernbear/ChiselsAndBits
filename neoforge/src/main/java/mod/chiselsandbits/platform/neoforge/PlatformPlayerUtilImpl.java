@@ -1,6 +1,7 @@
 package mod.chiselsandbits.platform.neoforge;
 
 import net.minecraft.world.entity.player.Player;
+import net.neoforged.neoforge.common.util.FakePlayer;
 
 @SuppressWarnings("unused")
 public final class PlatformPlayerUtilImpl {
@@ -8,6 +9,6 @@ public final class PlatformPlayerUtilImpl {
     private PlatformPlayerUtilImpl() {}
 
     public static boolean isFakePlayer(Player player) {
-        return player.getClass().getName().contains("FakePlayer");
+        return player instanceof FakePlayer;
     }
 }

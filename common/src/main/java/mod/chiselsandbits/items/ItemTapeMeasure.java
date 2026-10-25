@@ -56,17 +56,17 @@ public class ItemTapeMeasure extends Item implements IChiselModeItem, IItemScrol
                 .helpText(
                         LocalStrings.HelpTapeMeasure,
                         helpText,
-                        ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse),
-                        ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse),
-                        ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyShift),
-                        ClientSide.instance.getModeKey());
+                        ClientSide.getInstance().getKeyName(Minecraft.getInstance().options.keyUse),
+                        ClientSide.getInstance().getKeyName(Minecraft.getInstance().options.keyUse),
+                        ClientSide.getInstance().getKeyName(Minecraft.getInstance().options.keyShift),
+                        ClientSide.getInstance().getModeKey());
         helpText.forEach(tooltip);
     }
 
     @Override
     public InteractionResult use(final Level worldIn, final Player playerIn, final InteractionHand hand) {
         if (playerIn.isShiftKeyDown() && playerIn.level().isClientSide()) {
-            ClientSide.instance.clearTapeMeasures();
+            ClientSide.getInstance().clearTapeMeasures();
         }
 
         return InteractionResult.SUCCESS;
@@ -76,7 +76,7 @@ public class ItemTapeMeasure extends Item implements IChiselModeItem, IItemScrol
     public InteractionResult useOn(final UseOnContext context) {
         if (context.getLevel().isClientSide()) {
             if (context.getPlayer().isShiftKeyDown()) {
-                ClientSide.instance.clearTapeMeasures();
+                ClientSide.getInstance().clearTapeMeasures();
                 return InteractionResult.SUCCESS;
             }
 
@@ -90,7 +90,7 @@ public class ItemTapeMeasure extends Item implements IChiselModeItem, IItemScrol
             final BlockHitResult mop = context.getPlayer().level().clip(rayTraceContext);
             if (mop.getType() == HitResult.Type.BLOCK) {
                 final BitLocation loc = new BitLocation(mop, BitOperation.CHISEL);
-                ClientSide.instance.pointAt(ChiselToolType.TAPEMEASURE, loc, context.getHand());
+                ClientSide.getInstance().pointAt(ChiselToolType.TAPEMEASURE, loc, context.getHand());
             } else {
                 return InteractionResult.FAIL;
             }
@@ -115,7 +115,7 @@ public class ItemTapeMeasure extends Item implements IChiselModeItem, IItemScrol
     //    }
 
     public DyeColor getTapeColor(final ItemStack item) {
-        final DyeColor component = item.get(ModDataComponents.COLOR);
+        final DyeColor component = item.get(ModDataComponents.COLOR.get());
         if (component != null) {
             return component;
         }
@@ -123,7 +123,7 @@ public class ItemTapeMeasure extends Item implements IChiselModeItem, IItemScrol
         if (compound.contains("color")) {
             try {
                 final DyeColor legacy = DyeColor.valueOf(compound.getStringOr("color", DyeColor.WHITE.name()));
-                item.set(ModDataComponents.COLOR, legacy);
+                item.set(ModDataComponents.COLOR.get(), legacy);
                 return legacy;
             } catch (final IllegalArgumentException iae) {
                 // nope!
@@ -159,6 +159,6 @@ public class ItemTapeMeasure extends Item implements IChiselModeItem, IItemScrol
     }
 
     public void setTapeColor(final ItemStack stack, final DyeColor color) {
-        stack.set(ModDataComponents.COLOR, color);
+        stack.set(ModDataComponents.COLOR.get(), color);
     }
 }

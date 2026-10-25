@@ -17,6 +17,11 @@ public enum TapeMeasureModes implements IToolMode {
 
     public Object binding;
 
+    @Override
+    public Object binding() {
+        return binding;
+    }
+
     TapeMeasureModes(final LocalStrings str) {
         string = str;
     }
@@ -24,14 +29,14 @@ public enum TapeMeasureModes implements IToolMode {
     public static TapeMeasureModes getMode(final ItemStack stack) {
         if (stack != null) {
             try {
-                final String component = stack.get(ModDataComponents.TOOL_MODE);
+                final String component = stack.get(ModDataComponents.TOOL_MODE.get());
                 if (component != null) {
                     return valueOf(component);
                 }
                 final CompoundTag nbt = ModUtil.getTagCompound(stack);
                 if (nbt.contains("mode")) {
                     final TapeMeasureModes mode = valueOf(nbt.getStringOr("mode", BIT.name()));
-                    stack.set(ModDataComponents.TOOL_MODE, mode.name());
+                    stack.set(ModDataComponents.TOOL_MODE.get(), mode.name());
                     return mode;
                 }
             } catch (final IllegalArgumentException iae) {
@@ -55,7 +60,7 @@ public enum TapeMeasureModes implements IToolMode {
     @Override
     public void setMode(final ItemStack stack) {
         if (stack != null) {
-            stack.set(ModDataComponents.TOOL_MODE, name());
+            stack.set(ModDataComponents.TOOL_MODE.get(), name());
         }
     }
 

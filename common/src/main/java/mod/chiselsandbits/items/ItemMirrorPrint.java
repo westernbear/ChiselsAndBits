@@ -55,10 +55,10 @@ public class ItemMirrorPrint extends Item implements IPatternItem {
                 .helpText(
                         LocalStrings.HelpMirrorPrint,
                         tooltipLines,
-                        ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse));
+                        ClientSide.getInstance().getKeyName(Minecraft.getInstance().options.keyUse));
 
         if (isWritten(stack)) {
-            if (ClientSide.instance.holdingShift()) {
+            if (ClientSide.getInstance().holdingShift()) {
                 if (toolTipCache.needsUpdate(stack)) {
                     final VoxelBlob blob = ModUtil.getBlobFromStack(stack, null);
                     toolTipCache.updateCachedValue(blob.listContents(new ArrayList<>()));
@@ -93,7 +93,7 @@ public class ItemMirrorPrint extends Item implements IPatternItem {
                 stack.shrink(1);
 
                 final ItemStack newStack = new ItemStack(ModItems.ITEM_MIRROR_PRINT_WRITTEN.get(), 1);
-                newStack.set(ModDataComponents.CHISELED_DATA, data);
+                newStack.set(ModDataComponents.CHISELED_DATA.get(), data);
                 ModUtil.setSide(newStack, ModUtil.getPlaceFace(context.getPlayer()));
 
                 final ItemEntity entity = context.getPlayer().drop(newStack, true);
@@ -144,7 +144,7 @@ public class ItemMirrorPrint extends Item implements IPatternItem {
         conv.readChisleData(data, VoxelBlob.VERSION_ANY);
 
         final ItemStack itemstack = new ItemStack(ModBlocks.getChiseledBlock(), 1);
-        itemstack.set(ModDataComponents.CHISELED_DATA, data);
+        itemstack.set(ModDataComponents.CHISELED_DATA.get(), data);
         ModUtil.setSide(itemstack, ModUtil.getSide(stack));
         return itemstack;
     }

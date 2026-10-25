@@ -7,7 +7,11 @@
   "entrypoints": {
     "fabric-gametest": [
       "mod.chiselsandbits.gametest.LegacyCompatibilityGameTests",
-      "mod.chiselsandbits.gametest.ApiServerGameTests"
+      "mod.chiselsandbits.gametest.ApiServerGameTests",
+      "mod.chiselsandbits.gametest.ApiContractGameTests",
+      "mod.chiselsandbits.gametest.BitStorageGameTests",
+      "mod.chiselsandbits.gametest.PickBlockGameTests",
+      "mod.chiselsandbits.items.MirrorPrintDropGameTests"
     ],
     "fabric-client-gametest": [
       "mod.chiselsandbits.gametest.ChiselsAndBitsClientGameTest"

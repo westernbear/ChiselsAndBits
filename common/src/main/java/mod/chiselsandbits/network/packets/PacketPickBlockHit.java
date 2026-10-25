@@ -1,7 +1,7 @@
 package mod.chiselsandbits.network.packets;
 
+import mod.chiselsandbits.events.PickBlockHandler;
 import mod.chiselsandbits.network.ModPacket;
-import mod.chiselsandbits.platform.PlatformPickBlock;
 import mod.chiselsandbits.utils.Constants;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -44,7 +44,7 @@ public final class PacketPickBlockHit extends ModPacket {
 
     @Override
     public void server(final ServerPlayer playerEntity) {
-        PlatformPickBlock.rememberHit(playerEntity, toHitResult());
+        PickBlockHandler.rememberHit(playerEntity, toHitResult());
     }
 
     @Override

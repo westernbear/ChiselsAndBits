@@ -35,7 +35,7 @@ public class PacketBagGuiStack extends ModPacket {
 
     @Override
     public void client() {
-        final AbstractContainerMenu cc = ClientSide.instance.getPlayer().containerMenu;
+        final AbstractContainerMenu cc = ClientSide.getInstance().getPlayer().containerMenu;
         if (cc instanceof BagContainer) {
             ((BagContainer) cc).customSlots.get(index).set(is);
         }

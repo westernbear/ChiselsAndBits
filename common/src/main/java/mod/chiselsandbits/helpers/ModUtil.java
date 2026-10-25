@@ -553,10 +553,10 @@ public class ModUtil {
             return Direction.NORTH;
         }
 
-        Direction side = stack.get(ModDataComponents.PLACEMENT_SIDE);
+        Direction side = stack.get(ModDataComponents.PLACEMENT_SIDE.get());
         if (side == null) {
             NBTBlobConverter.getComponent(stack);
-            side = stack.get(ModDataComponents.PLACEMENT_SIDE);
+            side = stack.get(ModDataComponents.PLACEMENT_SIDE.get());
         }
 
         return side == null || side.getAxis() == Direction.Axis.Y ? Direction.NORTH : side;
@@ -568,7 +568,7 @@ public class ModUtil {
         }
 
         stack.set(
-                ModDataComponents.PLACEMENT_SIDE,
+                ModDataComponents.PLACEMENT_SIDE.get(),
                 side == null || side.getAxis() == Direction.Axis.Y ? Direction.NORTH : side);
 
         final CompoundTag legacy = getTagCompound(stack);

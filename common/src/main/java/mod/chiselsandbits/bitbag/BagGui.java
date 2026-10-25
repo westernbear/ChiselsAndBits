@@ -165,9 +165,12 @@ public class BagGui extends AbstractContainerScreen<BagContainer> {
             slot = hoveredBitSlot;
         }
         if (slot != null && slot.container instanceof TargetedInventory) {
-            final PacketBagGui bagGuiPacket =
-                    new PacketBagGui(slot.index, event.button(), duplicateButton, ClientSide.instance.holdingShift());
-            bagGuiPacket.doAction(ClientSide.instance.getPlayer());
+            final PacketBagGui bagGuiPacket = new PacketBagGui(
+                    slot.index,
+                    event.button(),
+                    duplicateButton,
+                    ClientSide.getInstance().holdingShift());
+            bagGuiPacket.doAction(ClientSide.getInstance().getPlayer());
 
             ChiselsAndBits.getNetworkChannel().sendToServer(bagGuiPacket);
 

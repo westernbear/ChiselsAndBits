@@ -110,7 +110,7 @@ public class MirrorTransferCrafting extends CustomRecipe {
             if (outputData == null) {
                 return null;
             }
-            outputPattern.set(ModDataComponents.CHISELED_DATA, outputData);
+            outputPattern.set(ModDataComponents.CHISELED_DATA.get(), outputData);
             ModUtil.setSide(outputPattern, ModUtil.getSide(targetA));
 
             return outputPattern;

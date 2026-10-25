@@ -29,7 +29,7 @@ public class BagStorage implements IBitBag {
     }
 
     private static int[] getStorageArray(final ItemStack stack, final int size) {
-        final BagContents component = stack.get(ModDataComponents.BAG_CONTENTS);
+        final BagContents component = stack.get(ModDataComponents.BAG_CONTENTS.get());
         int[] contents;
         if (component != null) {
             contents = component.values();
@@ -46,7 +46,7 @@ public class BagStorage implements IBitBag {
             contents = resized;
         }
 
-        stack.set(ModDataComponents.BAG_CONTENTS, new BagContents(contents));
+        stack.set(ModDataComponents.BAG_CONTENTS.get(), new BagContents(contents));
         return contents;
     }
 
@@ -55,7 +55,7 @@ public class BagStorage implements IBitBag {
     }
 
     public void onChange() {
-        stack.set(ModDataComponents.BAG_CONTENTS, new BagContents(contents));
+        stack.set(ModDataComponents.BAG_CONTENTS.get(), new BagContents(contents));
     }
 
     @Override

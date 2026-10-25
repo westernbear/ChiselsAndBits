@@ -30,7 +30,7 @@ public class PrintSmartModel extends BaseSmartModel {
 
     @Override
     public LegacyBakedModel resolve(LegacyBakedModel originalModel, ItemStack stack, Level world, LivingEntity entity) {
-        if (ClientSide.instance.holdingShift()) {
+        if (ClientSide.getInstance().holdingShift()) {
             PrintBaked npb = cache.get(stack);
 
             if (npb == null) {

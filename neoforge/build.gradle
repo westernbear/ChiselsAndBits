@@ -1,19 +1,44 @@
 plugins {
-	id 'net.neoforged.moddev' version '2.0.140'
-	id 'com.gradleup.shadow'
+	id 'net.neoforged.moddev' version '2.0.148'
 }
 
 dependencies {
-	implementation project(':common')
+	// Common is compiled against but supplied at runtime as the Architectury-transformed
+	// output below: ModDevGradle does not apply the @ExpectPlatform rewriting itself.
+	compileOnly project(':common')
+
 	implementation "dev.architectury:architectury-neoforge:${rootProject.architectury_version}"
 
-	implementation("me.fzzyhmstrs:fzzy_config:${rootProject.fzzy_config_version}") {
+	implementation("me.fzzyhmstrs:fzzy_config:${rootProject.fzzy_config_version}+neoforge") {
 		exclude group: 'com.terraformersmc', module: 'modmenu'
 	}
 }
 
+configurations {
+	transformedCommon {
+		canBeConsumed = false
+		canBeResolved = true
+	}
+}
+
+dependencies {
+	transformedCommon(project(path: ':common', configuration: 'transformProductionNeoForge'))
+}
+
+// The transformed common classes must live in this module's output, not in a separate jar:
+// NeoForge's module class loader rejects cross-loader calls into it (LinkageError).
+def extractTransformedCommon = tasks.register('extractTransformedCommon', Sync) {
+	dependsOn configurations.transformedCommon
+	from { zipTree(configurations.transformedCommon.singleFile) }
+	into layout.buildDirectory.dir('transformed-common')
+	includeEmptyDirs = false
+}
+
+sourceSets.main.output.dir(layout.buildDirectory.dir('transformed-common'), builtBy: extractTransformedCommon)
+
 sourceSets {
 	gametest {
+		java.srcDir project(':common').file('src/gametest/java')
 		compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
 		runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
 	}
@@ -22,27 +47,12 @@ sourceSets {
 configurations {
 	gametestImplementation.extendsFrom implementation
 	gametestRuntimeOnly.extendsFrom runtimeOnly
-
-	shadowBundle {
-		canBeResolved = true
-		canBeConsumed = false
-	}
-}
-
-dependencies {
-	shadowBundle project(':common')
-	shadowBundle "dev.architectury:architectury-neoforge:${rootProject.architectury_version}"
-	shadowBundle("me.fzzyhmstrs:fzzy_config:${rootProject.fzzy_config_version}") {
-		exclude group: 'com.terraformersmc', module: 'modmenu'
-	}
 }
 
 neoForge {
 	enable {
 		version = rootProject.neoforge_version
 	}
-
-	validateAccessTransformers = true
 
 	mods {
 		chiselsandbits {
@@ -76,23 +86,10 @@ processResources {
 }
 
 jar {
-	archiveClassifier = 'raw'
 	from('LICENSE') {
 		rename { "${it}_${project.base.archivesName.get()}" }
 	}
 }
-
-shadowJar {
-	dependsOn jar
-	mainSpec.sourcePaths.clear()
-	from(zipTree(jar.archiveFile))
-	configurations = [
-		project.configurations.shadowBundle
-	]
-	archiveClassifier = null
-}
-
-assemble.dependsOn shadowJar
 
 tasks.named('compileJava').configure {
 	dependsOn ':common:classes'

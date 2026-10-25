@@ -52,20 +52,20 @@ public class PacketSetColor extends ModPacket {
 
     private void setColor(final ItemStack ei, final DyeColor newColor2) {
         if (ei != null) {
-            ei.set(ModDataComponents.COLOR, newColor2);
+            ei.set(ModDataComponents.COLOR.get(), newColor2);
         }
     }
 
     private DyeColor getColor(final ItemStack ei) {
         try {
             if (ei != null) {
-                final DyeColor component = ei.get(ModDataComponents.COLOR);
+                final DyeColor component = ei.get(ModDataComponents.COLOR.get());
                 if (component != null) {
                     return component;
                 }
                 final DyeColor legacy =
                         DyeColor.valueOf(ModUtil.getTagCompound(ei).getStringOr("color", DyeColor.WHITE.name()));
-                ei.set(ModDataComponents.COLOR, legacy);
+                ei.set(ModDataComponents.COLOR.get(), legacy);
                 return legacy;
             }
         } catch (final IllegalArgumentException e) {

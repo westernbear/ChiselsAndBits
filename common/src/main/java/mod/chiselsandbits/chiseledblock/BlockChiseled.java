@@ -14,6 +14,7 @@ import mod.chiselsandbits.client.UndoTracker;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.core.ClientSide;
 import mod.chiselsandbits.core.Log;
+import mod.chiselsandbits.events.PickBlockHandler;
 import mod.chiselsandbits.extensions.BlockExtension;
 import mod.chiselsandbits.helpers.BitOperation;
 import mod.chiselsandbits.helpers.ChiselToolType;
@@ -333,7 +334,14 @@ public class BlockChiseled extends Block implements EntityBlock, IMultiStateBloc
             final BlockState blockState,
             final boolean includeData) {
         try {
-            return getTileEntity(levelReader, blockPos).getItemStack(null);
+            final TileEntityBlockChiseled blockEntity = getTileEntity(levelReader, blockPos);
+            if (levelReader instanceof ServerLevel serverLevel) {
+                final BlockHitResult hit = PickBlockHandler.consumeHit(serverLevel, blockPos);
+                if (hit != null) {
+                    return getPickedBit(hit, blockEntity);
+                }
+            }
+            return blockEntity.getItemStack(null);
         } catch (final ExceptionNoTileEntity e) {
             Log.noTileError(e);
             return ModUtil.getEmptyStack();
@@ -363,7 +371,7 @@ public class BlockChiseled extends Block implements EntityBlock, IMultiStateBloc
      * Client side method.
      */
     private ChiselToolType getClientHeldTool() {
-        return ClientSide.instance.getHeldToolType(InteractionHand.MAIN_HAND);
+        return ClientSide.getInstance().getHeldToolType(InteractionHand.MAIN_HAND);
     }
 
     public ItemStack getPickBlock(final BlockHitResult target, final BlockPos pos, final TileEntityBlockChiseled te) {
@@ -372,7 +380,7 @@ public class BlockChiseled extends Block implements EntityBlock, IMultiStateBloc
                 return getPickedBit(target, te);
             }
 
-            return te.getItemStack(ClientSide.instance.getPlayer());
+            return te.getItemStack(ClientSide.getInstance().getPlayer());
         }
 
         return te.getItemStack(null);

@@ -13,11 +13,8 @@ import mod.chiselsandbits.client.CreativeClipboardTab;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.items.ItemChiseledBit;
-import mod.chiselsandbits.utils.Constants;
-import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
@@ -121,17 +118,8 @@ public final class ModItemGroups {
     }
 
     public static void onModConstruction() {
-        Registry.register(
-                BuiltInRegistries.CREATIVE_MODE_TAB,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "main_tab"),
-                MAIN_TAB.get());
-        Registry.register(
-                BuiltInRegistries.CREATIVE_MODE_TAB,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "block_bits"),
-                BLOCK_BITS.get());
-        Registry.register(
-                BuiltInRegistries.CREATIVE_MODE_TAB,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "clipboard"),
-                CLIPBOARD.get());
+        ModRegistry.add(ModRegistry.CREATIVE_MODE_TABS, "main_tab", MAIN_TAB);
+        ModRegistry.add(ModRegistry.CREATIVE_MODE_TABS, "block_bits", BLOCK_BITS);
+        ModRegistry.add(ModRegistry.CREATIVE_MODE_TABS, "clipboard", CLIPBOARD);
     }
 }

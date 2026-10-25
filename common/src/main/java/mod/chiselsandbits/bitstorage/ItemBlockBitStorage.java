@@ -98,7 +98,7 @@ public class ItemBlockBitStorage extends BlockItem {
     }
 
     private static FluidStorageData getFluidStorageData(final ItemStack stack) {
-        final FluidStorageData component = stack.get(ModDataComponents.FLUID_STORAGE);
+        final FluidStorageData component = stack.get(ModDataComponents.FLUID_STORAGE.get());
         if (component != null) {
             return component;
         }
@@ -113,7 +113,7 @@ public class ItemBlockBitStorage extends BlockItem {
         final long amount = fluidNbt.contains("FluidName") ? rawAmount * 81L : rawAmount;
         final FluidStorageData migrated = new FluidStorageData(fluidId, amount);
         if (!migrated.isEmpty()) {
-            stack.set(ModDataComponents.FLUID_STORAGE, migrated);
+            stack.set(ModDataComponents.FLUID_STORAGE.get(), migrated);
             root.remove(FLUID_NBT_KEY);
             ModUtil.setTagCompound(stack, root);
         }
@@ -124,13 +124,13 @@ public class ItemBlockBitStorage extends BlockItem {
         final long clamped = Math.max(0, Math.min(FluidUnits.BUCKET, amount));
         final CompoundTag root = ModUtil.getTagCompound(stack);
         if (fluid == null || fluid == Fluids.EMPTY || clamped == 0) {
-            stack.remove(ModDataComponents.FLUID_STORAGE);
+            stack.remove(ModDataComponents.FLUID_STORAGE.get());
             root.remove(FLUID_NBT_KEY);
             ModUtil.setTagCompound(stack, root);
             return;
         }
 
-        stack.set(ModDataComponents.FLUID_STORAGE, FluidStorageData.of(fluid, clamped));
+        stack.set(ModDataComponents.FLUID_STORAGE.get(), FluidStorageData.of(fluid, clamped));
         root.remove(FLUID_NBT_KEY);
         ModUtil.setTagCompound(stack, root);
     }

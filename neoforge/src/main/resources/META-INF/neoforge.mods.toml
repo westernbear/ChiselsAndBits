@@ -9,6 +9,9 @@ displayName = "ChiselsAndBits"
 description = "A mod about sculpting, decorating and aesthetics. Multiloader port for Fabric and NeoForge."
 authors = "OrionOnline, LDTTeam, AlgorithmX2, singlerr"
 
+[[mixins]]
+config = "chiselsandbits.mixins.json"
+
 [[dependencies.chiselsandbits]]
 modId = "neoforge"
 type = "required"
@@ -27,5 +30,12 @@ side = "BOTH"
 modId = "architectury"
 type = "required"
 versionRange = "[21.0.7,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.chiselsandbits]]
+modId = "fzzy_config"
+type = "required"
+versionRange = "[0.7.6,)"
 ordering = "AFTER"
 side = "BOTH"

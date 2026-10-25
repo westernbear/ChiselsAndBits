@@ -1,6 +1,5 @@
 package mod.chiselsandbits.bitstorage;
 
-import java.util.WeakHashMap;
 import mod.chiselsandbits.items.ItemChiseledBit;
 import mod.chiselsandbits.utils.FluidUnits;
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant;
@@ -17,22 +16,16 @@ import org.jetbrains.annotations.Nullable;
 
 public final class FabricBitStorageStorage {
 
-    private static final WeakHashMap<TileEntityBitStorage, Holder> HOLDERS = new WeakHashMap<>();
-
     private FabricBitStorageStorage() {}
 
+    // ponytail: a fresh wrapper per lookup keeps the block entity as the single source of truth;
+    // reintroduce a per-entity cache only if allocation shows up in profiles.
     public static Storage<ItemVariant> itemStorage(final TileEntityBitStorage storage) {
-        return holder(storage).itemStorage;
+        return new Holder(storage).itemStorage;
     }
 
     public static Storage<FluidVariant> fluidStorage(final TileEntityBitStorage storage) {
-        return holder(storage).fluidStorage;
-    }
-
-    private static Holder holder(final TileEntityBitStorage storage) {
-        synchronized (HOLDERS) {
-            return HOLDERS.computeIfAbsent(storage, Holder::new);
-        }
+        return new Holder(storage).fluidStorage;
     }
 
     private static final class Holder {

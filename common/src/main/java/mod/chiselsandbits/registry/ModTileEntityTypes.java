@@ -6,10 +6,6 @@ import java.util.function.Supplier;
 import mod.chiselsandbits.bitstorage.TileEntityBitStorage;
 import mod.chiselsandbits.chiseledblock.TileEntityBlockChiseled;
 import mod.chiselsandbits.printer.ChiselPrinterTileEntity;
-import mod.chiselsandbits.utils.Constants;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 
 public final class ModTileEntityTypes {
@@ -19,18 +15,9 @@ public final class ModTileEntityTypes {
     }
 
     public static void onModConstruction() {
-        Registry.register(
-                BuiltInRegistries.BLOCK_ENTITY_TYPE,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "chiseled"),
-                CHISELED.get());
-        Registry.register(
-                BuiltInRegistries.BLOCK_ENTITY_TYPE,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "bit_storage"),
-                BIT_STORAGE.get());
-        Registry.register(
-                BuiltInRegistries.BLOCK_ENTITY_TYPE,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "chisel_printer"),
-                CHISEL_PRINTER.get());
+        ModRegistry.add(ModRegistry.BLOCK_ENTITY_TYPES, "chiseled", CHISELED);
+        ModRegistry.add(ModRegistry.BLOCK_ENTITY_TYPES, "bit_storage", BIT_STORAGE);
+        ModRegistry.add(ModRegistry.BLOCK_ENTITY_TYPES, "chisel_printer", CHISEL_PRINTER);
     }
 
     public static final Supplier<BlockEntityType<TileEntityBlockChiseled>> CHISELED = Suppliers.memoize(

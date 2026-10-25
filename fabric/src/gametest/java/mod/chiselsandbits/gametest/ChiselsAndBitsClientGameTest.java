@@ -113,7 +113,7 @@ public class ChiselsAndBitsClientGameTest implements FabricClientGameTest {
             });
             context.waitFor(client -> client.level.getBlockState(target).is(ModBlocks.CHISELED_BLOCK.get()));
             waitForSingleBitRemoved(context, singleplayer, target);
-            context.takeScreenshot("chiselsandbits_chiseled_block");
+            assertRenderedFrame(context.takeScreenshot("chiselsandbits_chiseled_block"), "chiseled stone block", true);
             context.runOnClient(client -> {
                 checkCachedModelDataReuse(client);
                 checkDensePaletteModel(client);
@@ -163,7 +163,48 @@ public class ChiselsAndBitsClientGameTest implements FabricClientGameTest {
             singleplayer.getClientLevel().waitForChunksRender();
             context.waitFor(client -> client.level.getBlockState(target).is(ModBlocks.CHISELED_BLOCK.get()));
             waitForSingleBitRemoved(context, singleplayer, target);
-            context.takeScreenshot("chiselsandbits_reloaded");
+            assertRenderedFrame(context.takeScreenshot("chiselsandbits_reloaded"), "reloaded chiseled block", false);
+        }
+
+        // Headless xvfb/LWJGL shutdown trips vanilla's client shutdown watchdog; exit explicitly instead.
+        System.exit(0);
+    }
+
+    /** Verifies that the rendered frame contains real geometry, not a blank or failed render. */
+    private static void assertRenderedFrame(
+            final java.nio.file.Path screenshot, final String what, final boolean expectBlock) {
+        try {
+            final java.awt.image.BufferedImage image = javax.imageio.ImageIO.read(screenshot.toFile());
+            if (image == null || image.getWidth() < 64 || image.getHeight() < 64) {
+                throw new AssertionError("screenshot for " + what + " is missing or too small: " + screenshot);
+            }
+
+            final Set<Integer> coarseColors = new HashSet<>();
+            int stoneGray = 0;
+            int samples = 0;
+            for (int y = 0; y < image.getHeight(); y += 4) {
+                for (int x = 0; x < image.getWidth(); x += 4) {
+                    final int rgb = image.getRGB(x, y);
+                    final int red = (rgb >> 16) & 0xff;
+                    final int green = (rgb >> 8) & 0xff;
+                    final int blue = rgb & 0xff;
+                    coarseColors.add(rgb & 0xF0F0F0);
+                    if (Math.abs(red - green) < 12 && Math.abs(green - blue) < 12 && red >= 60 && red <= 200) {
+                        stoneGray++;
+                    }
+                    samples++;
+                }
+            }
+
+            if (coarseColors.size() < 32) {
+                throw new AssertionError("frame for " + what + " looks blank (" + coarseColors.size() + " colors)");
+            }
+            if (expectBlock && stoneGray * 100 / samples < 10) {
+                throw new AssertionError("chiseled stone block is not visible in " + what + " (gray pixels "
+                        + stoneGray * 100 / samples + "%)");
+            }
+        } catch (final java.io.IOException error) {
+            throw new AssertionError("could not read screenshot for " + what, error);
         }
     }
 

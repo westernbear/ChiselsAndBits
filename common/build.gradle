@@ -2,51 +2,35 @@ architectury {
 	common rootProject.enabled_platforms.split(',')
 }
 
-loom {
-	accessWidenerPath = file('src/main/resources/chiselsandbits.accesswidener')
+def fzzyConfig = { String configuration ->
+	dependencies.add(configuration, "me.fzzyhmstrs:fzzy_config:${rootProject.fzzy_config_version}") {
+		exclude group: 'com.terraformersmc', module: 'modmenu'
+	}
 }
 
 dependencies {
 	implementation "dev.architectury:architectury:${rootProject.architectury_version}"
 	compileOnly "dev.architectury:architectury-injectables:1.0.10"
-
-	compileOnly("me.fzzyhmstrs:fzzy_config:${rootProject.fzzy_config_version}") {
-		exclude group: 'com.terraformersmc', module: 'modmenu'
-	}
-	testImplementation("me.fzzyhmstrs:fzzy_config:${rootProject.fzzy_config_version}") {
-		exclude group: 'com.terraformersmc', module: 'modmenu'
-	}
 	compileOnly "net.peanuuutz.tomlkt:tomlkt-jvm:0.3.7"
+
+	fzzyConfig 'compileOnly'
+	fzzyConfig 'testImplementation'
 }
 
-def faceRegionMergeCheck = tasks.register('faceRegionMergeCheck', JavaExec) {
-	dependsOn testClasses
-	classpath = sourceSets.test.runtimeClasspath
-	mainClass = 'mod.chiselsandbits.render.chiseledblock.FaceRegionMergeCheck'
-}
+def standaloneChecks = [
+	faceRegionMergeCheck             : 'mod.chiselsandbits.render.chiseledblock.FaceRegionMergeCheck',
+	legacyBlobCompatibilityCheck     : 'mod.chiselsandbits.mixin.LegacyBlobCompatibilityCheck',
+	legacyConfigurationMigrationCheck: 'mod.chiselsandbits.config.LegacyConfigurationMigrationCheck',
+	mirrorPrintDropCheck             : 'mod.chiselsandbits.items.MirrorPrintDropCheck',
+	blockBitsTabCheck                : 'mod.chiselsandbits.registry.BlockBitsTabCheck',
+]
 
-def legacyBlobCompatibilityCheck = tasks.register('legacyBlobCompatibilityCheck', JavaExec) {
-	dependsOn testClasses
-	classpath = sourceSets.test.runtimeClasspath
-	mainClass = 'mod.chiselsandbits.mixin.LegacyBlobCompatibilityCheck'
-}
-
-def legacyConfigurationMigrationCheck = tasks.register('legacyConfigurationMigrationCheck', JavaExec) {
-	dependsOn testClasses
-	classpath = sourceSets.test.runtimeClasspath
-	mainClass = 'mod.chiselsandbits.config.LegacyConfigurationMigrationCheck'
-}
-
-def mirrorPrintDropCheck = tasks.register('mirrorPrintDropCheck', JavaExec) {
-	dependsOn testClasses
-	classpath = sourceSets.test.runtimeClasspath
-	mainClass = 'mod.chiselsandbits.items.MirrorPrintDropCheck'
-}
-
-def blockBitsTabCheck = tasks.register('blockBitsTabCheck', JavaExec) {
-	dependsOn testClasses
-	classpath = sourceSets.test.runtimeClasspath
-	mainClass = 'mod.chiselsandbits.registry.BlockBitsTabCheck'
+def checkTasks = standaloneChecks.collect { name, entryPoint ->
+	tasks.register(name, JavaExec) {
+		dependsOn testClasses
+		classpath = sourceSets.test.runtimeClasspath
+		it.mainClass = entryPoint
+	}
 }
 
 tasks.named('test') {
@@ -54,9 +38,5 @@ tasks.named('test') {
 }
 
 tasks.named('check') {
-	dependsOn faceRegionMergeCheck
-	dependsOn mirrorPrintDropCheck
-	dependsOn blockBitsTabCheck
-	dependsOn legacyBlobCompatibilityCheck
-	dependsOn legacyConfigurationMigrationCheck
+	dependsOn checkTasks
 }

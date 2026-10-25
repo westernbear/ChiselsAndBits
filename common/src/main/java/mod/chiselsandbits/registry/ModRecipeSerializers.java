@@ -10,11 +10,7 @@ import mod.chiselsandbits.crafting.ChiselCrafting;
 import mod.chiselsandbits.crafting.MirrorTransferCrafting;
 import mod.chiselsandbits.crafting.NegativeInversionCrafting;
 import mod.chiselsandbits.crafting.StackableCrafting;
-import mod.chiselsandbits.utils.Constants;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 
@@ -44,33 +40,12 @@ public final class ModRecipeSerializers {
     }
 
     public static void onModConstruction() {
-        Registry.register(
-                BuiltInRegistries.RECIPE_SERIALIZER,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "bag_dyeing"),
-                BAG_DYEING.get());
-        Registry.register(
-                BuiltInRegistries.RECIPE_SERIALIZER,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "chisel_crafting"),
-                CHISEL_CRAFTING.get());
-        Registry.register(
-                BuiltInRegistries.RECIPE_SERIALIZER,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "chisel_block_crafting"),
-                CHISEL_BLOCK_CRAFTING.get());
-        Registry.register(
-                BuiltInRegistries.RECIPE_SERIALIZER,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "stackable_crafting"),
-                STACKABLE_CRAFTING.get());
-        Registry.register(
-                BuiltInRegistries.RECIPE_SERIALIZER,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "negative_inversion_crafting"),
-                NEGATIVE_INVERSION_CRAFTING.get());
-        Registry.register(
-                BuiltInRegistries.RECIPE_SERIALIZER,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "mirror_transfer_crafting"),
-                MIRROR_TRANSFER_CRAFTING.get());
-        Registry.register(
-                BuiltInRegistries.RECIPE_SERIALIZER,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "bit_saw_crafting"),
-                BIT_SAW_CRAFTING.get());
+        ModRegistry.add(ModRegistry.RECIPE_SERIALIZERS, "bag_dyeing", BAG_DYEING);
+        ModRegistry.add(ModRegistry.RECIPE_SERIALIZERS, "chisel_crafting", CHISEL_CRAFTING);
+        ModRegistry.add(ModRegistry.RECIPE_SERIALIZERS, "chisel_block_crafting", CHISEL_BLOCK_CRAFTING);
+        ModRegistry.add(ModRegistry.RECIPE_SERIALIZERS, "stackable_crafting", STACKABLE_CRAFTING);
+        ModRegistry.add(ModRegistry.RECIPE_SERIALIZERS, "negative_inversion_crafting", NEGATIVE_INVERSION_CRAFTING);
+        ModRegistry.add(ModRegistry.RECIPE_SERIALIZERS, "mirror_transfer_crafting", MIRROR_TRANSFER_CRAFTING);
+        ModRegistry.add(ModRegistry.RECIPE_SERIALIZERS, "bit_saw_crafting", BIT_SAW_CRAFTING);
     }
 }

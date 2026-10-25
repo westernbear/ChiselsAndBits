@@ -72,12 +72,12 @@ public class ItemPositivePrint extends ItemNegativePrint implements IChiselModeI
                 .helpText(
                         LocalStrings.HelpPositivePrint,
                         tooltipLines,
-                        ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse),
-                        ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse),
-                        ClientSide.instance.getModeKey());
+                        ClientSide.getInstance().getKeyName(Minecraft.getInstance().options.keyUse),
+                        ClientSide.getInstance().getKeyName(Minecraft.getInstance().options.keyUse),
+                        ClientSide.getInstance().getModeKey());
 
         if (ModUtil.hasChiseledData(stack)) {
-            if (ClientSide.instance.holdingShift()) {
+            if (ClientSide.getInstance().holdingShift()) {
                 if (toolTipCache.needsUpdate(stack)) {
                     final VoxelBlob blob = ModUtil.getBlobFromStack(stack, null);
                     toolTipCache.updateCachedValue(blob.listContents(new ArrayList<Component>()));

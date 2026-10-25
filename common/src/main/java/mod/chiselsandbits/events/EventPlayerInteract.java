@@ -76,8 +76,8 @@ public class EventPlayerInteract {
 
     private static InteractionResult testInteractionSupression(
             Player player, Level world, InteractionHand hand, BlockHitResult hitResult) {
-        if (world.isClientSide() && ClientSide.instance != null) {
-            if (ClientSide.instance.getStartPos() != null) {
+        if (world.isClientSide() && ClientSide.getInstance() != null) {
+            if (ClientSide.getInstance().getStartPos() != null) {
                 return InteractionResult.FAIL;
             }
         }
@@ -91,8 +91,8 @@ public class EventPlayerInteract {
     }
 
     private static InteractionResult testInteractionSupression(Level level, Player player) {
-        if (level.isClientSide() && ClientSide.instance != null) {
-            if (ClientSide.instance.getStartPos() != null) {
+        if (level.isClientSide() && ClientSide.getInstance() != null) {
+            if (ClientSide.getInstance().getStartPos() != null) {
                 return InteractionResult.FAIL;
             }
         }

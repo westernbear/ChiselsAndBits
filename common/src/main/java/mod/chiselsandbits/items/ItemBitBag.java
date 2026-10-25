@@ -161,7 +161,7 @@ public class ItemBitBag extends Item {
         }
 
         final List<Component> details = tooltipCache.getCached();
-        if (details.size() <= 2 || ClientSide.instance.holdingShift()) {
+        if (details.size() <= 2 || ClientSide.getInstance().holdingShift()) {
             details.forEach(tooltip);
         } else {
             tooltip.accept(Component.literal(LocalStrings.ShiftDetails.getLocal()));

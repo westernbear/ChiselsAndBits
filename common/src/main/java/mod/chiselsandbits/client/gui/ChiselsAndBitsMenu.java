@@ -85,7 +85,7 @@ public class ChiselsAndBitsMenu extends Screen {
     @Override
     public void extractRenderState(
             final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float partialTicks) {
-        final ChiselToolType tool = ClientSide.instance.getHeldToolType(InteractionHand.MAIN_HAND);
+        final ChiselToolType tool = ClientSide.getInstance().getHeldToolType(InteractionHand.MAIN_HAND);
 
         if (tool == null) {
             return;
@@ -283,7 +283,7 @@ public class ChiselsAndBitsMenu extends Screen {
             final double x = (mnuRgn.x1 + mnuRgn.x2) * 0.5 * (ring_outer_edge * 0.6 + 0.4 * ring_inner_edge);
             final double y = (mnuRgn.y1 + mnuRgn.y2) * 0.5 * (ring_outer_edge * 0.6 + 0.4 * ring_inner_edge);
 
-            final SpriteIconPositioning sip = ClientSide.instance.getIconForMode(mnuRgn.mode);
+            final SpriteIconPositioning sip = ClientSide.getInstance().getIconForMode(mnuRgn.mode);
 
             final double scalex = 15 * sip.width * 0.5;
             final double scaley = 15 * sip.height * 0.5;

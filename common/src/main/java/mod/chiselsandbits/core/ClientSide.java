@@ -17,7 +17,16 @@ import net.minecraft.world.level.block.state.BlockState;
 /** Loader-neutral client-side holder and shared client utilities. */
 public final class ClientSide {
 
-    public static IClientSide instance;
+    private static IClientSide instance;
+
+    /** The active client implementation, or {@code null} before client pre-init. */
+    public static IClientSide getInstance() {
+        return instance;
+    }
+
+    static void setInstance(final IClientSide client) {
+        instance = client;
+    }
 
     public static TextureAtlasSprite undoIcon;
     public static TextureAtlasSprite redoIcon;
@@ -64,19 +73,15 @@ public final class ClientSide {
             return false;
         }
 
-        if (player.level().isClientSide()) {
-            return !getOffGridPlacementKey().isUnbound()
-                    && getOffGridPlacementKey().isDown();
-        }
-
-        throw new RuntimeException("checking keybinds on server.");
+        return !getOffGridPlacementKey().isUnbound() && getOffGridPlacementKey().isDown();
     }
 
     public static KeyMapping getOffGridPlacementKey() {
-        if (instance == null) {
+        final IClientSide client = instance;
+        if (client == null) {
             return Minecraft.getInstance().options.keyShift;
         }
-        final KeyMapping offgrid = instance.getOffGridPlacementMapping();
+        final KeyMapping offgrid = client.getOffGridPlacementMapping();
         if (offgrid.isUnbound() && offgrid.isDefault()) {
             return Minecraft.getInstance().options.keyShift;
         }

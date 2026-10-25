@@ -16,11 +16,6 @@ public final class PlatformFluidUtil {
     }
 
     @ExpectPlatform
-    public static boolean interactWithFluidHandler(Player player, InteractionHand hand, Object handler) {
-        throw new AssertionError("ExpectPlatform implementation missing");
-    }
-
-    @ExpectPlatform
     public static boolean interactWithBitStorage(Player player, InteractionHand hand, TileEntityBitStorage storage) {
         throw new AssertionError("ExpectPlatform implementation missing");
     }

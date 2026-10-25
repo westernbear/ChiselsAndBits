@@ -228,11 +228,11 @@ public class ItemBlockChiseled extends BlockItem implements IVoxelBlobItem, IIte
                 .helpText(
                         LocalStrings.HelpChiseledBlock,
                         tooltipLines,
-                        ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse),
-                        ClientSide.instance.getKeyName(ClientSide.getOffGridPlacementKey()));
+                        ClientSide.getInstance().getKeyName(Minecraft.getInstance().options.keyUse),
+                        ClientSide.getInstance().getKeyName(ClientSide.getOffGridPlacementKey()));
 
         if (ModUtil.hasChiseledData(stack)) {
-            if (ClientSide.instance.holdingShift()) {
+            if (ClientSide.getInstance().holdingShift()) {
                 if (tooltipCache.needsUpdate(stack)) {
                     final VoxelBlob blob = ModUtil.getBlobFromStack(stack, null);
                     tooltipCache.updateCachedValue(blob.listContents(new ArrayList<>()));
@@ -480,9 +480,9 @@ public class ItemBlockChiseled extends BlockItem implements IVoxelBlobItem, IIte
                     ba.getBitsAsItem(side, ChiselsAndBits.getApi().getItemType(stack), false);
             final ChiseledData rotatedData = NBTBlobConverter.getComponent(rotated);
             if (rotatedData == null) {
-                stack.remove(ModDataComponents.CHISELED_DATA);
+                stack.remove(ModDataComponents.CHISELED_DATA.get());
             } else {
-                stack.set(ModDataComponents.CHISELED_DATA, rotatedData);
+                stack.set(ModDataComponents.CHISELED_DATA.get(), rotatedData);
             }
         }
 

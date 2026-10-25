@@ -482,7 +482,7 @@ public class ChiseledBlockBakedModel extends BaseBakedBlockModel {
 
     @Override
     public TextureAtlasSprite getParticleIcon() {
-        return ClientSide.instance.getMissingIcon();
+        return ClientSide.getInstance().getMissingIcon();
     }
 
     public int faceCount() {

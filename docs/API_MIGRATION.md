@@ -27,8 +27,10 @@ Fabric-only `ChiselsAndBitsEvents` callbacks were replaced with loader-agnostic 
 
 | Old (Fabric) | New |
 |--------------|-----|
-| `ChiselsAndBitsEvents.BIT_MODIFICATION` | `BitModificationEvents.BEFORE` / `AFTER` |
+| `ChiselsAndBitsEvents.BIT_MODIFICATION` | `BitModificationEvents.BLOCK_BIT_MODIFICATION` / `BLOCK_BIT_POST_MODIFICATION` |
 | ad-hoc Fabric `EventFactory` types | `ResourceRegistrationEvent`, `EntityItemPickupEvent` (Architectury `Event`) |
+
+`BitModificationEvents.FULL_BLOCK_RESTORATION` replaces the removed full-block-restoration callback.
 
 ## Server / common API (unchanged surface)
 
@@ -40,7 +42,7 @@ These remain on `IChiselAndBitsAPI`:
 
 ## Pick block
 
-Server-side pick-block memory is routed through `PlatformPickBlock` instead of direct Fabric networking.
+Server-side pick-block memory is loader-neutral: `PacketPickBlockHit` stores the precise hit in `PickBlockHandler`, and `BlockChiseled#getCloneItemStack` consumes it when vanilla 26.2 sends the position-only pick packet. This works identically on Fabric and NeoForge.
 
 ## Migration checklist
 

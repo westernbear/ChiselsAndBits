@@ -7,10 +7,6 @@ architectury {
 	fabric()
 }
 
-loom {
-	accessWidenerPath = project(':common').loom.accessWidenerPath
-}
-
 configurations {
 	common {
 		canBeResolved = true
@@ -41,6 +37,7 @@ dependencies {
 
 sourceSets {
 	gametest {
+		java.srcDir project(':common').file('src/gametest/java')
 		compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
 		runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
 	}
@@ -102,19 +99,6 @@ processResources {
 	filesMatching('fabric.mod.json') {
 		expand 'version': project.version
 	}
-	from(project(':common').sourceSets.main.resources) {
-		include 'chiselsandbits.accesswidener'
-	}
-}
-
-tasks.named('processGametestResources') {
-	from(project(':common').sourceSets.main.resources) {
-		include 'chiselsandbits.accesswidener'
-	}
-}
-
-tasks.named('check') {
-	// Gametest runs are invoked explicitly in CI.
 }
 
 jar {

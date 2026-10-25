@@ -9,8 +9,6 @@ import mod.chiselsandbits.chiseledblock.ReflectionHelperBlock;
 import mod.chiselsandbits.printer.ChiselPrinterBlock;
 import mod.chiselsandbits.printer.ChiselPrinterBlockItem;
 import mod.chiselsandbits.utils.Constants;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -74,33 +72,21 @@ public final class ModBlocks {
     }
 
     public static void onModConstruction() {
-        Registry.register(
-                BuiltInRegistries.BLOCK,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "bit_storage"),
-                BIT_STORAGE_BLOCK.get());
-        Registry.register(
-                BuiltInRegistries.BLOCK,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "chiseled_printer"),
-                CHISEL_PRINTER_BLOCK.get());
-        Registry.register(
-                BuiltInRegistries.BLOCK,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "chiseled_block"),
-                CHISELED_BLOCK.get());
-        Registry.register(
-                BuiltInRegistries.BLOCK,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "reflection_helper_block"),
-                REFLECTION_HELPER_BLOCK.get());
+        ModRegistry.add(ModRegistry.BLOCKS, "bit_storage", BIT_STORAGE_BLOCK);
+        ModRegistry.add(ModRegistry.BLOCKS, "chiseled_printer", CHISEL_PRINTER_BLOCK);
+        ModRegistry.add(ModRegistry.BLOCKS, "chiseled_block", CHISELED_BLOCK);
+        ModRegistry.add(ModRegistry.BLOCKS, "reflection_helper_block", REFLECTION_HELPER_BLOCK);
 
-        BIT_STORAGE_BLOCK_ITEM.get().registerBlocks(Item.BY_BLOCK, BIT_STORAGE_BLOCK_ITEM.get());
-        CHISEL_PRINTER_ITEM.get().registerBlocks(Item.BY_BLOCK, CHISEL_PRINTER_ITEM.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "bit_storage"),
-                BIT_STORAGE_BLOCK_ITEM.get());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                Identifier.fromNamespaceAndPath(Constants.MOD_ID, "chiseled_printer"),
-                CHISEL_PRINTER_ITEM.get());
+        ModRegistry.add(ModRegistry.ITEMS, "bit_storage", withBlockLookup(BIT_STORAGE_BLOCK_ITEM));
+        ModRegistry.add(ModRegistry.ITEMS, "chiseled_printer", withBlockLookup(CHISEL_PRINTER_ITEM));
+    }
+
+    private static <T extends BlockItem> Supplier<T> withBlockLookup(final Supplier<T> item) {
+        return Suppliers.memoize(() -> {
+            final T created = item.get();
+            created.registerBlocks(Item.BY_BLOCK, created);
+            return created;
+        });
     }
 
     public static BlockState getChiseledDefaultState() {

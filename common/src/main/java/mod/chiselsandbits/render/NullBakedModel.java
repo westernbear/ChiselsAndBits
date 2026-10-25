@@ -44,7 +44,7 @@ public class NullBakedModel implements LegacyBakedModel {
 
     @Override
     public TextureAtlasSprite getParticleIcon() {
-        return ClientSide.instance.getMissingIcon();
+        return ClientSide.getInstance().getMissingIcon();
     }
 
     @Override

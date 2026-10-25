@@ -54,7 +54,7 @@ public abstract class BaseSmartModel implements DataAwareBakedModel {
                 .sprite();
 
         if (sprite == null) {
-            return ClientSide.instance.getMissingIcon();
+            return ClientSide.getInstance().getMissingIcon();
         }
 
         return sprite;

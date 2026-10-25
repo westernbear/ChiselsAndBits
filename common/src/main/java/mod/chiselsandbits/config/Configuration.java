@@ -5,7 +5,6 @@ import dev.architectury.utils.Env;
 import java.nio.file.Path;
 import me.fzzyhmstrs.fzzy_config.api.ConfigApiJava;
 import me.fzzyhmstrs.fzzy_config.api.RegisterType;
-import mod.chiselsandbits.platform.PlatformHelper;
 
 /** Mod root configuration. */
 public class Configuration {
@@ -14,7 +13,7 @@ public class Configuration {
     private final CommonConfiguration commonConfig;
 
     public Configuration() {
-        final Path configDir = PlatformHelper.getConfigDir();
+        final Path configDir = Platform.getConfigFolder();
 
         if (Platform.getEnvironment() == Env.CLIENT) {
             final boolean existed = LegacyConfigurationMigrator.destinationExists(configDir, "client");

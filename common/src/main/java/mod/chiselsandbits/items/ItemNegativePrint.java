@@ -82,11 +82,11 @@ public class ItemNegativePrint extends Item implements IVoxelBlobItem, IItemScro
                 .helpText(
                         LocalStrings.HelpNegativePrint,
                         tooltipLines,
-                        ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse),
-                        ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse));
+                        ClientSide.getInstance().getKeyName(Minecraft.getInstance().options.keyUse),
+                        ClientSide.getInstance().getKeyName(Minecraft.getInstance().options.keyUse));
 
         if (isWritten(stack)) {
-            if (ClientSide.instance.holdingShift()) {
+            if (ClientSide.getInstance().holdingShift()) {
                 final List<Component> details = toolTipCache.getCached();
 
                 if (toolTipCache.needsUpdate(stack)) {
@@ -157,7 +157,7 @@ public class ItemNegativePrint extends Item implements IVoxelBlobItem, IItemScro
                 stack.shrink(count);
 
                 final ItemStack newStack = new ItemStack(this::getWrittenItem, count);
-                newStack.set(ModDataComponents.CHISELED_DATA, data);
+                newStack.set(ModDataComponents.CHISELED_DATA.get(), data);
                 ModUtil.setSide(newStack, ModUtil.getPlaceFace(player));
 
                 ItemEntity itementity = player.drop(newStack, false);
@@ -247,7 +247,7 @@ public class ItemNegativePrint extends Item implements IVoxelBlobItem, IItemScro
         }
 
         final ItemStack itemstack = new ItemStack(ModBlocks.getChiseledBlock(), 1);
-        itemstack.set(ModDataComponents.CHISELED_DATA, data);
+        itemstack.set(ModDataComponents.CHISELED_DATA.get(), data);
         ModUtil.setSide(itemstack, ModUtil.getSide(stack));
         return itemstack;
     }
@@ -322,9 +322,9 @@ public class ItemNegativePrint extends Item implements IVoxelBlobItem, IItemScro
                     ba.getBitsAsItem(side, ChiselsAndBits.getApi().getItemType(stack), false);
             final ChiseledData rotatedData = NBTBlobConverter.getComponent(rotated);
             if (rotatedData == null) {
-                stack.remove(ModDataComponents.CHISELED_DATA);
+                stack.remove(ModDataComponents.CHISELED_DATA.get());
             } else {
-                stack.set(ModDataComponents.CHISELED_DATA, rotatedData);
+                stack.set(ModDataComponents.CHISELED_DATA.get(), rotatedData);
             }
         }
 

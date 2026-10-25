@@ -46,7 +46,7 @@ replay_*.log
 /codex-md.py
 /graphify-out/
 /src/graphify-out/
-/logs/
+logs/
 /run-client/
 /run-server/
 /20260726_*.md

@@ -46,7 +46,7 @@ public class ItemWrench extends Item {
                 .helpText(
                         LocalStrings.HelpWrench,
                         helpText,
-                        ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse));
+                        ClientSide.getInstance().getKeyName(Minecraft.getInstance().options.keyUse));
         helpText.forEach(tooltip);
     }
 

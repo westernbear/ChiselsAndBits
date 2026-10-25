@@ -18,6 +18,11 @@ public enum PositivePatternMode implements IToolMode {
 
     public Object binding;
 
+    @Override
+    public Object binding() {
+        return binding;
+    }
+
     PositivePatternMode(final LocalStrings str) {
         string = str;
     }
@@ -25,14 +30,14 @@ public enum PositivePatternMode implements IToolMode {
     public static PositivePatternMode getMode(final ItemStack stack) {
         if (stack != null) {
             try {
-                final String component = stack.get(ModDataComponents.TOOL_MODE);
+                final String component = stack.get(ModDataComponents.TOOL_MODE.get());
                 if (component != null) {
                     return valueOf(component);
                 }
                 final CompoundTag nbt = ModUtil.getTagCompound(stack);
                 if (nbt.contains("mode")) {
                     final PositivePatternMode mode = valueOf(nbt.getStringOr("mode", REPLACE.name()));
-                    stack.set(ModDataComponents.TOOL_MODE, mode.name());
+                    stack.set(ModDataComponents.TOOL_MODE.get(), mode.name());
                     return mode;
                 }
             } catch (final IllegalArgumentException iae) {
@@ -56,7 +61,7 @@ public enum PositivePatternMode implements IToolMode {
     @Override
     public void setMode(final ItemStack stack) {
         if (stack != null) {
-            stack.set(ModDataComponents.TOOL_MODE, name());
+            stack.set(ModDataComponents.TOOL_MODE.get(), name());
         }
     }
 

@@ -78,7 +78,7 @@ public class NegativeInversionCrafting extends CustomRecipe {
             if (outputData == null) {
                 return null;
             }
-            outputPattern.set(ModDataComponents.CHISELED_DATA, outputData);
+            outputPattern.set(ModDataComponents.CHISELED_DATA.get(), outputData);
             ModUtil.setSide(outputPattern, ModUtil.getSide(targetA));
 
             return outputPattern;

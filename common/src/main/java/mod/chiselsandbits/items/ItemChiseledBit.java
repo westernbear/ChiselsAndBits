@@ -169,12 +169,12 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
     }
 
     public static boolean sameBit(final ItemStack output, final int blk) {
-        return output.has(ModDataComponents.BIT_STATE) && getStackState(output) == blk;
+        return output.has(ModDataComponents.BIT_STATE.get()) && getStackState(output) == blk;
     }
 
     public static @NotNull ItemStack createStack(final int id, final int count, final boolean RequireStack) {
         final ItemStack out = new ItemStack(ModItems.ITEM_BLOCK_BIT.get(), count);
-        out.set(ModDataComponents.BIT_STATE, id);
+        out.set(ModDataComponents.BIT_STATE.get(), id);
         return out;
     }
 
@@ -183,14 +183,14 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
             return 0;
         }
 
-        final Integer component = inHand.get(ModDataComponents.BIT_STATE);
+        final Integer component = inHand.get(ModDataComponents.BIT_STATE.get());
         if (component != null) {
             return component;
         }
 
         final int legacy = ModUtil.getTagCompound(inHand).getIntOr("id", 0);
         if (legacy != 0) {
-            inHand.set(ModDataComponents.BIT_STATE, legacy);
+            inHand.set(ModDataComponents.BIT_STATE.get(), legacy);
         }
         return legacy;
     }
@@ -276,9 +276,9 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
                 .helpText(
                         LocalStrings.HelpBit,
                         tooltipLines,
-                        ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyAttack),
-                        ClientSide.instance.getKeyName(Minecraft.getInstance().options.keyUse),
-                        ClientSide.instance.getModeKey());
+                        ClientSide.getInstance().getKeyName(Minecraft.getInstance().options.keyAttack),
+                        ClientSide.getInstance().getKeyName(Minecraft.getInstance().options.keyUse),
+                        ClientSide.getInstance().getModeKey());
 
         final int stateId = ItemChiseledBit.getStackState(stack);
         if (stateId == 0) {
@@ -351,8 +351,8 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
         }
 
         if (world.isClientSide()) {
-            final IToolMode mode =
-                    ChiselModeManager.getChiselMode(player, ClientSide.instance.getHeldToolType(hand), hand);
+            final IToolMode mode = ChiselModeManager.getChiselMode(
+                    player, ClientSide.getInstance().getHeldToolType(hand), hand);
             final BitLocation bitLocation = new BitLocation(rayTraceResult, getBitOperation(player, hand, stack));
 
             BlockState blkstate = world.getBlockState(bitLocation.blockPos);
@@ -370,8 +370,8 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
                 PacketChisel pc = null;
                 if (mode == ChiselMode.DRAWN_REGION) {
                     if (world.isClientSide()) {
-                        ClientSide.instance.pointAt(
-                                getBitOperation(player, hand, stack).getToolType(), bitLocation, hand);
+                        ClientSide.getInstance()
+                                .pointAt(getBitOperation(player, hand, stack).getToolType(), bitLocation, hand);
                     }
                     return InteractionResult.FAIL;
                 } else {
@@ -387,7 +387,7 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
                 final int result = pc.doAction(player);
 
                 if (result > 0) {
-                    ClientSide.instance.setLastTool(ChiselToolType.BIT);
+                    ClientSide.getInstance().setLastTool(ChiselToolType.BIT);
                     ChiselsAndBits.getNetworkChannel().sendToServer(pc);
                 }
             }
