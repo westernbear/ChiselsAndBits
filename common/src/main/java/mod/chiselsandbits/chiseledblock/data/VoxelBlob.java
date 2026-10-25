@@ -2,6 +2,7 @@ package mod.chiselsandbits.chiseledblock.data;
 
 import dev.architectury.injectables.annotations.Environment;
 import dev.architectury.utils.Env;
+import dev.architectury.utils.EnvExecutor;
 import io.netty.buffer.Unpooled;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -38,7 +39,6 @@ import mod.chiselsandbits.helpers.LocalStrings;
 import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.items.ItemChiseledBit;
 import mod.chiselsandbits.render.chiseledblock.ChiselRenderType;
-import mod.chiselsandbits.utils.EnvExecutor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
 import net.minecraft.core.BlockPos;
@@ -101,7 +101,7 @@ public final class VoxelBlob implements IVoxelSrc {
 
     public static synchronized void clearCache() {
         clearServerCache();
-        EnvExecutor.runWhenOn(Env.CLIENT, () -> () -> {
+        EnvExecutor.runInEnv(Env.CLIENT, () -> () -> {
             updateCacheClient();
             ModUtil.cacheFastStates();
         });
@@ -178,7 +178,7 @@ public final class VoxelBlob implements IVoxelSrc {
         synchronized (VoxelBlob.class) {
             filter = layerFilters.get(layer);
             if (filter == null) {
-                EnvExecutor.runWhenOn(Env.CLIENT, () -> VoxelBlob::updateCacheClient);
+                EnvExecutor.runInEnv(Env.CLIENT, () -> VoxelBlob::updateCacheClient);
                 filter = layerFilters.get(layer);
             }
         }

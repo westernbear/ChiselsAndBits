@@ -49,7 +49,7 @@ Loader-specific code lives behind `@ExpectPlatform` types in `mod.chiselsandbits
 
 - `RegistryFlush` — replays `ModRegistry` entries (Fabric registers immediately; NeoForge registers from `RegisterEvent`)
 - `PlatformFluidUtil`, `PlatformPlayerUtil`
-- `ClientApiProvider` — Fabric-only client API surface today
+- `ClientApiProvider` — client API surface, implemented by both loaders
 
 Config-directory and mod-loaded lookups call Architectury `dev.architectury.platform.Platform` directly; no platform seam is needed for them.
 
@@ -61,7 +61,7 @@ The NeoForge module compiles against `common` but takes its runtime classes from
 
 ## Mixins
 
-`common/src/main/resources/chiselsandbits.mixins.json` holds the loader-neutral mixins (legacy world repair, harvest rules, entity/block behaviour) and is declared by both loaders — `fabric.mod.json` and the `[[mixins]]` entry in `neoforge.mods.toml`. Fabric additionally loads `chiselsandbits.client.mixins.json` for the client-only HUD/input/atlas mixins.
+`common/src/main/resources/chiselsandbits.mixins.json` holds the loader-neutral mixins (legacy world repair, harvest rules, entity/block behaviour) plus the shared `KeyMappingAccessor` in its `client` section, and is declared by both loaders — `fabric.mod.json` and the `[[mixins]]` entry in `neoforge.mods.toml`. `chiselsandbits.client.mixins.json` holds the client-only HUD/input/atlas mixins and is declared by Fabric only; NeoForge wires the same hooks from its own events.
 
 The shared config uses `defaultRequire: 0` because NeoForge patches some targets (`Entity`, `LivingEntity`). Fabric applies all 19 entries; NeoForge applies the ones whose targets match (verified with `-Dmixin.debug.verbose=true`: legacy fixer, harvest rules, entity behaviour).
 
@@ -69,7 +69,7 @@ The shared config uses `defaultRequire: 0` because NeoForge patches some targets
 
 Fabric registers its transfer hooks from `FabricBitStorageRegistration` / `FabricChiselPrinterRegistration`. NeoForge registers `Capabilities.Fluid.BLOCK`, `Capabilities.Item.BLOCK` and `Capabilities.Fluid.ITEM` for the bit storage in `NeoForgeBitStorageCapabilities`.
 
-`getColor` is a client-render concern; the NeoForge implementation returns `-1` until a client renderer exists.
+`getColor` is a client-render concern; the NeoForge implementation delegates to `ClientFluidColors` on the client and returns `-1` on the server.
 
 ## Pick block
 
@@ -89,6 +89,6 @@ Client logic is shared: `core/ClientSideImpl`, `client/RenderHelper`, `core/Chis
 | Block rendering | `FabricBlockStateModel.emitQuads` | `ChiseledBlockRenderer` (BER) via `submitCustomGeometry` |
 | Menus / atlases | `MenuScreens` (fabric access widener), `TextureStitchCallback` | `RegisterMenuScreensEvent`, `TextureAtlasStitchedEvent` |
 
-Both loaders compile the same client mixin config (`chiselsandbits.client.mixins.json`: HUD, mouse, multiplayer game mode, atlas, key-mapping accessor).
+Fabric loads `chiselsandbits.client.mixins.json` (HUD, mouse, multiplayer game mode, atlas); NeoForge reaches the same hooks through `RenderGuiEvent.Post`, `InputEvent.MouseScrollingEvent` and `TextureAtlasStitchedEvent`, so the two loaders agree on behaviour without sharing the mixins.
 
 NeoForge fires `RegisterKeyMappingsEvent` before `FMLClientSetupEvent`, so `NeoForgeClientBootstrap` runs the shared client initialization from the mod constructor (client dist only); otherwise the Controls menu would stay empty.

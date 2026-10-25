@@ -10,6 +10,7 @@ import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.helpers.DeprecationHelper;
 import mod.chiselsandbits.helpers.ModUtil;
 import mod.chiselsandbits.interfaces.ICacheClearable;
+import mod.chiselsandbits.platform.PlatformFluidUtil;
 import mod.chiselsandbits.render.chiseledblock.ChiselRenderType;
 import mod.chiselsandbits.render.chiseledblock.ChiseledBlockBakedModel;
 import mod.chiselsandbits.render.helpers.ModelQuadLayer.ModelQuadLayerBuilder;
@@ -88,7 +89,7 @@ public class ModelUtil implements ICacheClearable {
             for (final Direction xf : Direction.values()) {
                 final ModelQuadLayer[] mp = new ModelQuadLayer[1];
                 mp[0] = new ModelQuadLayer();
-                mp[0].color = FluidUtil.getColor(fluid);
+                mp[0].color = PlatformFluidUtil.getColor(fluid);
                 mp[0].light = lv;
                 final float V = 0.5f;
                 final float Uf = 1.0f;

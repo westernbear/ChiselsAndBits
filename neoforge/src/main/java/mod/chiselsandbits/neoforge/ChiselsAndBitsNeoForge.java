@@ -13,6 +13,5 @@ public class ChiselsAndBitsNeoForge {
         if (net.neoforged.fml.loading.FMLEnvironment.getDist().isClient()) {
             mod.chiselsandbits.client.NeoForgeClientBootstrap.initialize();
         }
-        // EXPERIMENT: no replay
     }
 }

@@ -2,6 +2,7 @@ package mod.chiselsandbits.core;
 
 import dev.architectury.event.events.client.ClientLifecycleEvent;
 import dev.architectury.utils.Env;
+import dev.architectury.utils.EnvExecutor;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +29,6 @@ import mod.chiselsandbits.registry.ModRecipeSerializers;
 import mod.chiselsandbits.registry.ModTileEntityTypes;
 import mod.chiselsandbits.render.chiseledblock.ChiseledBlockSmartModel;
 import mod.chiselsandbits.utils.Constants;
-import mod.chiselsandbits.utils.EnvExecutor;
 import mod.chiselsandbits.utils.LanguageHandler;
 import org.jetbrains.annotations.NotNull;
 
@@ -50,7 +50,7 @@ public class ChiselsAndBits {
     private ChiselsAndBits() {
         instance = this;
         config = new Configuration();
-        EnvExecutor.runWhenOn(
+        EnvExecutor.runInEnv(
                 Env.CLIENT,
                 () -> () -> ClientLifecycleEvent.CLIENT_STARTED.register(client -> {
                     LanguageHandler.loadLangPath("assets/chiselsandbits/lang/%s.json");
@@ -60,7 +60,7 @@ public class ChiselsAndBits {
 
         VaporizeWater.register();
         EventPlayerInteract.register();
-        EnvExecutor.runWhenOn(Env.CLIENT, () -> () -> TickHandler.register());
+        EnvExecutor.runInEnv(Env.CLIENT, () -> () -> TickHandler.register());
         ModDataComponents.onModConstruction();
         ModBlocks.onModConstruction();
         ModContainerTypes.onModConstruction();

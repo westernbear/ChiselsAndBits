@@ -7,6 +7,7 @@ import mod.chiselsandbits.client.model.baked.BaseSmartModel;
 import mod.chiselsandbits.client.model.loader.LegacyItemModelDelegate;
 import mod.chiselsandbits.compat.client.DrawSelectionEvents;
 import mod.chiselsandbits.compat.client.GameMouseEvents;
+import mod.chiselsandbits.compat.client.OverlayRenderCallback;
 import mod.chiselsandbits.compat.client.TextureStitchCallback;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.printer.ChiselPrinterScreen;
@@ -14,6 +15,7 @@ import mod.chiselsandbits.registry.ModContainerTypes;
 import mod.chiselsandbits.registry.ModTileEntityTypes;
 import mod.chiselsandbits.render.SmartModelManager;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.item.ItemModel;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionResult;
@@ -28,6 +30,7 @@ import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
 import net.neoforged.neoforge.client.event.TextureAtlasStitchedEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
@@ -139,5 +142,16 @@ public final class NeoForgeClientMod {
     @SubscribeEvent
     public static void atlasStitched(final TextureAtlasStitchedEvent event) {
         TextureStitchCallback.POST.invoker().stitch(event.getAtlas());
+    }
+
+    @SubscribeEvent
+    public static void renderOverlay(final RenderGuiEvent.Post event) {
+        OverlayRenderCallback.EVENT
+                .invoker()
+                .onOverlayRender(
+                        event.getGuiGraphics(),
+                        event.getPartialTick().getGameTimeDeltaPartialTick(false),
+                        Minecraft.getInstance().getWindow(),
+                        OverlayRenderCallback.Types.CROSSHAIRS);
     }
 }

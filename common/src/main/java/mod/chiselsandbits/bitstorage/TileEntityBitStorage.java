@@ -34,10 +34,7 @@ public class TileEntityBitStorage extends BlockEntity {
 
     public static final int MAX_CONTENTS = 4096;
 
-    private BlockState state;
-    private Fluid myFluid;
-    private int bits;
-    private long fluidAmount;
+    private Contents contents = Contents.EMPTY;
     private int oldLV = -1;
 
     public TileEntityBitStorage(final BlockPos pos, final BlockState state) {
@@ -57,44 +54,45 @@ public class TileEntityBitStorage extends BlockEntity {
     @Override
     protected void loadAdditional(final ValueInput input) {
         super.loadAdditional(input);
-        state = null;
-        myFluid = null;
-        bits = Math.max(0, Math.min(MAX_CONTENTS, input.getIntOr("bits", 0)));
-        fluidAmount = 0;
+
+        final int storedBits = clampBits(input.getIntOr("bits", 0));
+        Contents loaded = Contents.EMPTY;
 
         final String fluidId = input.getStringOr("fluid", "");
         if (!fluidId.isEmpty()) {
             final Fluid fluid = sourceFluid(BuiltInRegistries.FLUID.getValue(Identifier.parse(fluidId)));
             if (fluid != Fluids.EMPTY) {
-                myFluid = fluid;
-                fluidAmount = input.getLongOr("fluid_amount", bitsToDroplets(bits));
-                fluidAmount = Math.min(FluidUnits.BUCKET, fluidAmount);
-                bits = dropletsToBits(fluidAmount);
+                final long droplets =
+                        Math.min(FluidUnits.BUCKET, input.getLongOr("fluid_amount", bitsToDroplets(storedBits)));
+                loaded = Contents.ofFluid(fluid, dropletsToBits(droplets), droplets);
             }
         }
 
-        if (myFluid == null || fluidAmount <= 0) {
+        if (loaded.fluid() == null) {
             final int rawState = input.getIntOr("blockstate", -1);
-            state = rawState == -1 ? null : ModUtil.getStateById(rawState);
-            if (state != null) {
-                bits = Math.max(0, Math.min(MAX_CONTENTS, bits));
-            }
+            loaded = Contents.ofBlock(rawState == -1 ? null : ModUtil.getStateById(rawState), storedBits);
         }
+
+        contents = loaded;
     }
 
     @Override
     protected void saveAdditional(final ValueOutput output) {
         super.saveAdditional(output);
-        final Identifier fluidId = myFluid == null ? null : BuiltInRegistries.FLUID.getKey(myFluid);
+        final Identifier fluidId = contents.fluid() == null ? null : BuiltInRegistries.FLUID.getKey(contents.fluid());
         output.putString("fluid", fluidId == null ? "" : fluidId.toString());
-        output.putInt("blockstate", myFluid != null || state == null ? -1 : ModUtil.getStateId(state));
-        output.putInt("bits", bits);
-        output.putLong("fluid_amount", fluidAmount);
+        output.putInt(
+                "blockstate",
+                contents.fluid() != null || contents.state() == null ? -1 : ModUtil.getStateId(contents.state()));
+        output.putInt("bits", contents.bits());
+        output.putLong("fluid_amount", contents.droplets());
     }
 
     public ItemStack getStackInSlot(final int slot) {
-        if (bits > 0 && slot == 0) {
-            return myFluid == null ? getBlockBitStack(state, bits) : getFluidBitStack(myFluid, bits);
+        if (contents.bits() > 0 && slot == 0) {
+            return contents.fluid() == null
+                    ? getBlockBitStack(contents.state(), contents.bits())
+                    : getFluidBitStack(contents.fluid(), contents.bits());
         }
         return ItemStack.EMPTY;
     }
@@ -130,13 +128,11 @@ public class TileEntityBitStorage extends BlockEntity {
                     : attemptFluidBitStackInsertion(stack, simulate, fluid);
         }
 
-        if (BlockBitInfo.canChisel(stack) && bits == 0 && state == null && myFluid == null) {
+        if (BlockBitInfo.canChisel(stack) && contents.isEmpty()) {
             final BlockState stackState = ModUtil.getStateFromItem(stack);
             if (stackState.getBlock() != Blocks.AIR) {
                 if (!simulate) {
-                    state = stackState;
-                    bits = MAX_CONTENTS;
-                    clearFluidStorage();
+                    contents = Contents.ofBlock(stackState, MAX_CONTENTS);
                     saveAndUpdate();
                 }
 
@@ -151,20 +147,17 @@ public class TileEntityBitStorage extends BlockEntity {
 
     private ItemStack attemptFluidBitStackInsertion(
             final ItemStack stack, final boolean simulate, final Fluid insertedFluid) {
-        if (state != null || myFluid != null && sourceFluid(myFluid) != insertedFluid) {
+        if (contents.state() != null || contents.fluid() != null && sourceFluid(contents.fluid()) != insertedFluid) {
             return stack;
         }
 
-        final int inserted = Math.min(stack.getCount(), MAX_CONTENTS - bits);
+        final int inserted = Math.min(stack.getCount(), contents.remainingCapacity());
         if (inserted <= 0) {
             return stack;
         }
 
         if (!simulate) {
-            myFluid = insertedFluid;
-            state = null;
-            bits += inserted;
-            syncFluidStorageFromBits();
+            contents = contents.withAddedFluid(insertedFluid, inserted);
             saveAndUpdate();
         }
         return remainder(stack, inserted);
@@ -172,20 +165,18 @@ public class TileEntityBitStorage extends BlockEntity {
 
     private ItemStack attemptSolidBitStackInsertion(
             final ItemStack stack, final boolean simulate, final BlockState insertedState) {
-        if (myFluid != null || state != null && !state.equals(insertedState)) {
+        if (contents.fluid() != null
+                || contents.state() != null && !contents.state().equals(insertedState)) {
             return stack;
         }
 
-        final int inserted = Math.min(stack.getCount(), MAX_CONTENTS - bits);
+        final int inserted = Math.min(stack.getCount(), contents.remainingCapacity());
         if (inserted <= 0) {
             return stack;
         }
 
         if (!simulate) {
-            myFluid = null;
-            state = insertedState;
-            bits += inserted;
-            clearFluidStorage();
+            contents = contents.withAddedBlockBits(insertedState, inserted);
             saveAndUpdate();
         }
         return remainder(stack, inserted);
@@ -202,10 +193,7 @@ public class TileEntityBitStorage extends BlockEntity {
 
     void setItemStorageStack(final ItemStack stack) {
         if (stack.isEmpty()) {
-            state = null;
-            myFluid = null;
-            bits = 0;
-            clearFluidStorage();
+            contents = Contents.EMPTY;
             return;
         }
         if (!(stack.getItem() instanceof ItemChiseledBit)) {
@@ -214,16 +202,10 @@ public class TileEntityBitStorage extends BlockEntity {
 
         final BlockState blockState = ModUtil.getStateById(ItemChiseledBit.getStackState(stack));
         final Fluid fluid = fluidFrom(blockState);
-        bits = Math.min(MAX_CONTENTS, stack.getCount());
-        if (fluid == null) {
-            state = blockState;
-            myFluid = null;
-            clearFluidStorage();
-        } else {
-            state = null;
-            myFluid = fluid;
-            syncFluidStorageFromBits();
-        }
+        final int bits = Math.min(MAX_CONTENTS, stack.getCount());
+        contents = fluid == null
+                ? Contents.ofBlock(blockState, bits)
+                : Contents.ofFluid(fluid, bits, bitsToDroplets(bits));
     }
 
     private static Fluid fluidFrom(@Nullable final BlockState blockState) {
@@ -241,44 +223,27 @@ public class TileEntityBitStorage extends BlockEntity {
         return fluid instanceof FlowingFluid flowingFluid ? flowingFluid.getSource() : fluid;
     }
 
-    private void syncFluidStorageFromBits() {
-        if (myFluid == null || bits <= 0) {
-            clearFluidStorage();
-            return;
-        }
-        fluidAmount = bitsToDroplets(bits);
-    }
-
-    private void clearFluidStorage() {
-        fluidAmount = 0;
-    }
-
     public void setFluid(@Nullable final Fluid fluid, final long amount) {
         if (fluid == null || fluid == Fluids.EMPTY || amount <= 0) {
-            state = null;
-            myFluid = null;
-            bits = 0;
-            clearFluidStorage();
+            contents = Contents.EMPTY;
         } else {
-            state = null;
-            myFluid = sourceFluid(fluid);
-            fluidAmount = Math.max(0, Math.min(FluidUnits.BUCKET, amount));
-            bits = dropletsToBits(fluidAmount);
+            final long droplets = Math.min(FluidUnits.BUCKET, amount);
+            contents = Contents.ofFluid(sourceFluid(fluid), dropletsToBits(droplets), droplets);
         }
         saveAndUpdate();
     }
 
     @Nullable
     public Fluid getStoredFluid() {
-        return myFluid;
+        return contents.fluid();
     }
 
     public long getFluidAmount() {
-        return fluidAmount;
+        return contents.droplets();
     }
 
     public static long bitsToDroplets(final int bits) {
-        final int clamped = Math.max(0, Math.min(MAX_CONTENTS, bits));
+        final int clamped = clampBits(bits);
         return ((long) clamped * FluidUnits.BUCKET + MAX_CONTENTS - 1) / MAX_CONTENTS;
     }
 
@@ -309,15 +274,7 @@ public class TileEntityBitStorage extends BlockEntity {
 
         contents.setCount(Math.min(amount, contents.getCount()));
         if (!simulate) {
-            bits -= contents.getCount();
-            if (bits <= 0) {
-                bits = 0;
-                state = null;
-                myFluid = null;
-                clearFluidStorage();
-            } else if (myFluid != null) {
-                syncFluidStorageFromBits();
-            }
+            this.contents = this.contents.withoutBits(contents.getCount());
             saveAndUpdate();
         }
         return contents;
@@ -328,8 +285,9 @@ public class TileEntityBitStorage extends BlockEntity {
     }
 
     public int getLightValue() {
-        final BlockState workingState =
-                myFluid == null ? state : myFluid.defaultFluidState().createLegacyBlock();
+        final BlockState workingState = contents.fluid() == null
+                ? contents.state()
+                : contents.fluid().defaultFluidState().createLegacyBlock();
         return workingState == null ? 0 : DeprecationHelper.getLightValue(workingState);
     }
 
@@ -378,7 +336,7 @@ public class TileEntityBitStorage extends BlockEntity {
     }
 
     boolean addHeldBits(final @NotNull ItemStack current, final Player playerIn) {
-        if ((playerIn.isShiftKeyDown() || bits == 0)
+        if ((playerIn.isShiftKeyDown() || contents.bits() == 0)
                 && (ChiselsAndBits.getApi().getItemType(current) == ItemType.CHISELED_BIT
                         || BlockBitInfo.canChisel(current))) {
             final ItemStack resultStack = insertItem(0, current, false);
@@ -402,14 +360,60 @@ public class TileEntityBitStorage extends BlockEntity {
     }
 
     public BlockState getState() {
-        return state;
+        return contents.state();
     }
 
     public Fluid getMyFluid() {
-        return myFluid;
+        return contents.fluid();
     }
 
     public int getBits() {
-        return bits;
+        return contents.bits();
+    }
+
+    /**
+     * What the storage holds: block bits or a single fluid, never both. {@code bits} is the
+     * item-count view; {@code droplets} keeps the exact fluid amount, since bits round.
+     */
+    private record Contents(
+            @Nullable BlockState state, @Nullable Fluid fluid, int bits, long droplets) {
+        static final Contents EMPTY = new Contents(null, null, 0, 0L);
+
+        static Contents ofBlock(@Nullable final BlockState state, final int bits) {
+            return new Contents(state, null, clampBits(bits), 0L);
+        }
+
+        static Contents ofFluid(final Fluid fluid, final int bits, final long droplets) {
+            return droplets <= 0 ? EMPTY : new Contents(null, fluid, clampBits(bits), droplets);
+        }
+
+        boolean isEmpty() {
+            return state == null && fluid == null && bits == 0;
+        }
+
+        int remainingCapacity() {
+            return MAX_CONTENTS - bits;
+        }
+
+        Contents withAddedFluid(final Fluid addedFluid, final int addedBits) {
+            final int total = bits + addedBits;
+            return ofFluid(addedFluid, total, bitsToDroplets(total));
+        }
+
+        Contents withAddedBlockBits(final BlockState addedState, final int addedBits) {
+            return ofBlock(addedState, bits + addedBits);
+        }
+
+        Contents withoutBits(final int removed) {
+            final int remaining = bits - removed;
+            if (remaining <= 0) {
+                return EMPTY;
+            }
+            return fluid == null ? ofBlock(state, remaining) : ofFluid(fluid, remaining, bitsToDroplets(remaining));
+        }
+    }
+
+    private static int clampBits(final int bits) {
+        return Math.max(0, Math.min(MAX_CONTENTS, bits));
     }
 }

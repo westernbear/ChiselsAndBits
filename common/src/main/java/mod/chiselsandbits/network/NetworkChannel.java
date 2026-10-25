@@ -2,6 +2,7 @@ package mod.chiselsandbits.network;
 
 import dev.architectury.networking.NetworkManager;
 import dev.architectury.utils.Env;
+import dev.architectury.utils.EnvExecutor;
 import mod.chiselsandbits.network.packets.PacketAccurateSneakPlace;
 import mod.chiselsandbits.network.packets.PacketBagGui;
 import mod.chiselsandbits.network.packets.PacketBagGuiStack;
@@ -15,7 +16,6 @@ import mod.chiselsandbits.network.packets.PacketSetColor;
 import mod.chiselsandbits.network.packets.PacketSortBagGui;
 import mod.chiselsandbits.network.packets.PacketSuppressInteraction;
 import mod.chiselsandbits.network.packets.PacketUndo;
-import mod.chiselsandbits.utils.EnvExecutor;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -48,7 +48,7 @@ public class NetworkChannel {
 
     private <MSG extends ModPacket> void registerClientMessage(
             final CustomPacketPayload.Type<MSG> packetType, final StreamCodec<RegistryFriendlyByteBuf, MSG> codec) {
-        EnvExecutor.runWhenOn(
+        EnvExecutor.runInEnv(
                 Env.CLIENT,
                 () -> () -> NetworkManager.registerS2C(packetType, codec, (packet, context) -> packet.client()));
     }

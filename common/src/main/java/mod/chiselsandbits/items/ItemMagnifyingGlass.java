@@ -19,26 +19,6 @@ public class ItemMagnifyingGlass extends Item {
         super(properties.stacksTo(1));
     }
 
-    //	@Environment(Env.CLIENT)
-    //    @Override
-    //    public Component getHighlightTip(final ItemStack item, final Component displayName)
-    //    {
-    //        if (Minecraft.getInstance().hitResult == null)
-    //            return displayName;
-    //
-    //        if (Minecraft.getInstance().hitResult.getType() != HitResult.Type.BLOCK)
-    //            return displayName;
-    //
-    //        final BlockHitResult rayTraceResult = (BlockHitResult) Minecraft.getInstance().hitResult;
-    //        final BlockState state = Minecraft.getInstance().level.getBlockState(rayTraceResult.getBlockPos());
-    //        final BlockBitInfo.SupportsAnalysisResult result = BlockBitInfo.doSupportAnalysis(state);
-    //        return new TextComponent(
-    //          result.isSupported() ?
-    //            ChatFormatting.GREEN + result.getSupportedReason().getLocal() + ChatFormatting.RESET :
-    //            ChatFormatting.RED + result.getUnsupportedReason().getLocal() + ChatFormatting.RESET
-    //        );
-    //    }
-
     @Override
     @Environment(Env.CLIENT)
     public void appendHoverText(

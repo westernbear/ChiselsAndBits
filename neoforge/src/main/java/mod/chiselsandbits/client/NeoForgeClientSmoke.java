@@ -14,6 +14,7 @@ import mod.chiselsandbits.client.model.loader.LegacyItemModelDelegate;
 import mod.chiselsandbits.registry.ModBlocks;
 import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.render.SmartModelManager;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
@@ -69,6 +70,8 @@ public final class NeoForgeClientSmoke {
     }
 
     private static void verifyStructure() {
+        verifyKeyMappingAccessor();
+
         final Minecraft minecraft = Minecraft.getInstance();
         final BlockStateModel blockModel = minecraft
                 .getModelManager()
@@ -92,6 +95,20 @@ public final class NeoForgeClientSmoke {
                 minecraft.getModelManager().getItemModel(SmartModelManager.itemId(ModItems.ITEM_BLOCK_BIT.get()));
         if (!(itemModel instanceof LegacyItemModelDelegate)) {
             fail("bit item model is not wrapped: " + itemModel);
+        }
+    }
+
+    /** Guards the shared {@code KeyMappingAccessor} mixin, which the radial menu casts to. */
+    private static void verifyKeyMappingAccessor() {
+        final List<KeyMapping> mappings = KeyBindings.created();
+        if (mappings.isEmpty()) {
+            fail("no key mappings were created");
+            return;
+        }
+        try {
+            KeyBindings.boundKeyOf(mappings.get(0));
+        } catch (final ClassCastException error) {
+            fail("KeyMappingAccessor mixin is not applied: " + error.getMessage());
         }
     }
 

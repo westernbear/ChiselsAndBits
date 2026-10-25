@@ -9,11 +9,11 @@ import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.core.Log;
 import mod.chiselsandbits.helpers.LocalStrings;
 import mod.chiselsandbits.helpers.ModUtil;
+import mod.chiselsandbits.platform.PlatformFluidUtil;
 import mod.chiselsandbits.registry.ModBlocks;
 import mod.chiselsandbits.registry.ModTags;
 import mod.chiselsandbits.render.helpers.ModelUtil;
 import mod.chiselsandbits.utils.ClassUtils;
-import mod.chiselsandbits.utils.FluidUtil;
 import mod.chiselsandbits.utils.SingleBlockBlockReader;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -78,7 +78,7 @@ public class BlockBitInfo {
 
             final Fluid fluid = BlockBitInfo.getFluidFromBlock(blk);
             if (fluid != null) {
-                out = FluidUtil.getColor(fluid);
+                out = PlatformFluidUtil.getColor(fluid);
             } else {
                 final ItemStack target = ModUtil.getItemStackFromBlockState(state);
 

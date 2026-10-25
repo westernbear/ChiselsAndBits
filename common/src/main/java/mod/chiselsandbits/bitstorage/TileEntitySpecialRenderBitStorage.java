@@ -9,10 +9,10 @@ import java.util.Objects;
 import mod.chiselsandbits.chiseledblock.data.VoxelBlob;
 import mod.chiselsandbits.core.ChiselsAndBits;
 import mod.chiselsandbits.helpers.ModUtil;
+import mod.chiselsandbits.platform.PlatformFluidUtil;
 import mod.chiselsandbits.render.chiseledblock.ChiselRenderType;
 import mod.chiselsandbits.render.chiseledblock.ChiseledBlockBakedModel;
 import mod.chiselsandbits.render.chiseledblock.ChiseledBlockSmartModel;
-import mod.chiselsandbits.utils.FluidUtil;
 import mod.chiselsandbits.utils.SimpleMaxSizedCache;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.color.block.BlockTintSource;
@@ -82,7 +82,7 @@ public class TileEntitySpecialRenderBitStorage
 
         final RandomSource random =
                 RandomSource.create(blockEntity.getBlockPos().asLong());
-        final int fluidColor = fluid == null ? 0xffffffff : ARGB.opaque(FluidUtil.getColor(fluid));
+        final int fluidColor = fluid == null ? 0xffffffff : ARGB.opaque(PlatformFluidUtil.getColor(fluid));
         for (final ChunkSectionLayer layer : ChunkSectionLayer.values()) {
             final ChiseledBlockBakedModel model = ChiseledBlockSmartModel.getCachedModel(
                     stateId, blob, ChiselRenderType.fromLayer(layer, fluid != null), DefaultVertexFormat.BLOCK, random);

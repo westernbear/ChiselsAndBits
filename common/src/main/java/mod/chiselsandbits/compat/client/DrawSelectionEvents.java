@@ -1,5 +1,7 @@
 package mod.chiselsandbits.compat.client;
 
+import dev.architectury.event.Event;
+import dev.architectury.event.EventFactory;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.state.level.BlockOutlineRenderState;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
@@ -7,7 +9,7 @@ import net.minecraft.client.renderer.state.level.LevelRenderState;
 /** C&amp;B block/entity outline events. */
 public interface DrawSelectionEvents {
 
-    ClientEvent<Block> BLOCK = ClientEvent.arrayBacked(Block.class, callbacks -> (levelState, outline) -> {
+    Event<Block> BLOCK = EventFactory.of(callbacks -> (levelState, outline) -> {
         for (final Block callback : callbacks) {
             if (callback.onHighlightBlock(levelState, outline)) {
                 return true;
@@ -16,7 +18,7 @@ public interface DrawSelectionEvents {
         return false;
     });
 
-    ClientEvent<Entity> ENTITY = ClientEvent.arrayBacked(Entity.class, callbacks -> (levelState, state) -> {
+    Event<Entity> ENTITY = EventFactory.of(callbacks -> (levelState, state) -> {
         for (final Entity callback : callbacks) {
             if (callback.onHighlightEntity(levelState, state)) {
                 return true;

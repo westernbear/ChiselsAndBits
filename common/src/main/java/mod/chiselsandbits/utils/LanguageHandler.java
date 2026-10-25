@@ -3,6 +3,7 @@ package mod.chiselsandbits.utils;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import dev.architectury.utils.Env;
+import dev.architectury.utils.EnvExecutor;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -34,11 +35,12 @@ public final class LanguageHandler {
 
         private void load(final String path) {
             final String defaultLocale = "en_us";
-            String locale = EnvExecutor.callWhenOn(
-                    Env.CLIENT,
-                    () -> () -> Minecraft.getInstance() == null || Minecraft.getInstance().options == null
-                            ? null
-                            : Minecraft.getInstance().options.languageCode);
+            String locale = EnvExecutor.getInEnv(
+                            Env.CLIENT,
+                            () -> () -> Minecraft.getInstance() == null || Minecraft.getInstance().options == null
+                                    ? null
+                                    : Minecraft.getInstance().options.languageCode)
+                    .orElse(null);
 
             if (locale == null) {
                 locale = defaultLocale;

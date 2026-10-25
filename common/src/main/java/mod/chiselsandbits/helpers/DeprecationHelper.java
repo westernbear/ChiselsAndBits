@@ -1,6 +1,6 @@
 package mod.chiselsandbits.helpers;
 
-import mod.chiselsandbits.utils.EnvExecutor;
+import dev.architectury.utils.EnvExecutor;
 import mod.chiselsandbits.utils.LanguageHandler;
 import net.minecraft.locale.Language;
 import net.minecraft.world.item.BlockItem;
@@ -25,7 +25,7 @@ public class DeprecationHelper {
     }
 
     public static String translateToLocal(final String string) {
-        return EnvExecutor.unsafeRunForDist(
+        return EnvExecutor.getEnvSpecific(
                 () -> () -> {
                     final String translated = Language.getInstance().getOrDefault(string);
                     if (translated.equals(string)) {

@@ -1,6 +1,5 @@
 package mod.chiselsandbits.utils;
 
-import mod.chiselsandbits.platform.PlatformFluidUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.language.I18n;
@@ -28,14 +27,6 @@ public final class FluidUtil {
         String key = Util.makeDescriptionId("block", id);
         String translated = I18n.get(key);
         return translated.equals(key) ? Util.makeDescriptionId("fluid", id) : key;
-    }
-
-    public static Identifier getRegistryName(Fluid fluid) {
-        return BuiltInRegistries.FLUID.getKey(fluid);
-    }
-
-    public static int getColor(Fluid fluid) {
-        return PlatformFluidUtil.getColor(fluid);
     }
 
     public static TextureAtlasSprite getStillTexture(Fluid fluid) {

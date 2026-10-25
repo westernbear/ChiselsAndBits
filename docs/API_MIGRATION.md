@@ -19,7 +19,7 @@ client.renderModel(...);
 client.renderGhostModel(...);
 ```
 
-On NeoForge, `IChiselAndBitsClientAPI.getInstance()` is not available until the NeoForge client module is implemented.
+On both loaders, `IChiselAndBitsClientAPI.getInstance()` returns the client API; it must only be called from client code.
 
 ## Events
 
@@ -49,4 +49,4 @@ Server-side pick-block memory is loader-neutral: `PacketPickBlockHit` stores the
 1. Replace client rendering/keybinding calls with `IChiselAndBitsClientAPI`.
 2. Subscribe to `BitModificationEvents` instead of removed Fabric event buses.
 3. Avoid importing `net.fabricmc.*` from addon common code; depend on `mod.chiselsandbits.api` only.
-4. Test on your target loader — NeoForge server entry works; client and fluid/item capabilities are still incomplete.
+4. Test on your target loader — both loaders implement the server entry, client wiring, and fluid/item capabilities.

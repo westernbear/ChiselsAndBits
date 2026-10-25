@@ -3,7 +3,6 @@
   "package": "mod.chiselsandbits.mixin",
   "compatibilityLevel": "JAVA_25",
   "client": [
-    "KeyMappingAccessor",
     "compat.client.GuiMixin",
     "compat.client.MouseHandlerMixin",
     "compat.client.MultiPlayerGameModeMixin",
