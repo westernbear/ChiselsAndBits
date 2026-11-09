@@ -34,7 +34,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -436,12 +435,8 @@ public class ItemBlockChiseled extends BlockItem implements IVoxelBlobItem, IIte
             final Component name = ItemChiseledBit.getBitStateName(state);
 
             if (name != null) {
-                final Component parent = super.getName(stack);
-                if (!(parent instanceof MutableComponent formattedParent)) {
-                    return parent;
-                }
-
-                return formattedParent.append(" - ").append(name);
+                // copy: ITEM_NAME is shared by every stack of this item, append would grow it on each call
+                return super.getName(stack).copy().append(" - ").append(name);
             }
         }
 

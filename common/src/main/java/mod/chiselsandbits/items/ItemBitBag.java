@@ -15,7 +15,6 @@ import mod.chiselsandbits.registry.ModItems;
 import mod.chiselsandbits.render.helpers.SimpleInstanceCache;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.Container;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -133,13 +132,11 @@ public class ItemBitBag extends Item {
     public Component getName(final ItemStack stack) {
         DyeColor color = getDyedColor(stack);
         final Component parent = super.getName(stack);
-        if (parent instanceof MutableComponent && color != null) {
-            return ((MutableComponent) parent)
-                    .append(" - ")
-                    .append(Component.translatable("chiselsandbits.color." + color.getName()));
-        } else {
-            return super.getName(stack);
+        if (color == null) {
+            return parent;
         }
+        // copy: ITEM_NAME is shared by every stack of this item, append would grow it on each call
+        return parent.copy().append(" - ").append(Component.translatable("chiselsandbits.color." + color.getName()));
     }
 
     @Environment(Env.CLIENT)
