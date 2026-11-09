@@ -340,8 +340,9 @@ public class ItemChisel extends Item implements IItemScrollWheel, IChiselModeIte
     public Component getName(ItemStack itemStack) {
         Component displayName = super.getName(itemStack);
         if (Platform.getEnvironment() == Env.CLIENT
-                && ChiselsAndBits.getConfig().getClient().itemNameModeDisplay.get()
-                && displayName instanceof MutableComponent formattableTextComponent) {
+                && ChiselsAndBits.getConfig().getClient().itemNameModeDisplay.get()) {
+            // copy: ITEM_NAME is shared by every stack of this item, append would grow it on each call
+            final MutableComponent formattableTextComponent = displayName.copy();
             if (ChiselsAndBits.getConfig().getClient().perChiselMode.get() || Platform.getEnvironment() == Env.SERVER) {
                 return formattableTextComponent
                         .append(" - ")

@@ -114,9 +114,6 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
 
         try {
             final Component myName = target.getHoverName();
-            if (!(myName instanceof MutableComponent formattableName)) {
-                return myName;
-            }
 
             final Set<String> extra = new HashSet<String>();
             if (blk != null && state != null) {
@@ -132,6 +129,8 @@ public class ItemChiseledBit extends Item implements IItemScrollWheel, IChiselMo
                 return myName;
             }
 
+            // copy: the hover name can be the ITEM_NAME shared by every stack, append would corrupt it
+            final MutableComponent formattableName = myName.copy();
             for (final String x : extra) {
                 formattableName.append(" ").append(x);
             }
