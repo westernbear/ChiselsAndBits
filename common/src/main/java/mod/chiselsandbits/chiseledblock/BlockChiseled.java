@@ -27,6 +27,7 @@ import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
+import net.minecraft.core.SectionPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
@@ -54,6 +55,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -490,17 +492,25 @@ public class BlockChiseled extends Block implements EntityBlock, IMultiStateBloc
     }
 
     public int getLightEmission(BlockState blockState, BlockGetter blockGetter, BlockPos blockPos) {
-        // is this the right block?
-        final BlockState realState = blockGetter.getBlockState(blockPos);
-        final Block realBlock = realState.getBlock();
-        if (realBlock != this) {
+        if (blockState.getBlock() != this) {
             return 0;
         }
 
         // enabled?
         if (ChiselsAndBits.getConfig().getServer().enableBitLightSource.get()) {
             try {
-                return getTileEntity(blockGetter, blockPos).getLightValue();
+                // Light engine calls this off-thread; Level#getBlockState/getChunkAt would block on the
+                // server thread and deadlock shutdown. getChunkForLighting is non-blocking.
+                final BlockEntity te = blockGetter instanceof Level level
+                        ? level.getChunkSource()
+                                                .getChunkForLighting(
+                                                        SectionPos.blockToSectionCoord(blockPos.getX()),
+                                                        SectionPos.blockToSectionCoord(blockPos.getZ()))
+                                        instanceof ChunkAccess chunk
+                                ? chunk.getBlockEntity(blockPos)
+                                : null
+                        : blockGetter.getBlockEntity(blockPos);
+                return getTileEntity(te).getLightValue();
             } catch (final ExceptionNoTileEntity e) {
                 Log.noTileError(e);
             }
