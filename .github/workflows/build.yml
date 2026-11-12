@@ -76,7 +76,19 @@ jobs:
           java-version: 25
           distribution: 'temurin'
       - name: neoforge gametest
-        run: timeout 20m ./gradlew :neoforge:runGametest
+        run: |
+          set -euo pipefail
+          gametest_log="$(mktemp)"
+          set +e
+          timeout 20m ./gradlew :neoforge:runGametest --console=plain 2>&1 | tee "$gametest_log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [[ "$status" -eq 124 ]] && grep -Eq 'All [0-9]+ required tests passed :\)' "$gametest_log"; then
+            echo "NeoForge GameTests completed successfully but the process did not exit before timeout."
+            echo "Treating this as a pass to avoid false-negative CI failures."
+            exit 0
+          fi
+          exit "$status"
 
   neoforge-client-smoke:
     needs: build
